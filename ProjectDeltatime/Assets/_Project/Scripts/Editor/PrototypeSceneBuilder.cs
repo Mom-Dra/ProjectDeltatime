@@ -70,13 +70,13 @@ namespace Deltatime.EditorTools
                 new Color(0.04f, 0.72f, 0.86f, 1f),
                 0.42f,
                 0.58f,
-                new Color(0.02f, 0.2f, 0.3f, 1f));
+                new Color(0.006f, 0.06f, 0.09f, 1f));
             Material enemyMaterial = EnsureStandardMaterial(
                 EnemyMaterialPath,
                 new Color(0.85f, 0.08f, 0.055f, 1f),
                 0.38f,
                 0.52f,
-                new Color(0.24f, 0.018f, 0.012f, 1f));
+                new Color(0.06f, 0.004f, 0.003f, 1f));
             Material weaponMaterial = EnsureStandardMaterial(
                 WeaponMaterialPath,
                 new Color(0.5f, 0.55f, 0.62f, 1f),
@@ -87,13 +87,13 @@ namespace Deltatime.EditorTools
                 new Color(1f, 0.55f, 0.035f, 1f),
                 0.45f,
                 0.55f,
-                new Color(0.65f, 0.19f, 0.01f, 1f));
+                new Color(0.08f, 0.018f, 0.002f, 1f));
             Material accentMaterial = EnsureStandardMaterial(
                 AccentMaterialPath,
                 new Color(0.02f, 0.6f, 0.8f, 1f),
                 0.25f,
                 0.7f,
-                new Color(0.02f, 0.7f, 1.2f, 1f));
+                new Color(0.004f, 0.06f, 0.1f, 1f));
             Material visionMaterial = EnsureTransparentMaterial(
                 VisionMaterialPath,
                 new Color(0.08f, 0.85f, 1f, 0.13f));
@@ -121,6 +121,9 @@ namespace Deltatime.EditorTools
             WorldTimeController worldTime;
             GameObject systems = CreateSystems(out activity, out worldTime);
             Camera gameplayCamera = CreateCamera(worldTime);
+            StageReplayController replay =
+                systems.AddComponent<StageReplayController>();
+            replay.Configure(worldTime, gameplayCamera);
 
             CreateLightingAndAtmosphere();
             CreateFloorAndWalls(
@@ -140,16 +143,13 @@ namespace Deltatime.EditorTools
                 thrownPrefab,
                 activity,
                 worldTime,
-                gameplayCamera);
+                gameplayCamera,
+                replay);
 
             TopDownCameraController cameraController =
                 gameplayCamera.gameObject.AddComponent<TopDownCameraController>();
             cameraController.Configure(player.Root.transform, player.Aim, player.Input);
             cameraController.SnapToTarget();
-
-            StageReplayController replay =
-                systems.AddComponent<StageReplayController>();
-            replay.Configure(worldTime, gameplayCamera);
 
             StageController stage = systems.AddComponent<StageController>();
             stage.Configure(player.Input, player.Health, player.Combat, replay);
@@ -173,6 +173,7 @@ namespace Deltatime.EditorTools
                 worldTime,
                 player.Root.transform,
                 player.Health,
+                player.Vision,
                 stage);
             CreateEnemy(
                 "Enemy Center",
@@ -187,6 +188,7 @@ namespace Deltatime.EditorTools
                 worldTime,
                 player.Root.transform,
                 player.Health,
+                player.Vision,
                 stage);
             CreateEnemy(
                 "Enemy East",
@@ -201,6 +203,7 @@ namespace Deltatime.EditorTools
                 worldTime,
                 player.Root.transform,
                 player.Health,
+                player.Vision,
                 stage);
 
             GameObject hudObject = new GameObject("Debug HUD");
@@ -314,7 +317,7 @@ namespace Deltatime.EditorTools
             camera.nearClipPlane = 0.15f;
             camera.farClipPlane = 80f;
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0.018f, 0.028f, 0.045f, 1f);
+            camera.backgroundColor = new Color(0.004f, 0.007f, 0.012f, 1f);
             camera.allowHDR = true;
 
             WorldTimeVisualFeedback feedback =
@@ -326,35 +329,37 @@ namespace Deltatime.EditorTools
         private static void CreateLightingAndAtmosphere()
         {
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.12f, 0.17f, 0.22f, 1f);
-            RenderSettings.ambientEquatorColor = new Color(0.055f, 0.075f, 0.095f, 1f);
-            RenderSettings.ambientGroundColor = new Color(0.018f, 0.024f, 0.032f, 1f);
+            RenderSettings.ambientSkyColor = new Color(0.012f, 0.016f, 0.022f, 1f);
+            RenderSettings.ambientEquatorColor = new Color(0.006f, 0.008f, 0.012f, 1f);
+            RenderSettings.ambientGroundColor = new Color(0.002f, 0.003f, 0.005f, 1f);
+            RenderSettings.ambientIntensity = 0.35f;
+            RenderSettings.reflectionIntensity = 0.08f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.018f, 0.028f, 0.045f, 1f);
-            RenderSettings.fogStartDistance = 22f;
-            RenderSettings.fogEndDistance = 48f;
+            RenderSettings.fogColor = new Color(0.004f, 0.007f, 0.012f, 1f);
+            RenderSettings.fogStartDistance = 19f;
+            RenderSettings.fogEndDistance = 42f;
 
             GameObject keyLightObject = new GameObject("Directional Key Light");
             keyLightObject.transform.rotation = Quaternion.Euler(52f, -32f, 0f);
             Light keyLight = keyLightObject.AddComponent<Light>();
             keyLight.type = LightType.Directional;
             keyLight.color = new Color(0.72f, 0.84f, 1f, 1f);
-            keyLight.intensity = 1.15f;
-            keyLight.shadows = LightShadows.Soft;
+            keyLight.intensity = 0.06f;
+            keyLight.shadows = LightShadows.None;
 
             CreatePointLight(
                 "Blue Bay Light",
                 new Vector3(-6f, 3.4f, -1f),
                 new Color(0.05f, 0.55f, 1f, 1f),
-                3.5f,
-                8f);
+                0.15f,
+                4f);
             CreatePointLight(
                 "Red Alert Light",
                 new Vector3(6f, 3.4f, 3f),
                 new Color(1f, 0.12f, 0.045f, 1f),
-                3.1f,
-                7f);
+                0.12f,
+                4f);
         }
 
         private static void CreatePointLight(
@@ -385,7 +390,8 @@ namespace Deltatime.EditorTools
             ThrownWeapon thrownPrefab,
             WorldTimeActivity activity,
             WorldTimeController worldTime,
-            Camera gameplayCamera)
+            Camera gameplayCamera,
+            StageReplayController replay)
         {
             GameObject root = CreatePrimitiveObject(
                 "Player",
@@ -459,9 +465,20 @@ namespace Deltatime.EditorTools
             visionObject.AddComponent<MeshFilter>();
             visionObject.AddComponent<MeshRenderer>();
             VisionCone visionCone = visionObject.AddComponent<VisionCone>();
-            visionCone.Configure(1 << VisionObstacleLayer, visionMaterial);
+            visionCone.Configure(
+                1 << VisionObstacleLayer,
+                visionMaterial,
+                replay);
 
-            return new PlayerBundle(root, input, aim, dash, health, combat, weapon);
+            return new PlayerBundle(
+                root,
+                input,
+                aim,
+                dash,
+                health,
+                combat,
+                weapon,
+                visionCone);
         }
 
         private static void CreateEnemy(
@@ -477,6 +494,7 @@ namespace Deltatime.EditorTools
             WorldTimeController worldTime,
             Transform player,
             PlayerHealth playerHealth,
+            VisionCone playerVision,
             StageController stage)
         {
             GameObject root = CreatePrimitiveObject(
@@ -527,12 +545,16 @@ namespace Deltatime.EditorTools
             drop.Configure(pickupPrefab, pistol, 4);
 
             EnemyShooter shooter = root.AddComponent<EnemyShooter>();
+            Renderer bodyRenderer = root.GetComponent<Renderer>();
             shooter.Configure(
                 worldTime,
                 player,
                 playerHealth,
                 weapon,
-                warningLine);
+                warningLine,
+                playerVision,
+                bodyRenderer,
+                heldWeaponRenderer);
 
             EnemyHealth health = root.AddComponent<EnemyHealth>();
             health.Configure(
@@ -540,7 +562,7 @@ namespace Deltatime.EditorTools
                 drop,
                 stage,
                 collider,
-                root.GetComponent<Renderer>());
+                bodyRenderer);
         }
 
         private static void CreateFloorAndWalls(
@@ -1142,7 +1164,8 @@ namespace Deltatime.EditorTools
                 PlayerDash dash,
                 PlayerHealth health,
                 PlayerCombat combat,
-                WeaponController weapon)
+                WeaponController weapon,
+                VisionCone vision)
             {
                 Root = root;
                 Input = input;
@@ -1151,6 +1174,7 @@ namespace Deltatime.EditorTools
                 Health = health;
                 Combat = combat;
                 Weapon = weapon;
+                Vision = vision;
             }
 
             public GameObject Root { get; }
@@ -1160,6 +1184,7 @@ namespace Deltatime.EditorTools
             public PlayerHealth Health { get; }
             public PlayerCombat Combat { get; }
             public WeaponController Weapon { get; }
+            public VisionCone Vision { get; }
         }
     }
 }

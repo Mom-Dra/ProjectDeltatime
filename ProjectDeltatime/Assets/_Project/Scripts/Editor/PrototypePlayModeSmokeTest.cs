@@ -146,6 +146,14 @@ namespace Deltatime.EditorTools
 
         private static void ClearStage()
         {
+            PlayerHealth player =
+                UnityEngine.Object.FindObjectOfType<PlayerHealth>();
+            if (player != null)
+            {
+                player.transform.position += new Vector3(1.25f, 0f, 0.75f);
+                player.transform.rotation = Quaternion.Euler(0f, 35f, 0f);
+            }
+
             EnemyHealth[] enemies =
                 UnityEngine.Object.FindObjectsOfType<EnemyHealth>();
             for (int i = 0; i < enemies.Length; i++)
@@ -182,6 +190,17 @@ namespace Deltatime.EditorTools
                 cameraRig != null && !cameraRig.enabled,
                 "Live camera simulation remained enabled during replay.");
             Require(
+                replay != null && replay.AreTrackedSourceLightsDisabled,
+                "Original dark-vision lights remained enabled during replay.");
+            Require(
+                replay != null && replay.ActiveReplayLightCount == 2,
+                "Replay did not activate both dark-vision proxy lights.");
+            Require(
+                IsSceneLightEnabled("Directional Key Light") &&
+                IsSceneLightEnabled("Blue Bay Light") &&
+                IsSceneLightEnabled("Red Alert Light"),
+                "Replay disabled a static scene light.");
+            Require(
                 Mathf.Approximately(UnityEngine.Time.timeScale, 1f),
                 "Replay changed global Time.timeScale.");
         }
@@ -214,6 +233,9 @@ namespace Deltatime.EditorTools
             Require(
                 replay != null && Mathf.Approximately(replay.CaptureRate, 20f),
                 "Stage replay capture rate is not configured to 20 Hz.");
+            Require(
+                replay != null && replay.TrackedLightCount == 2,
+                "Stage replay did not register both dark-vision lights.");
             Require(enemies.Length == 3, $"Expected 3 enemies, found {enemies.Length}.");
             Require(
                 gameplayCamera != null && !gameplayCamera.orthographic,
@@ -246,6 +268,18 @@ namespace Deltatime.EditorTools
                     replay.CapturedFrameCount > 0,
                     "Stage replay did not capture any frames.");
             }
+        }
+
+        private static bool IsSceneLightEnabled(string objectName)
+        {
+            GameObject lightObject = GameObject.Find(objectName);
+            if (lightObject == null)
+            {
+                return false;
+            }
+
+            Light light = lightObject.GetComponent<Light>();
+            return light != null && light.enabled;
         }
 
         private static void Require(bool condition, string message)

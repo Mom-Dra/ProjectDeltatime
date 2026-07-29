@@ -26,6 +26,9 @@ namespace Deltatime.Replay
         private readonly Dictionary<int, VisualTrack> tracksByInstanceId =
             new Dictionary<int, VisualTrack>();
         private readonly List<VisualTrack> tracks = new List<VisualTrack>();
+        private readonly Dictionary<int, LightTrack> lightTracksByInstanceId =
+            new Dictionary<int, LightTrack>();
+        private readonly List<LightTrack> lightTracks = new List<LightTrack>();
         private readonly HashSet<int> visibleRendererIds = new HashSet<int>();
         private readonly List<MonoBehaviour> disabledBehaviours =
             new List<MonoBehaviour>();
@@ -41,6 +44,38 @@ namespace Deltatime.Replay
         public bool IsReplaying { get; private set; }
         public float CaptureRate => captureRate;
         public int CapturedFrameCount => cameraSamples.Count;
+        public int TrackedLightCount => lightTracks.Count;
+        public int ActiveReplayLightCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < lightTracks.Count; i++)
+                {
+                    if (lightTracks[i].IsProxyActive)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+        public bool AreTrackedSourceLightsDisabled
+        {
+            get
+            {
+                for (int i = 0; i < lightTracks.Count; i++)
+                {
+                    if (lightTracks[i].IsSourceEnabled)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
         public float RecordedDuration =>
             cameraSamples.Count < 2
                 ? 0f
@@ -50,10 +85,7 @@ namespace Deltatime.Replay
 
         private void Awake()
         {
-            GameObject root = new GameObject("Replay Visuals");
-            replayRoot = root.transform;
-            replayRoot.SetParent(transform, false);
-            replayRoot.gameObject.SetActive(false);
+            EnsureReplayRoot();
 
             if (worldTime == null || gameplayCamera == null)
             {
@@ -62,6 +94,19 @@ namespace Deltatime.Replay
                     this);
                 enabled = false;
             }
+        }
+
+        private void EnsureReplayRoot()
+        {
+            if (replayRoot != null)
+            {
+                return;
+            }
+
+            GameObject root = new GameObject("Replay Visuals");
+            replayRoot = root.transform;
+            replayRoot.SetParent(transform, false);
+            replayRoot.gameObject.SetActive(false);
         }
 
         private void Start()
@@ -117,6 +162,28 @@ namespace Deltatime.Replay
             }
 
             replayRequested = true;
+            return true;
+        }
+
+        public bool RegisterLight(Light source)
+        {
+            if (source == null)
+            {
+                return false;
+            }
+
+            int instanceId = source.GetInstanceID();
+            if (lightTracksByInstanceId.ContainsKey(instanceId))
+            {
+                return false;
+            }
+
+            EnsureReplayRoot();
+            LightTrack track = new LightTrack(
+                source,
+                CreateProxyLight(source, replayRoot));
+            lightTracksByInstanceId.Add(instanceId, track);
+            lightTracks.Add(track);
             return true;
         }
 
@@ -190,6 +257,11 @@ namespace Deltatime.Replay
                     track.CaptureHidden(timestamp);
                 }
             }
+
+            for (int i = 0; i < lightTracks.Count; i++)
+            {
+                lightTracks[i].Capture(timestamp);
+            }
         }
 
         private void BeginReplay()
@@ -206,6 +278,11 @@ namespace Deltatime.Replay
             for (int i = 0; i < tracks.Count; i++)
             {
                 tracks[i].HideSource();
+            }
+
+            for (int i = 0; i < lightTracks.Count; i++)
+            {
+                lightTracks[i].HideSource();
             }
 
             replayRoot.gameObject.SetActive(true);
@@ -279,6 +356,11 @@ namespace Deltatime.Replay
             for (int i = 0; i < tracks.Count; i++)
             {
                 tracks[i].Apply(timestamp);
+            }
+
+            for (int i = 0; i < lightTracks.Count; i++)
+            {
+                lightTracks[i].Apply(timestamp);
             }
         }
 
@@ -355,6 +437,38 @@ namespace Deltatime.Replay
             proxy.transform.SetParent(replayRoot, false);
             proxy.gameObject.name = $"Replay - {source.gameObject.name}";
             return new VisualTrack(source, proxy);
+        }
+
+        private static Light CreateProxyLight(
+            Light source,
+            Transform parent)
+        {
+            GameObject proxyObject =
+                new GameObject($"Replay Light - {source.gameObject.name}");
+            proxyObject.transform.SetParent(parent, false);
+
+            Light proxy = proxyObject.AddComponent<Light>();
+            proxy.type = source.type;
+            proxy.color = source.color;
+            proxy.intensity = source.intensity;
+            proxy.range = source.range;
+            proxy.spotAngle = source.spotAngle;
+            proxy.innerSpotAngle = source.innerSpotAngle;
+            proxy.shadows = source.shadows;
+            proxy.shadowStrength = source.shadowStrength;
+            proxy.shadowBias = source.shadowBias;
+            proxy.shadowNormalBias = source.shadowNormalBias;
+            proxy.shadowNearPlane = source.shadowNearPlane;
+            proxy.renderMode = source.renderMode;
+            proxy.cullingMask = source.cullingMask;
+            proxy.renderingLayerMask = source.renderingLayerMask;
+            proxy.cookie = source.cookie;
+            proxy.cookieSize = source.cookieSize;
+            proxy.bounceIntensity = source.bounceIntensity;
+            proxy.useColorTemperature = source.useColorTemperature;
+            proxy.colorTemperature = source.colorTemperature;
+            proxy.enabled = false;
+            return proxy;
         }
 
         private static bool CanRecord(Renderer source)
@@ -471,6 +585,259 @@ namespace Deltatime.Replay
                 Rotation = rotation;
                 BackgroundColor = backgroundColor;
                 FieldOfView = fieldOfView;
+            }
+        }
+
+        private readonly struct LightSample
+        {
+            public readonly float Time;
+            public readonly bool Visible;
+            public readonly Vector3 Position;
+            public readonly Quaternion Rotation;
+            public readonly Color Color;
+            public readonly float Intensity;
+            public readonly float Range;
+            public readonly float SpotAngle;
+            public readonly float InnerSpotAngle;
+
+            public LightSample(
+                float time,
+                bool visible,
+                Vector3 position,
+                Quaternion rotation,
+                Color color,
+                float intensity,
+                float range,
+                float spotAngle,
+                float innerSpotAngle)
+            {
+                Time = time;
+                Visible = visible;
+                Position = position;
+                Rotation = rotation;
+                Color = color;
+                Intensity = intensity;
+                Range = range;
+                SpotAngle = spotAngle;
+                InnerSpotAngle = innerSpotAngle;
+            }
+
+            public static LightSample Hidden(float time)
+            {
+                return new LightSample(
+                    time,
+                    false,
+                    Vector3.zero,
+                    Quaternion.identity,
+                    Color.black,
+                    0f,
+                    0f,
+                    0f,
+                    0f);
+            }
+
+            public bool Matches(
+                Vector3 position,
+                Quaternion rotation,
+                Color color,
+                float intensity,
+                float range,
+                float spotAngle,
+                float innerSpotAngle)
+            {
+                return Visible &&
+                       (Position - position).sqrMagnitude <= 0.00000001f &&
+                       Quaternion.Dot(Rotation, rotation) >= 0.999999f &&
+                       Approximately(Color, color) &&
+                       Mathf.Abs(Intensity - intensity) <= 0.0001f &&
+                       Mathf.Abs(Range - range) <= 0.0001f &&
+                       Mathf.Abs(SpotAngle - spotAngle) <= 0.0001f &&
+                       Mathf.Abs(InnerSpotAngle - innerSpotAngle) <= 0.0001f;
+            }
+
+            private static bool Approximately(Color left, Color right)
+            {
+                float difference =
+                    Mathf.Abs(left.r - right.r) +
+                    Mathf.Abs(left.g - right.g) +
+                    Mathf.Abs(left.b - right.b) +
+                    Mathf.Abs(left.a - right.a);
+                return difference <= 0.0001f;
+            }
+        }
+
+        private sealed class LightTrack
+        {
+            private readonly Light source;
+            private readonly Light proxy;
+            private readonly List<LightSample> samples =
+                new List<LightSample>(512);
+
+            public bool IsProxyActive =>
+                proxy != null &&
+                proxy.enabled &&
+                proxy.gameObject.activeInHierarchy;
+            public bool IsSourceEnabled =>
+                source != null &&
+                source.enabled &&
+                source.gameObject.activeInHierarchy;
+
+            public LightTrack(Light sourceLight, Light proxyLight)
+            {
+                source = sourceLight;
+                proxy = proxyLight;
+            }
+
+            public void Capture(float timestamp)
+            {
+                if (!IsSourceEnabled)
+                {
+                    CaptureHidden(timestamp);
+                    return;
+                }
+
+                Vector3 position = source.transform.position;
+                Quaternion rotation = source.transform.rotation;
+                Color color = source.color;
+                float intensity = source.intensity;
+                float range = source.range;
+                float spotAngle = source.spotAngle;
+                float innerSpotAngle = source.innerSpotAngle;
+
+                if (samples.Count > 0 &&
+                    samples[samples.Count - 1].Matches(
+                        position,
+                        rotation,
+                        color,
+                        intensity,
+                        range,
+                        spotAngle,
+                        innerSpotAngle))
+                {
+                    return;
+                }
+
+                samples.Add(new LightSample(
+                    timestamp,
+                    true,
+                    position,
+                    rotation,
+                    color,
+                    intensity,
+                    range,
+                    spotAngle,
+                    innerSpotAngle));
+            }
+
+            public void HideSource()
+            {
+                if (source != null)
+                {
+                    source.enabled = false;
+                }
+            }
+
+            public void Apply(float timestamp)
+            {
+                if (proxy == null ||
+                    samples.Count == 0 ||
+                    timestamp < samples[0].Time)
+                {
+                    if (proxy != null)
+                    {
+                        proxy.enabled = false;
+                    }
+
+                    return;
+                }
+
+                int nextIndex = FindNextSample(timestamp);
+                int previousIndex = Mathf.Max(0, nextIndex - 1);
+                LightSample previous = samples[previousIndex];
+
+                if (!previous.Visible)
+                {
+                    proxy.enabled = false;
+                    return;
+                }
+
+                if (nextIndex >= samples.Count || !samples[nextIndex].Visible)
+                {
+                    ApplySample(previous);
+                    return;
+                }
+
+                LightSample next = samples[nextIndex];
+                float duration = next.Time - previous.Time;
+                float blend = duration <= 0.000001f
+                    ? 0f
+                    : Mathf.Clamp01((timestamp - previous.Time) / duration);
+                ApplyInterpolated(previous, next, blend);
+            }
+
+            private void CaptureHidden(float timestamp)
+            {
+                if (samples.Count == 0 || !samples[samples.Count - 1].Visible)
+                {
+                    return;
+                }
+
+                samples.Add(LightSample.Hidden(timestamp));
+            }
+
+            private int FindNextSample(float timestamp)
+            {
+                int low = 0;
+                int high = samples.Count;
+
+                while (low < high)
+                {
+                    int middle = low + ((high - low) / 2);
+                    if (samples[middle].Time <= timestamp)
+                    {
+                        low = middle + 1;
+                    }
+                    else
+                    {
+                        high = middle;
+                    }
+                }
+
+                return low;
+            }
+
+            private void ApplySample(LightSample sample)
+            {
+                proxy.enabled = true;
+                proxy.transform.SetPositionAndRotation(
+                    sample.Position,
+                    sample.Rotation);
+                proxy.color = sample.Color;
+                proxy.intensity = sample.Intensity;
+                proxy.range = sample.Range;
+                proxy.spotAngle = sample.SpotAngle;
+                proxy.innerSpotAngle = sample.InnerSpotAngle;
+            }
+
+            private void ApplyInterpolated(
+                LightSample previous,
+                LightSample next,
+                float blend)
+            {
+                proxy.enabled = true;
+                proxy.transform.SetPositionAndRotation(
+                    Vector3.Lerp(previous.Position, next.Position, blend),
+                    Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
+                proxy.color = Color.Lerp(previous.Color, next.Color, blend);
+                proxy.intensity =
+                    Mathf.Lerp(previous.Intensity, next.Intensity, blend);
+                proxy.range = Mathf.Lerp(previous.Range, next.Range, blend);
+                proxy.spotAngle =
+                    Mathf.Lerp(previous.SpotAngle, next.SpotAngle, blend);
+                proxy.innerSpotAngle = Mathf.Lerp(
+                    previous.InnerSpotAngle,
+                    next.InnerSpotAngle,
+                    blend);
             }
         }
 

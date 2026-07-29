@@ -6,8 +6,10 @@ namespace Deltatime.TimeSystem
     {
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private Camera gameplayCamera;
-        [SerializeField] private Color nearlyStoppedColor = new Color(0.08f, 0.085f, 0.09f, 1f);
-        [SerializeField] private Color activeColor = new Color(0.035f, 0.055f, 0.09f, 1f);
+        [SerializeField] private Color nearlyStoppedColor =
+            new Color(0.012f, 0.014f, 0.017f, 1f);
+        [SerializeField] private Color activeColor =
+            new Color(0.004f, 0.008f, 0.014f, 1f);
         [SerializeField, Min(0.01f)] private float colorBlendSpeed = 7f;
 
         private void Awake()
@@ -45,7 +47,7 @@ namespace Deltatime.TimeSystem
             int previousDepth = GUI.depth;
             Color previousColor = GUI.color;
             GUI.depth = 1000;
-            GUI.color = new Color(0.52f, 0.56f, 0.62f, slowAmount * 0.16f);
+            GUI.color = new Color(0.02f, 0.025f, 0.035f, slowAmount * 0.22f);
             GUI.DrawTexture(
                 new Rect(0f, 0f, Screen.width, Screen.height),
                 Texture2D.whiteTexture);

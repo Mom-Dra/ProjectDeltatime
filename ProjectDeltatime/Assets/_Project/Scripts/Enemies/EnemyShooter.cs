@@ -2,6 +2,7 @@ using Deltatime.Combat;
 using Deltatime.Core;
 using Deltatime.Player;
 using Deltatime.TimeSystem;
+using Deltatime.Vision;
 using UnityEngine;
 
 namespace Deltatime.Enemies
@@ -23,6 +24,9 @@ namespace Deltatime.Enemies
         [SerializeField] private PlayerHealth targetHealth;
         [SerializeField] private WeaponController weapon;
         [SerializeField] private LineRenderer warningLine;
+        [SerializeField] private VisionCone playerVision;
+        [SerializeField] private Renderer bodyRenderer;
+        [SerializeField] private Renderer weaponRenderer;
 
         [Header("Behavior")]
         [SerializeField, Min(0.1f)] private float detectionRange = 18f;
@@ -40,13 +44,25 @@ namespace Deltatime.Enemies
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
-            if (worldTime == null || target == null || targetHealth == null || weapon == null || warningLine == null)
+            if (worldTime == null ||
+                target == null ||
+                targetHealth == null ||
+                weapon == null ||
+                warningLine == null ||
+                playerVision == null ||
+                bodyRenderer == null ||
+                weaponRenderer == null)
             {
                 Debug.LogError($"{nameof(EnemyShooter)} is missing required references.", this);
                 enabled = false;
             }
 
             SetWarningVisible(false);
+        }
+
+        private void Start()
+        {
+            UpdateVisionVisibility();
         }
 
         private void Update()
@@ -107,19 +123,50 @@ namespace Deltatime.Enemies
             }
         }
 
+        private void LateUpdate()
+        {
+            UpdateVisionVisibility();
+        }
+
         public void SetDead()
         {
             TransitionTo(ShooterState.Dead, 0f);
             enabled = false;
         }
 
-        public void Configure(WorldTimeController timeSource, Transform playerTarget, PlayerHealth playerHealth, WeaponController weaponController, LineRenderer telegraphLine)
+        public void Configure(
+            WorldTimeController timeSource,
+            Transform playerTarget,
+            PlayerHealth playerHealth,
+            WeaponController weaponController,
+            LineRenderer telegraphLine,
+            VisionCone vision,
+            Renderer enemyBodyRenderer,
+            Renderer heldWeaponRenderer)
         {
             worldTime = timeSource;
             target = playerTarget;
             targetHealth = playerHealth;
             weapon = weaponController;
             warningLine = telegraphLine;
+            playerVision = vision;
+            bodyRenderer = enemyBodyRenderer;
+            weaponRenderer = heldWeaponRenderer;
+        }
+
+        private void UpdateVisionVisibility()
+        {
+            if (playerVision == null ||
+                bodyRenderer == null ||
+                weaponRenderer == null ||
+                weapon == null)
+            {
+                return;
+            }
+
+            bool visible = playerVision.ContainsWorldPoint(bodyRenderer.bounds.center);
+            bodyRenderer.enabled = visible;
+            weaponRenderer.enabled = visible && weapon.HasWeapon;
         }
 
         private void TransitionTo(ShooterState nextState, float stateDuration)
