@@ -1622,6 +1622,7 @@ GameObject:
   - component: {fileID: 414005269}
   - component: {fileID: 414005270}
   - component: {fileID: 414005271}
+  - component: {fileID: 414005273}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -1675,6 +1676,24 @@ MonoBehaviour:
   input: {fileID: 62186147}
   playerHealth: {fileID: 62186148}
   playerCombat: {fileID: 62186150}
+  replay: {fileID: 414005273}
+--- !u!114 &414005273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 414005268}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f529416dd8d4fa982e633a9492ce8e9, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  worldTime: {fileID: 414005270}
+  gameplayCamera: {fileID: 386243558}
+  captureRate: 20
+  endHoldDuration: 0.65
+  loop: 1
 --- !u!4 &414005272
 Transform:
   m_ObjectHideFlags: 0
@@ -3363,6 +3382,7 @@ MonoBehaviour:
   playerHealth: {fileID: 62186148}
   playerDash: {fileID: 62186146}
   weapon: {fileID: 62186144}
+  replay: {fileID: 414005273}
   panelColor: {r: 0.02, g: 0.025, b: 0.04, a: 0.86}
   textColor: {r: 0.85, g: 0.95, b: 1, a: 1}
   accentColor: {r: 0.2, g: 0.95, b: 1, a: 1}

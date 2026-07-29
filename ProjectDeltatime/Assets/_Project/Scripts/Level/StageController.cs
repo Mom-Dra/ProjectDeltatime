@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Deltatime.Enemies;
 using Deltatime.InputSystem;
 using Deltatime.Player;
+using Deltatime.Replay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,12 +14,14 @@ namespace Deltatime.Level
         {
             Active,
             Cleared,
+            Replaying,
             PlayerDead
         }
 
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerHealth playerHealth;
         [SerializeField] private PlayerCombat playerCombat;
+        [SerializeField] private StageReplayController replay;
 
         private readonly HashSet<EnemyHealth> livingEnemies = new HashSet<EnemyHealth>();
 
@@ -79,17 +82,24 @@ namespace Deltatime.Level
                 {
                     playerCombat.SetCombatEnabled(false);
                 }
+
+                if (replay != null && replay.RequestReplay())
+                {
+                    CurrentState = StageState.Replaying;
+                }
             }
         }
 
         public void Configure(
             PlayerInputReader inputReader,
             PlayerHealth health,
-            PlayerCombat combat)
+            PlayerCombat combat,
+            StageReplayController replayController)
         {
             input = inputReader;
             playerHealth = health;
             playerCombat = combat;
+            replay = replayController;
         }
 
         private void HandlePlayerDied()
@@ -121,7 +131,10 @@ namespace Deltatime.Level
 
         private void ValidateConfiguration()
         {
-            if (input == null || playerHealth == null || playerCombat == null)
+            if (input == null ||
+                playerHealth == null ||
+                playerCombat == null ||
+                replay == null)
             {
                 Debug.LogError($"{nameof(StageController)} is missing required references.", this);
                 enabled = false;

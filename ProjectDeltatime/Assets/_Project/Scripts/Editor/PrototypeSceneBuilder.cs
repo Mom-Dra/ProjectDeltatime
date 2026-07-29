@@ -5,6 +5,7 @@ using Deltatime.Enemies;
 using Deltatime.InputSystem;
 using Deltatime.Level;
 using Deltatime.Player;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
 using Deltatime.Vision;
@@ -146,8 +147,12 @@ namespace Deltatime.EditorTools
             cameraController.Configure(player.Root.transform, player.Aim, player.Input);
             cameraController.SnapToTarget();
 
+            StageReplayController replay =
+                systems.AddComponent<StageReplayController>();
+            replay.Configure(worldTime, gameplayCamera);
+
             StageController stage = systems.AddComponent<StageController>();
-            stage.Configure(player.Input, player.Health, player.Combat);
+            stage.Configure(player.Input, player.Health, player.Combat, replay);
 
             CreatePickup(
                 new Vector3(-2.4f, 0.18f, -4.2f),
@@ -200,7 +205,13 @@ namespace Deltatime.EditorTools
 
             GameObject hudObject = new GameObject("Debug HUD");
             GameHud hud = hudObject.AddComponent<GameHud>();
-            hud.Configure(stage, worldTime, player.Health, player.Dash, player.Weapon);
+            hud.Configure(
+                stage,
+                worldTime,
+                player.Health,
+                player.Dash,
+                player.Weapon,
+                replay);
 
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, PrototypeScenePath))
@@ -1011,6 +1022,7 @@ namespace Deltatime.EditorTools
             int inputCount = CountComponentsInScene<PlayerInputReader>(scene);
             int enemyCount = CountComponentsInScene<EnemyHealth>(scene);
             int stageCount = CountComponentsInScene<StageController>(scene);
+            int replayCount = CountComponentsInScene<StageReplayController>(scene);
             int pickupCount = CountComponentsInScene<WeaponPickup>(scene);
             int cameraCount = CountComponentsInScene<Camera>(scene);
             int cameraRigCount = CountComponentsInScene<TopDownCameraController>(scene);
@@ -1021,6 +1033,7 @@ namespace Deltatime.EditorTools
                 inputCount != 1 ||
                 enemyCount != 3 ||
                 stageCount != 1 ||
+                replayCount != 1 ||
                 pickupCount < 1 ||
                 cameraCount != 1 ||
                 cameraRigCount != 1 ||
@@ -1031,7 +1044,7 @@ namespace Deltatime.EditorTools
                 throw new InvalidOperationException(
                     "3D PrototypeRoom validation failed: " +
                     $"players={playerCount}, inputs={inputCount}, enemies={enemyCount}, " +
-                    $"stages={stageCount}, pickups={pickupCount}, cameras={cameraCount}, " +
+                    $"stages={stageCount}, replays={replayCount}, pickups={pickupCount}, cameras={cameraCount}, " +
                     $"cameraRigs={cameraRigCount}, rigidbodies2D={rigidbody2DCount}, " +
                     $"perspective={camera != null && !camera.orthographic}.");
             }

@@ -1,6 +1,7 @@
 using Deltatime.Combat;
 using Deltatime.Level;
 using Deltatime.Player;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using UnityEngine;
 
@@ -13,6 +14,7 @@ namespace Deltatime.UI
         [SerializeField] private PlayerHealth playerHealth;
         [SerializeField] private PlayerDash playerDash;
         [SerializeField] private WeaponController weapon;
+        [SerializeField] private StageReplayController replay;
 
         [Header("Debug HUD")]
         [SerializeField] private Color panelColor = new Color(0.02f, 0.025f, 0.04f, 0.86f);
@@ -31,7 +33,8 @@ namespace Deltatime.UI
                 worldTime == null ||
                 playerHealth == null ||
                 playerDash == null ||
-                weapon == null)
+                weapon == null ||
+                replay == null)
             {
                 Debug.LogError($"{nameof(GameHud)} is missing required references.", this);
                 enabled = false;
@@ -52,26 +55,31 @@ namespace Deltatime.UI
                 ? "READY"
                 : $"{playerDash.CooldownRemaining:0.0}s";
 
+            string timeStatus = replay.IsReplaying
+                ? $"STAGE CLEAR  •  REPLAY 1.00x\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s"
+                : $"REAL TIME  {stage.RealPlayTime:0.0}s\nWORLD  {worldTime.CurrentTimeScale:0.00}x";
             string status =
                 $"ENEMIES  {stage.RemainingEnemyCount}\n" +
-                $"REAL TIME  {stage.RealPlayTime:0.0}s\n" +
-                $"WORLD  {worldTime.CurrentTimeScale:0.00}x\n" +
+                $"{timeStatus}\n" +
                 $"DASH  {dashState}\n" +
                 $"WEAPON  {weaponName}  {ammunition}";
 
-            Rect statusPanel = new Rect(18f, 18f, 280f, 150f);
+            Rect statusPanel = new Rect(18f, 18f, 300f, 172f);
             GUI.DrawTexture(statusPanel, panelTexture);
-            GUI.Label(new Rect(32f, 28f, 250f, 112f), status, statusStyle);
+            GUI.Label(new Rect(32f, 28f, 270f, 136f), status, statusStyle);
 
-            Rect barBackground = new Rect(32f, 140f, 250f, 10f);
+            Rect barBackground = new Rect(32f, 162f, 270f, 10f);
             GUI.DrawTexture(barBackground, whiteTexture);
             Color previousColor = GUI.color;
             GUI.color = accentColor;
+            float progress = replay.IsReplaying && replay.RecordedDuration > 0f
+                ? replay.PlaybackElapsed / replay.RecordedDuration
+                : worldTime.CurrentTimeScale;
             GUI.DrawTexture(
                 new Rect(
                     barBackground.x,
                     barBackground.y,
-                    barBackground.width * Mathf.Clamp01(worldTime.CurrentTimeScale),
+                    barBackground.width * Mathf.Clamp01(progress),
                     barBackground.height),
                 whiteTexture);
             GUI.color = previousColor;
@@ -81,6 +89,9 @@ namespace Deltatime.UI
             {
                 case StageController.StageState.Cleared:
                     message = "ROOM CLEAR\nPress R to restart";
+                    break;
+                case StageController.StageState.Replaying:
+                    message = null;
                     break;
                 case StageController.StageState.PlayerDead:
                     message = "YOU DIED\nPress R to restart";
@@ -112,13 +123,15 @@ namespace Deltatime.UI
             WorldTimeController timeSource,
             PlayerHealth health,
             PlayerDash dash,
-            WeaponController weaponController)
+            WeaponController weaponController,
+            StageReplayController replayController)
         {
             stage = stageController;
             worldTime = timeSource;
             playerHealth = health;
             playerDash = dash;
             weapon = weaponController;
+            replay = replayController;
         }
 
         private void EnsureStyles()

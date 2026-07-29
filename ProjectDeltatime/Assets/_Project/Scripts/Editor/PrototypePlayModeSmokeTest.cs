@@ -1,9 +1,11 @@
 using System;
 using System.Text;
 using Deltatime.Combat;
+using Deltatime.Core;
 using Deltatime.Enemies;
 using Deltatime.Level;
 using Deltatime.Player;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
 using UnityEditor;
@@ -23,6 +25,7 @@ namespace Deltatime.EditorTools
 
         private static double playStartedAt;
         private static bool checksRan;
+        private static bool replayChecksRan;
         private static bool callbacksAttached;
 
         static PrototypePlayModeSmokeTest()
@@ -82,6 +85,7 @@ namespace Deltatime.EditorTools
             {
                 playStartedAt = EditorApplication.timeSinceStartup;
                 checksRan = false;
+                replayChecksRan = false;
                 SessionState.SetString(PhaseKey, "playing");
             }
             else if (state == PlayModeStateChange.ExitingPlayMode)
@@ -110,6 +114,7 @@ namespace Deltatime.EditorTools
                 {
                     playStartedAt = EditorApplication.timeSinceStartup;
                     checksRan = false;
+                    replayChecksRan = false;
                     SessionState.SetString(PhaseKey, "playing");
                 }
 
@@ -118,9 +123,16 @@ namespace Deltatime.EditorTools
                 {
                     checksRan = true;
                     ValidateRuntimeState();
+                    ClearStage();
                 }
 
-                if (elapsed >= 1.25d)
+                if (!replayChecksRan && elapsed >= 0.85d)
+                {
+                    replayChecksRan = true;
+                    ValidateReplayState();
+                }
+
+                if (elapsed >= 1.4d)
                 {
                     SessionState.SetString(PhaseKey, "stopping");
                     EditorApplication.isPlaying = false;
@@ -132,6 +144,48 @@ namespace Deltatime.EditorTools
             }
         }
 
+        private static void ClearStage()
+        {
+            EnemyHealth[] enemies =
+                UnityEngine.Object.FindObjectsOfType<EnemyHealth>();
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                EnemyHealth enemy = enemies[i];
+                enemy.ReceiveHit(new DamageHit(
+                    1,
+                    enemy.transform.position,
+                    Vector3.forward,
+                    null));
+            }
+        }
+
+        private static void ValidateReplayState()
+        {
+            StageController stage =
+                UnityEngine.Object.FindObjectOfType<StageController>();
+            StageReplayController replay =
+                UnityEngine.Object.FindObjectOfType<StageReplayController>();
+            TopDownCameraController cameraRig =
+                UnityEngine.Object.FindObjectOfType<TopDownCameraController>();
+
+            Require(
+                stage != null &&
+                stage.CurrentState == StageController.StageState.Replaying,
+                "Clearing all enemies did not put the stage into replay state.");
+            Require(
+                replay != null && replay.IsReplaying,
+                "Clearing all enemies did not start replay playback.");
+            Require(
+                replay != null && replay.RecordedDuration > 0f,
+                "The replay did not retain a playable recording.");
+            Require(
+                cameraRig != null && !cameraRig.enabled,
+                "Live camera simulation remained enabled during replay.");
+            Require(
+                Mathf.Approximately(UnityEngine.Time.timeScale, 1f),
+                "Replay changed global Time.timeScale.");
+        }
+
         private static void ValidateRuntimeState()
         {
             StageController stage = UnityEngine.Object.FindObjectOfType<StageController>();
@@ -141,6 +195,8 @@ namespace Deltatime.EditorTools
             WeaponController weapon =
                 UnityEngine.Object.FindObjectOfType<WeaponController>();
             GameHud hud = UnityEngine.Object.FindObjectOfType<GameHud>();
+            StageReplayController replay =
+                UnityEngine.Object.FindObjectOfType<StageReplayController>();
             EnemyShooter[] enemies =
                 UnityEngine.Object.FindObjectsOfType<EnemyShooter>();
             TopDownCameraController cameraRig =
@@ -154,6 +210,10 @@ namespace Deltatime.EditorTools
             Require(player != null && player.IsAlive, "The player did not initialize alive.");
             Require(weapon != null && weapon.HasWeapon, "The player did not initialize with a weapon.");
             Require(hud != null && hud.enabled, "GameHud did not initialize.");
+            Require(replay != null && replay.enabled, "Stage replay did not initialize.");
+            Require(
+                replay != null && Mathf.Approximately(replay.CaptureRate, 20f),
+                "Stage replay capture rate is not configured to 20 Hz.");
             Require(enemies.Length == 3, $"Expected 3 enemies, found {enemies.Length}.");
             Require(
                 gameplayCamera != null && !gameplayCamera.orthographic,
@@ -179,6 +239,13 @@ namespace Deltatime.EditorTools
             Require(
                 Mathf.Approximately(UnityEngine.Time.timeScale, 1f),
                 "Global Time.timeScale was modified.");
+
+            if (replay != null)
+            {
+                Require(
+                    replay.CapturedFrameCount > 0,
+                    "Stage replay did not capture any frames.");
+            }
         }
 
         private static void Require(bool condition, string message)
