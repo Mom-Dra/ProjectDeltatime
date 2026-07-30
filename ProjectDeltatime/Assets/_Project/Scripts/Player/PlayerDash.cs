@@ -6,11 +6,17 @@ namespace Deltatime.Player
 {
     [DefaultExecutionOrder(-340)]
     [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(CapsuleCollider))]
     public sealed class PlayerDash : MonoBehaviour
     {
+        private const float CollisionSkin = 0.03f;
+        private const float MinimumCastRadius = 0.001f;
+        private const int HitBufferSize = 16;
+
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerHealth health;
         [SerializeField] private WorldTimeActivity worldTimeActivity;
+        [SerializeField] private WorldTimeController worldTime;
 
         [Header("Dash")]
         [SerializeField, Min(0.1f)] private float dashDistance = 3.5f;
@@ -21,6 +27,8 @@ namespace Deltatime.Player
         [SerializeField, Min(0.01f)] private float activityDuration = 0.22f;
 
         private Rigidbody body;
+        private CapsuleCollider capsuleCollider;
+        private readonly RaycastHit[] dashHits = new RaycastHit[HitBufferSize];
         private Vector3 dashDirection;
         private float dashTimeRemaining;
         private float dashDistanceRemaining;
@@ -35,11 +43,17 @@ namespace Deltatime.Player
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            capsuleCollider = GetComponent<CapsuleCollider>();
             ValidateConfiguration();
         }
 
         private void Update()
         {
+            if (worldTime.IsHardFrozen)
+            {
+                return;
+            }
+
             cooldownRemaining = Mathf.Max(0f, cooldownRemaining - UnityEngine.Time.unscaledDeltaTime);
 
             if (input.DashPressed && CanStartDash())
@@ -50,7 +64,7 @@ namespace Deltatime.Player
 
         private void FixedUpdate()
         {
-            if (!IsDashing)
+            if (!IsDashing || worldTime.IsHardFrozen)
             {
                 return;
             }
@@ -61,7 +75,11 @@ namespace Deltatime.Player
                 dashDistanceRemaining);
             float safeDistance = GetSafeDashDistance(requestedDistance);
 
-            body.MovePosition(body.position + (dashDirection * safeDistance));
+            if (safeDistance > 0f)
+            {
+                body.MovePosition(body.position + (dashDirection * safeDistance));
+            }
+
             dashDistanceRemaining -= safeDistance;
             dashTimeRemaining -= realDeltaTime;
 
@@ -75,11 +93,13 @@ namespace Deltatime.Player
         public void Configure(
             PlayerInputReader inputReader,
             PlayerHealth playerHealth,
-            WorldTimeActivity activity)
+            WorldTimeActivity activity,
+            WorldTimeController timeSource)
         {
             input = inputReader;
             health = playerHealth;
             worldTimeActivity = activity;
+            worldTime = timeSource;
         }
 
         private bool CanStartDash()
@@ -98,6 +118,7 @@ namespace Deltatime.Player
             dashTimeRemaining = dashDuration;
             dashDistanceRemaining = dashDistance;
             cooldownRemaining = dashCooldown;
+            body.linearVelocity = Vector3.zero;
             IsDashing = true;
             health.SetDashInvulnerable(true);
             worldTimeActivity.Pulse(activityStrength, activityDuration);
@@ -109,6 +130,11 @@ namespace Deltatime.Player
             dashTimeRemaining = 0f;
             dashDistanceRemaining = 0f;
 
+            if (body != null)
+            {
+                body.linearVelocity = Vector3.zero;
+            }
+
             if (health != null)
             {
                 health.SetDashInvulnerable(false);
@@ -117,25 +143,103 @@ namespace Deltatime.Player
 
         private float GetSafeDashDistance(float requestedDistance)
         {
-            RaycastHit[] hits = body.SweepTestAll(
+            if (requestedDistance <= 0f)
+            {
+                return 0f;
+            }
+
+            GetShrunkWorldCapsule(
+                out Vector3 point1,
+                out Vector3 point2,
+                out float radius);
+            int hitCount = Physics.CapsuleCastNonAlloc(
+                point1,
+                point2,
+                radius,
                 dashDirection,
-                requestedDistance + 0.03f,
+                dashHits,
+                requestedDistance + CollisionSkin,
+                Physics.AllLayers,
                 QueryTriggerInteraction.Ignore);
             float safeDistance = requestedDistance;
 
-            for (int i = 0; i < hits.Length; i++)
+            for (int i = 0; i < hitCount; i++)
             {
-                if (hits[i].collider == null || hits[i].collider.isTrigger)
+                Collider hitCollider = dashHits[i].collider;
+                if (hitCollider == null ||
+                    hitCollider.isTrigger ||
+                    hitCollider.attachedRigidbody == body ||
+                    Physics.GetIgnoreLayerCollision(
+                        gameObject.layer,
+                        hitCollider.gameObject.layer))
                 {
                     continue;
                 }
 
                 safeDistance = Mathf.Min(
                     safeDistance,
-                    Mathf.Max(0f, hits[i].distance - 0.03f));
+                    Mathf.Max(0f, dashHits[i].distance - CollisionSkin));
             }
 
             return safeDistance;
+        }
+
+        private void GetShrunkWorldCapsule(
+            out Vector3 point1,
+            out Vector3 point2,
+            out float radius)
+        {
+            // The skin gap lets the cast detect a wall even when the full
+            // player capsule starts at contact or with slight penetration.
+            Transform capsuleTransform = capsuleCollider.transform;
+            Vector3 scale = capsuleTransform.lossyScale;
+            Vector3 axis;
+            float axisScale;
+            float radiusScale;
+
+            switch (capsuleCollider.direction)
+            {
+                case 0:
+                    axis = body.rotation * Vector3.right;
+                    axisScale = Mathf.Abs(scale.x);
+                    radiusScale = Mathf.Max(
+                        Mathf.Abs(scale.y),
+                        Mathf.Abs(scale.z));
+                    break;
+                case 2:
+                    axis = body.rotation * Vector3.forward;
+                    axisScale = Mathf.Abs(scale.z);
+                    radiusScale = Mathf.Max(
+                        Mathf.Abs(scale.x),
+                        Mathf.Abs(scale.y));
+                    break;
+                default:
+                    axis = body.rotation * Vector3.up;
+                    axisScale = Mathf.Abs(scale.y);
+                    radiusScale = Mathf.Max(
+                        Mathf.Abs(scale.x),
+                        Mathf.Abs(scale.z));
+                    break;
+            }
+
+            float worldRadius = capsuleCollider.radius * radiusScale;
+            float worldHeight = Mathf.Max(
+                capsuleCollider.height * axisScale,
+                worldRadius * 2f);
+            float segmentHalfLength =
+                Mathf.Max(0f, (worldHeight * 0.5f) - worldRadius);
+            Vector3 scaledCenter = Vector3.Scale(
+                capsuleCollider.center,
+                scale);
+            Vector3 worldCenter =
+                body.position + (body.rotation * scaledCenter);
+
+            axis.Normalize();
+            point1 = worldCenter + (axis * segmentHalfLength);
+            point2 = worldCenter - (axis * segmentHalfLength);
+            radius = Mathf.Max(
+                MinimumCastRadius,
+                worldRadius - CollisionSkin);
         }
 
         private void OnDisable()
@@ -148,10 +252,13 @@ namespace Deltatime.Player
 
         private void ValidateConfiguration()
         {
-            if (input == null || health == null || worldTimeActivity == null)
+            if (input == null ||
+                health == null ||
+                worldTimeActivity == null ||
+                worldTime == null)
             {
                 Debug.LogError(
-                    $"{nameof(PlayerDash)} requires input, health, and world-time activity references.",
+                    $"{nameof(PlayerDash)} requires input, health, activity, and world-time references.",
                     this);
                 enabled = false;
             }

@@ -6,6 +6,10 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Project/Scenes/PrototypeRoom.unity
+    path: Assets/_Project/Scenes/Stage1.unity
+    guid: dcfb9bdbae3a488ab2be0dcf37897a4c
+  - enabled: 1
+    path: Assets/_Project/Scenes/Stage2.unity
     guid: 81b4284932e07dc44b6f14fa733b05d4
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

@@ -25,7 +25,8 @@ namespace Deltatime.EditorTools
         private const string Materials = Root + "/Materials";
         private const string Prefabs = Root + "/Prefabs";
         private const string Scenes = Root + "/Scenes";
-        private const string PrototypeScenePath = Scenes + "/PrototypeRoom.unity";
+        private const string Stage1ScenePath = Scenes + "/Stage1.unity";
+        private const string Stage2ScenePath = Scenes + "/Stage2.unity";
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
         private const string LineMaterialPath = Materials + "/PrototypeLine.mat";
         private const string FloorMaterialPath = Materials + "/PrototypeFloor3D.mat";
@@ -40,10 +41,12 @@ namespace Deltatime.EditorTools
         private const string ProjectilePrefabPath = Prefabs + "/Projectile.prefab";
         private const string PickupPrefabPath = Prefabs + "/WeaponPickup.prefab";
         private const string ThrownWeaponPrefabPath = Prefabs + "/ThrownWeapon.prefab";
+        private const string InterceptableWeaponPrefabPath =
+            Prefabs + "/InterceptableWeapon.prefab";
         private const string VisionObstacleLayerName = "VisionObstacle";
         private const int VisionObstacleLayer = 8;
 
-        [MenuItem("Tools/Prototype/Build 3D Prototype Room")]
+        [MenuItem("Tools/Prototype/Build Stage 1 + Stage 2")]
         public static void BuildPrototypeRoom()
         {
             EnsureFolders();
@@ -102,6 +105,7 @@ namespace Deltatime.EditorTools
             EnsureProjectilePrefab(lineMaterial);
             EnsurePickupPrefab(pickupMaterial);
             EnsureThrownWeaponPrefab(pickupMaterial, lineMaterial);
+            EnsureInterceptableWeaponPrefab(pickupMaterial, lineMaterial);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -116,16 +120,19 @@ namespace Deltatime.EditorTools
                 LoadPrefabComponent<WeaponPickup>(PickupPrefabPath);
             ThrownWeapon thrownPrefab =
                 LoadPrefabComponent<ThrownWeapon>(ThrownWeaponPrefabPath);
+            InterceptableWeapon interceptablePrefab =
+                LoadPrefabComponent<InterceptableWeapon>(
+                    InterceptableWeaponPrefabPath);
 
             WorldTimeActivity activity;
             WorldTimeController worldTime;
             GameObject systems = CreateSystems(out activity, out worldTime);
-            Camera gameplayCamera = CreateCamera(worldTime);
+            Light keyLight = CreateLightingAndAtmosphere();
+            Camera gameplayCamera = CreateCamera(worldTime, keyLight);
             StageReplayController replay =
                 systems.AddComponent<StageReplayController>();
             replay.Configure(worldTime, gameplayCamera);
 
-            CreateLightingAndAtmosphere();
             CreateFloorAndWalls(
                 floorMaterial,
                 wallMaterial,
@@ -170,6 +177,7 @@ namespace Deltatime.EditorTools
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
+                interceptablePrefab,
                 worldTime,
                 player.Root.transform,
                 player.Health,
@@ -185,6 +193,7 @@ namespace Deltatime.EditorTools
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
+                interceptablePrefab,
                 worldTime,
                 player.Root.transform,
                 player.Health,
@@ -200,6 +209,7 @@ namespace Deltatime.EditorTools
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
+                interceptablePrefab,
                 worldTime,
                 player.Root.transform,
                 player.Health,
@@ -213,23 +223,35 @@ namespace Deltatime.EditorTools
                 worldTime,
                 player.Health,
                 player.Dash,
+                player.Deadline,
                 player.Weapon,
                 replay);
 
+            WorldTimeVisualFeedback visualFeedback =
+                gameplayCamera.GetComponent<WorldTimeVisualFeedback>();
+
+            ApplyStageLightingProfile(visualFeedback, keyLight, true);
             EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, PrototypeScenePath))
+            if (!EditorSceneManager.SaveScene(scene, Stage1ScenePath))
             {
-                throw new InvalidOperationException($"Failed to save {PrototypeScenePath}.");
+                throw new InvalidOperationException($"Failed to save {Stage1ScenePath}.");
             }
 
-            AddSceneToBuildSettings();
+            ApplyStageLightingProfile(visualFeedback, keyLight, false);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, Stage2ScenePath))
+            {
+                throw new InvalidOperationException($"Failed to save {Stage2ScenePath}.");
+            }
+
+            AddStageScenesToBuildSettings();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Selection.activeGameObject = player.Root;
 
             ValidateScene(scene);
             Debug.Log(
-                "3D PrototypeRoom built successfully. Open Assets/_Project/Scenes/PrototypeRoom.unity and press Play.");
+                "Stage1 and Stage2 built successfully. Stage2 remains open.");
         }
 
         public static void BuildAndValidateFromCommandLine()
@@ -240,7 +262,7 @@ namespace Deltatime.EditorTools
         public static void CapturePreviewFromCommandLine()
         {
             Scene scene = EditorSceneManager.OpenScene(
-                PrototypeScenePath,
+                Stage1ScenePath,
                 OpenSceneMode.Single);
             ValidateScene(scene);
 
@@ -265,12 +287,12 @@ namespace Deltatime.EditorTools
                     "_Project",
                     "Art",
                     "Generated",
-                    "PrototypeRoom3DPreview.png");
+                    "Stage1Preview.png");
                 System.IO.Directory.CreateDirectory(
                     System.IO.Path.GetDirectoryName(previewPath));
                 System.IO.File.WriteAllBytes(previewPath, preview.EncodeToPNG());
                 AssetDatabase.ImportAsset(
-                    "Assets/_Project/Art/Generated/PrototypeRoom3DPreview.png",
+                    "Assets/_Project/Art/Generated/Stage1Preview.png",
                     ImportAssetOptions.ForceSynchronousImport);
                 Debug.Log($"3D preview captured at {previewPath}.");
             }
@@ -283,14 +305,19 @@ namespace Deltatime.EditorTools
             }
         }
 
-        [MenuItem("Tools/Prototype/Validate 3D Prototype Room")]
+        [MenuItem("Tools/Prototype/Validate Stage 1 + Stage 2")]
         public static void ValidateSavedPrototypeRoom()
         {
-            Scene scene = EditorSceneManager.OpenScene(
-                PrototypeScenePath,
+            Scene stage1 = EditorSceneManager.OpenScene(
+                Stage1ScenePath,
                 OpenSceneMode.Single);
-            ValidateScene(scene);
-            Debug.Log("3D PrototypeRoom validation passed.");
+            ValidateScene(stage1);
+
+            Scene stage2 = EditorSceneManager.OpenScene(
+                Stage2ScenePath,
+                OpenSceneMode.Single);
+            ValidateScene(stage2);
+            Debug.Log("Stage1 and Stage2 validation passed.");
         }
 
         private static GameObject CreateSystems(
@@ -304,7 +331,9 @@ namespace Deltatime.EditorTools
             return systems;
         }
 
-        private static Camera CreateCamera(WorldTimeController worldTime)
+        private static Camera CreateCamera(
+            WorldTimeController worldTime,
+            Light keyLight)
         {
             GameObject cameraObject = new GameObject("Main Camera");
             cameraObject.tag = "MainCamera";
@@ -322,11 +351,11 @@ namespace Deltatime.EditorTools
 
             WorldTimeVisualFeedback feedback =
                 cameraObject.AddComponent<WorldTimeVisualFeedback>();
-            feedback.Configure(worldTime, camera);
+            feedback.Configure(worldTime, camera, keyLight);
             return camera;
         }
 
-        private static void CreateLightingAndAtmosphere()
+        private static Light CreateLightingAndAtmosphere()
         {
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.012f, 0.016f, 0.022f, 1f);
@@ -360,6 +389,76 @@ namespace Deltatime.EditorTools
                 new Color(1f, 0.12f, 0.045f, 1f),
                 0.12f,
                 4f);
+
+            return keyLight;
+        }
+
+        private static void ApplyStageLightingProfile(
+            WorldTimeVisualFeedback visualFeedback,
+            Light keyLight,
+            bool brightStage)
+        {
+            if (visualFeedback == null || keyLight == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage lighting requires visual feedback and a key light.");
+            }
+
+            Color ambientSky = brightStage
+                ? new Color(0.12f, 0.17f, 0.22f, 1f)
+                : new Color(0.012f, 0.016f, 0.022f, 1f);
+            Color ambientEquator = brightStage
+                ? new Color(0.055f, 0.075f, 0.095f, 1f)
+                : new Color(0.006f, 0.008f, 0.012f, 1f);
+            Color ambientGround = brightStage
+                ? new Color(0.018f, 0.024f, 0.032f, 1f)
+                : new Color(0.002f, 0.003f, 0.005f, 1f);
+            Color stageFogColor = brightStage
+                ? new Color(0.035f, 0.055f, 0.09f, 1f)
+                : new Color(0.004f, 0.007f, 0.012f, 1f);
+            float stageAmbientIntensity = brightStage ? 1f : 0.35f;
+            float stageReflectionIntensity = brightStage ? 0.65f : 0.08f;
+            float stageDirectionalIntensity = brightStage ? 0.9f : 0.06f;
+            float stageFogStart = brightStage ? 35f : 19f;
+            float stageFogEnd = brightStage ? 70f : 42f;
+            float stageMapFillIntensity = brightStage ? 1.5f : 0f;
+
+            SerializedObject settings = new SerializedObject(visualFeedback);
+            settings.FindProperty("ambientSkyColor").colorValue = ambientSky;
+            settings.FindProperty("ambientEquatorColor").colorValue =
+                ambientEquator;
+            settings.FindProperty("ambientGroundColor").colorValue =
+                ambientGround;
+            settings.FindProperty("ambientIntensity").floatValue =
+                stageAmbientIntensity;
+            settings.FindProperty("reflectionIntensity").floatValue =
+                stageReflectionIntensity;
+            settings.FindProperty("directionalLightIntensity").floatValue =
+                stageDirectionalIntensity;
+            settings.FindProperty("fogColor").colorValue = stageFogColor;
+            settings.FindProperty("fogStartDistance").floatValue =
+                stageFogStart;
+            settings.FindProperty("fogEndDistance").floatValue = stageFogEnd;
+            settings.FindProperty("mapFillLightIntensity").floatValue =
+                stageMapFillIntensity;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = ambientSky;
+            RenderSettings.ambientEquatorColor = ambientEquator;
+            RenderSettings.ambientGroundColor = ambientGround;
+            RenderSettings.ambientIntensity = stageAmbientIntensity;
+            RenderSettings.reflectionIntensity = stageReflectionIntensity;
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = stageFogColor;
+            RenderSettings.fogStartDistance = stageFogStart;
+            RenderSettings.fogEndDistance = stageFogEnd;
+
+            keyLight.intensity = stageDirectionalIntensity;
+            keyLight.shadows = LightShadows.None;
+            EditorUtility.SetDirty(visualFeedback);
+            EditorUtility.SetDirty(keyLight);
         }
 
         private static void CreatePointLight(
@@ -420,10 +519,10 @@ namespace Deltatime.EditorTools
             health.Configure(playerRenderer);
 
             PlayerDash dash = root.AddComponent<PlayerDash>();
-            dash.Configure(input, health, activity);
+            dash.Configure(input, health, activity, worldTime);
 
             PlayerMovement movement = root.AddComponent<PlayerMovement>();
-            movement.Configure(input, health, dash);
+            movement.Configure(input, health, dash, worldTime);
 
             LineRenderer aimLine = root.AddComponent<LineRenderer>();
             ConfigureLine(
@@ -453,7 +552,17 @@ namespace Deltatime.EditorTools
                 pistol);
 
             PlayerCombat combat = root.AddComponent<PlayerCombat>();
-            combat.Configure(input, aim, health, weapon, worldTime, activity);
+            DeadlineController deadline =
+                root.AddComponent<DeadlineController>();
+            combat.Configure(
+                input,
+                aim,
+                health,
+                weapon,
+                worldTime,
+                activity,
+                deadline);
+            deadline.Configure(input, health, combat, worldTime);
 
             GameObject visionObject = new GameObject("Vision Cone");
             visionObject.transform.SetParent(root.transform, false);
@@ -477,6 +586,7 @@ namespace Deltatime.EditorTools
                 dash,
                 health,
                 combat,
+                deadline,
                 weapon,
                 visionCone);
         }
@@ -491,6 +601,7 @@ namespace Deltatime.EditorTools
             Projectile projectilePrefab,
             WeaponPickup pickupPrefab,
             ThrownWeapon thrownPrefab,
+            InterceptableWeapon interceptablePrefab,
             WorldTimeController worldTime,
             Transform player,
             PlayerHealth playerHealth,
@@ -542,7 +653,12 @@ namespace Deltatime.EditorTools
             warningLine.enabled = false;
 
             EnemyWeaponDrop drop = root.AddComponent<EnemyWeaponDrop>();
-            drop.Configure(pickupPrefab, pistol, 4);
+            drop.Configure(
+                pickupPrefab,
+                interceptablePrefab,
+                pistol,
+                worldTime,
+                4);
 
             EnemyShooter shooter = root.AddComponent<EnemyShooter>();
             Renderer bodyRenderer = root.GetComponent<Renderer>();
@@ -817,9 +933,79 @@ namespace Deltatime.EditorTools
                 lineMaterial,
                 new Color(1f, 0.65f, 0.08f, 1f),
                 0.055f);
-            root.AddComponent<ThrownWeapon>();
+            ThrownWeapon thrownWeapon = root.AddComponent<ThrownWeapon>();
+            thrownWeapon.ConfigurePrototype(7f, 6f, 2f);
 
             PrefabUtility.SaveAsPrefabAsset(root, ThrownWeaponPrefabPath);
+            UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        private static void EnsureInterceptableWeaponPrefab(
+            Material pickupMaterial,
+            Material lineMaterial)
+        {
+            GameObject root = new GameObject("InterceptableWeapon");
+
+            GameObject body = CreatePrimitiveObject(
+                "Body",
+                PrimitiveType.Cube,
+                Vector3.zero,
+                new Vector3(0.82f, 0.14f, 0.24f),
+                pickupMaterial,
+                false);
+            UnityEngine.Object.DestroyImmediate(body.GetComponent<Collider>());
+            body.transform.SetParent(root.transform, false);
+
+            SphereCollider catchCollider = root.AddComponent<SphereCollider>();
+            catchCollider.radius = 0.42f;
+            catchCollider.isTrigger = true;
+
+            GameObject trailObject = new GameObject("Trail");
+            trailObject.transform.SetParent(root.transform, false);
+            LineRenderer trail = trailObject.AddComponent<LineRenderer>();
+            ConfigureLine(
+                trail,
+                lineMaterial,
+                new Color(1f, 0.65f, 0.08f, 1f),
+                0.055f);
+
+            GameObject predictionObject = new GameObject("Prediction");
+            predictionObject.transform.SetParent(root.transform, false);
+            LineRenderer prediction =
+                predictionObject.AddComponent<LineRenderer>();
+            ConfigureLine(
+                prediction,
+                lineMaterial,
+                new Color(1f, 0.78f, 0.15f, 0.72f),
+                0.035f);
+            prediction.startWidth = 0.035f;
+            prediction.endWidth = 0.035f;
+            prediction.enabled = false;
+
+            GameObject landingMarker = GameObject.CreatePrimitive(
+                PrimitiveType.Cylinder);
+            landingMarker.name = "Landing Marker";
+            landingMarker.transform.SetParent(root.transform, false);
+            landingMarker.transform.localScale =
+                new Vector3(0.7f, 0.012f, 0.7f);
+            UnityEngine.Object.DestroyImmediate(
+                landingMarker.GetComponent<Collider>());
+            Renderer landingRenderer =
+                landingMarker.GetComponent<Renderer>();
+            landingRenderer.sharedMaterial = pickupMaterial;
+            landingRenderer.enabled = false;
+
+            InterceptableWeapon interceptable =
+                root.AddComponent<InterceptableWeapon>();
+            interceptable.ConfigureVisuals(
+                trail,
+                prediction,
+                landingRenderer,
+                1 << VisionObstacleLayer);
+
+            PrefabUtility.SaveAsPrefabAsset(
+                root,
+                InterceptableWeaponPrefabPath);
             UnityEngine.Object.DestroyImmediate(root);
         }
 
@@ -1014,34 +1200,38 @@ namespace Deltatime.EditorTools
             AssetDatabase.CreateFolder(parent, child);
         }
 
-        private static void AddSceneToBuildSettings()
+        private static void AddStageScenesToBuildSettings()
         {
-            List<EditorBuildSettingsScene> scenes =
+            List<EditorBuildSettingsScene> existingScenes =
                 new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            bool found = false;
-
-            for (int i = 0; i < scenes.Count; i++)
-            {
-                if (scenes[i].path == PrototypeScenePath)
+            List<EditorBuildSettingsScene> stageScenes =
+                new List<EditorBuildSettingsScene>
                 {
-                    scenes[i] = new EditorBuildSettingsScene(PrototypeScenePath, true);
-                    found = true;
-                    break;
-                }
-            }
+                    new EditorBuildSettingsScene(Stage1ScenePath, true),
+                    new EditorBuildSettingsScene(Stage2ScenePath, true)
+                };
 
-            if (!found)
+            for (int i = 0; i < existingScenes.Count; i++)
             {
-                scenes.Add(new EditorBuildSettingsScene(PrototypeScenePath, true));
+                string path = existingScenes[i].path;
+                if (path == Stage1ScenePath ||
+                    path == Stage2ScenePath ||
+                    path == Scenes + "/PrototypeRoom.unity")
+                {
+                    continue;
+                }
+
+                stageScenes.Add(existingScenes[i]);
             }
 
-            EditorBuildSettings.scenes = scenes.ToArray();
+            EditorBuildSettings.scenes = stageScenes.ToArray();
         }
 
         private static void ValidateScene(Scene scene)
         {
             int playerCount = CountComponentsInScene<PlayerHealth>(scene);
             int inputCount = CountComponentsInScene<PlayerInputReader>(scene);
+            int deadlineCount = CountComponentsInScene<DeadlineController>(scene);
             int enemyCount = CountComponentsInScene<EnemyHealth>(scene);
             int stageCount = CountComponentsInScene<StageController>(scene);
             int replayCount = CountComponentsInScene<StageReplayController>(scene);
@@ -1053,6 +1243,7 @@ namespace Deltatime.EditorTools
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
             if (playerCount != 1 ||
                 inputCount != 1 ||
+                deadlineCount != 1 ||
                 enemyCount != 3 ||
                 stageCount != 1 ||
                 replayCount != 1 ||
@@ -1064,8 +1255,8 @@ namespace Deltatime.EditorTools
                 camera.orthographic)
             {
                 throw new InvalidOperationException(
-                    "3D PrototypeRoom validation failed: " +
-                    $"players={playerCount}, inputs={inputCount}, enemies={enemyCount}, " +
+                    "3D stage validation failed: " +
+                    $"players={playerCount}, inputs={inputCount}, deadlines={deadlineCount}, enemies={enemyCount}, " +
                     $"stages={stageCount}, replays={replayCount}, pickups={pickupCount}, cameras={cameraCount}, " +
                     $"cameraRigs={cameraRigCount}, rigidbodies2D={rigidbody2DCount}, " +
                     $"perspective={camera != null && !camera.orthographic}.");
@@ -1164,6 +1355,7 @@ namespace Deltatime.EditorTools
                 PlayerDash dash,
                 PlayerHealth health,
                 PlayerCombat combat,
+                DeadlineController deadline,
                 WeaponController weapon,
                 VisionCone vision)
             {
@@ -1173,6 +1365,7 @@ namespace Deltatime.EditorTools
                 Dash = dash;
                 Health = health;
                 Combat = combat;
+                Deadline = deadline;
                 Weapon = weapon;
                 Vision = vision;
             }
@@ -1183,6 +1376,7 @@ namespace Deltatime.EditorTools
             public PlayerDash Dash { get; }
             public PlayerHealth Health { get; }
             public PlayerCombat Combat { get; }
+            public DeadlineController Deadline { get; }
             public WeaponController Weapon { get; }
             public VisionCone Vision { get; }
         }

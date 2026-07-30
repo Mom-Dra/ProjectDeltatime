@@ -14,6 +14,7 @@ namespace Deltatime.Combat
         [SerializeField] private ThrownWeapon thrownWeaponPrefab;
 
         private float nextFireTime;
+        private bool hasStagedFire;
 
         public WeaponDefinition Definition { get; private set; }
         public int Ammunition { get; private set; }
@@ -51,20 +52,42 @@ namespace Deltatime.Combat
 
             Ammunition--;
             nextFireTime = clock + Definition.FireInterval;
-
-            Projectile projectile = Instantiate(
-                projectilePrefab,
-                muzzle.position,
-                Quaternion.identity);
-            projectile.Initialize(
-                worldTime,
-                faction,
-                gameObject,
-                direction,
-                Definition.ProjectileSpeed,
-                Definition.Damage,
-                Definition.ProjectileRadius);
+            SpawnProjectile(faction, direction, worldTime);
             return true;
+        }
+
+        public bool TryStageFire(
+            CombatFaction faction,
+            Vector3 direction,
+            WorldTimeController worldTime)
+        {
+            if (Definition == null ||
+                Ammunition <= 0 ||
+                projectilePrefab == null ||
+                muzzle == null ||
+                worldTime == null)
+            {
+                return false;
+            }
+
+            Ammunition--;
+            hasStagedFire = true;
+            SpawnProjectile(faction, direction, worldTime);
+            return true;
+        }
+
+        public void CommitStagedFireCooldown(float clock)
+        {
+            if (!hasStagedFire)
+            {
+                return;
+            }
+
+            hasStagedFire = false;
+            if (Definition != null)
+            {
+                nextFireTime = clock + Definition.FireInterval;
+            }
         }
 
         public bool Throw(
@@ -107,6 +130,7 @@ namespace Deltatime.Combat
                 ? 0
                 : Mathf.Clamp(ammunition, 0, definition.AmmunitionCapacity);
             nextFireTime = 0f;
+            hasStagedFire = false;
             RefreshVisual();
         }
 
@@ -115,6 +139,7 @@ namespace Deltatime.Combat
             Definition = null;
             Ammunition = 0;
             nextFireTime = 0f;
+            hasStagedFire = false;
             RefreshVisual();
         }
 
@@ -140,6 +165,25 @@ namespace Deltatime.Combat
             {
                 heldWeaponRenderer.enabled = Definition != null;
             }
+        }
+
+        private void SpawnProjectile(
+            CombatFaction faction,
+            Vector3 direction,
+            WorldTimeController worldTime)
+        {
+            Projectile projectile = Instantiate(
+                projectilePrefab,
+                muzzle.position,
+                Quaternion.identity);
+            projectile.Initialize(
+                worldTime,
+                faction,
+                gameObject,
+                direction,
+                Definition.ProjectileSpeed,
+                Definition.Damage,
+                Definition.ProjectileRadius);
         }
 
         private void ValidateConfiguration()

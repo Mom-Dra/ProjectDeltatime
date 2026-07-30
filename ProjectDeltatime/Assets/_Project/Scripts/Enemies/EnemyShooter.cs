@@ -16,6 +16,8 @@ namespace Deltatime.Enemies
             Aiming,
             Firing,
             Cooldown,
+            Stunned,
+            Disarmed,
             Dead
         }
 
@@ -38,8 +40,14 @@ namespace Deltatime.Enemies
         private readonly RaycastHit[] sightHits = new RaycastHit[24];
         private Rigidbody body;
         private float stateTimeRemaining;
+        private bool isDisarmed;
 
         public ShooterState CurrentState { get; private set; } = ShooterState.Detecting;
+        public bool IsDisarmed => isDisarmed;
+        public float StunTimeRemaining =>
+            CurrentState == ShooterState.Stunned
+                ? Mathf.Max(0f, stateTimeRemaining)
+                : 0f;
 
         private void Awake()
         {
@@ -120,6 +128,21 @@ namespace Deltatime.Enemies
                         TransitionTo(ShooterState.Detecting, 0f);
                     }
                     break;
+
+                case ShooterState.Stunned:
+                    stateTimeRemaining -= deltaTime;
+                    if (stateTimeRemaining <= 0f)
+                    {
+                        TransitionTo(
+                            isDisarmed || weapon == null || !weapon.HasWeapon
+                                ? ShooterState.Disarmed
+                                : ShooterState.Detecting,
+                            0f);
+                    }
+                    break;
+
+                case ShooterState.Disarmed:
+                    break;
             }
         }
 
@@ -132,6 +155,44 @@ namespace Deltatime.Enemies
         {
             TransitionTo(ShooterState.Dead, 0f);
             enabled = false;
+        }
+
+        public void ApplyStun(float worldDuration)
+        {
+            if (CurrentState == ShooterState.Dead || worldDuration <= 0f)
+            {
+                return;
+            }
+
+            if (CurrentState == ShooterState.Stunned)
+            {
+                stateTimeRemaining = Mathf.Max(
+                    stateTimeRemaining,
+                    worldDuration);
+                SetWarningVisible(false);
+                return;
+            }
+
+            TransitionTo(ShooterState.Stunned, worldDuration);
+        }
+
+        public void Disarm()
+        {
+            if (CurrentState == ShooterState.Dead)
+            {
+                return;
+            }
+
+            isDisarmed = true;
+            if (weapon != null)
+            {
+                weapon.Clear();
+            }
+
+            if (CurrentState != ShooterState.Stunned)
+            {
+                TransitionTo(ShooterState.Disarmed, 0f);
+            }
         }
 
         public void Configure(

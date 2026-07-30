@@ -13,6 +13,7 @@ namespace Deltatime.UI
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private PlayerHealth playerHealth;
         [SerializeField] private PlayerDash playerDash;
+        [SerializeField] private DeadlineController deadline;
         [SerializeField] private WeaponController weapon;
         [SerializeField] private StageReplayController replay;
 
@@ -33,6 +34,7 @@ namespace Deltatime.UI
                 worldTime == null ||
                 playerHealth == null ||
                 playerDash == null ||
+                deadline == null ||
                 weapon == null ||
                 replay == null)
             {
@@ -54,6 +56,11 @@ namespace Deltatime.UI
             string dashState = playerDash.CooldownRemaining <= 0f
                 ? "READY"
                 : $"{playerDash.CooldownRemaining:0.0}s";
+            string deadlineState = deadline.IsActive
+                ? $"{deadline.StagedActionCount}/{deadline.MaxStagedActions}"
+                : deadline.CooldownRemaining > 0f
+                    ? $"{deadline.CooldownRemaining:0.00}w"
+                    : "READY";
 
             string timeStatus = replay.IsReplaying
                 ? $"STAGE CLEAR  •  REPLAY 1.00x\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s"
@@ -62,13 +69,14 @@ namespace Deltatime.UI
                 $"ENEMIES  {stage.RemainingEnemyCount}\n" +
                 $"{timeStatus}\n" +
                 $"DASH  {dashState}\n" +
+                $"DEADLINE  {deadlineState}\n" +
                 $"WEAPON  {weaponName}  {ammunition}";
 
-            Rect statusPanel = new Rect(18f, 18f, 300f, 172f);
+            Rect statusPanel = new Rect(18f, 18f, 300f, 202f);
             GUI.DrawTexture(statusPanel, panelTexture);
-            GUI.Label(new Rect(32f, 28f, 270f, 136f), status, statusStyle);
+            GUI.Label(new Rect(32f, 28f, 270f, 166f), status, statusStyle);
 
-            Rect barBackground = new Rect(32f, 162f, 270f, 10f);
+            Rect barBackground = new Rect(32f, 192f, 270f, 10f);
             GUI.DrawTexture(barBackground, whiteTexture);
             Color previousColor = GUI.color;
             GUI.color = accentColor;
@@ -109,9 +117,11 @@ namespace Deltatime.UI
                 GUI.Label(messagePanel, message, messageStyle);
             }
 
+            DrawDeadlineFeedback();
+
             const string controls =
                 "WASD Move  |  Mouse Aim  |  LMB Fire  |  RMB Throw\n" +
-                "Space Dash  |  E Pick up / Swap  |  R Restart";
+                "Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),
                 controls,
@@ -123,6 +133,7 @@ namespace Deltatime.UI
             WorldTimeController timeSource,
             PlayerHealth health,
             PlayerDash dash,
+            DeadlineController deadlineController,
             WeaponController weaponController,
             StageReplayController replayController)
         {
@@ -130,6 +141,7 @@ namespace Deltatime.UI
             worldTime = timeSource;
             playerHealth = health;
             playerDash = dash;
+            deadline = deadlineController;
             weapon = weaponController;
             replay = replayController;
         }
@@ -169,6 +181,43 @@ namespace Deltatime.UI
                 normal = { textColor = new Color(textColor.r, textColor.g, textColor.b, 0.85f) },
                 alignment = TextAnchor.LowerCenter
             };
+        }
+
+        private void DrawDeadlineFeedback()
+        {
+            if (deadline.IsActive)
+            {
+                string causes = deadline.RejectedActionFeedback
+                    ? "CAUSES FULL"
+                    : $"CAUSES {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
+                string text =
+                    $"DEADLINE  |  IMPACT {deadline.ImpactTime:0.00}s\n" +
+                    $"{causes}\n" +
+                    "MOVE TO RELEASE";
+                Rect panel = new Rect(
+                    (Screen.width - 480f) * 0.5f,
+                    Screen.height * 0.62f,
+                    480f,
+                    132f);
+                GUI.DrawTexture(panel, panelTexture);
+                GUI.Label(panel, text, messageStyle);
+                return;
+            }
+
+            if (!deadline.HasThreat)
+            {
+                return;
+            }
+
+            string warning =
+                $"RELEASE TO DEADLINE  |  {deadline.ImpactTime:0.00}s";
+            Rect warningPanel = new Rect(
+                (Screen.width - 460f) * 0.5f,
+                28f,
+                460f,
+                54f);
+            GUI.DrawTexture(warningPanel, panelTexture);
+            GUI.Label(warningPanel, warning, statusStyle);
         }
 
         private void OnDestroy()

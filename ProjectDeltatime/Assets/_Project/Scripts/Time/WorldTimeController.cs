@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Deltatime.TimeSystem
@@ -23,17 +24,28 @@ namespace Deltatime.TimeSystem
         public float WorldDeltaTime { get; private set; }
         public float WorldElapsedTime { get; private set; }
         public float RealDeltaTime { get; private set; }
+        public bool IsHardFrozen =>
+            hardFreezeRemaining > 0f || hardFreezeTokens.Count > 0;
+        public float HardFreezeRemaining =>
+            Mathf.Max(0f, hardFreezeRemaining);
+
+        private readonly HashSet<int> hardFreezeTokens = new HashSet<int>();
+        private float smoothedTimeScale;
+        private float hardFreezeRemaining;
+        private int nextHardFreezeToken = 1;
 
         private void Awake()
         {
             ValidateConfiguration();
-            CurrentTimeScale = minimumTimeScale;
+            smoothedTimeScale = minimumTimeScale;
+            CurrentTimeScale = smoothedTimeScale;
             TargetTimeScale = minimumTimeScale;
         }
 
         private void Update()
         {
             RealDeltaTime = UnityEngine.Time.unscaledDeltaTime;
+            bool hardFrozen = IsHardFrozen;
 
             float activityAmount = 0f;
             if (activity != null)
@@ -50,7 +62,13 @@ namespace Deltatime.TimeSystem
                 Mathf.Clamp01(activityAmount));
 
             float blend = 1f - Mathf.Exp(-interpolationSpeed * RealDeltaTime);
-            CurrentTimeScale = Mathf.Lerp(CurrentTimeScale, TargetTimeScale, blend);
+            smoothedTimeScale = Mathf.Lerp(
+                smoothedTimeScale,
+                TargetTimeScale,
+                blend);
+            CurrentTimeScale = hardFrozen
+                ? 0f
+                : smoothedTimeScale;
             WorldDeltaTime = RealDeltaTime * CurrentTimeScale;
             WorldElapsedTime += WorldDeltaTime;
 
@@ -58,11 +76,65 @@ namespace Deltatime.TimeSystem
             {
                 activity.AdvanceRealTime(RealDeltaTime);
             }
+
+            if (hardFreezeRemaining > 0f)
+            {
+                hardFreezeRemaining = Mathf.Max(
+                    0f,
+                    hardFreezeRemaining - RealDeltaTime);
+            }
         }
 
         public void Configure(WorldTimeActivity source)
         {
             activity = source;
+        }
+
+        public void RequestHardFreeze(float realDuration)
+        {
+            if (realDuration <= 0f)
+            {
+                return;
+            }
+
+            hardFreezeRemaining = Mathf.Max(
+                hardFreezeRemaining,
+                realDuration);
+            CurrentTimeScale = 0f;
+            WorldDeltaTime = 0f;
+        }
+
+        public int AcquireHardFreeze()
+        {
+            int token = nextHardFreezeToken;
+            nextHardFreezeToken =
+                nextHardFreezeToken == int.MaxValue
+                    ? 1
+                    : nextHardFreezeToken + 1;
+
+            while (token == 0 || hardFreezeTokens.Contains(token))
+            {
+                token = nextHardFreezeToken;
+                nextHardFreezeToken =
+                    nextHardFreezeToken == int.MaxValue
+                        ? 1
+                        : nextHardFreezeToken + 1;
+            }
+
+            hardFreezeTokens.Add(token);
+            CurrentTimeScale = 0f;
+            WorldDeltaTime = 0f;
+            return token;
+        }
+
+        public bool ReleaseHardFreeze(int token)
+        {
+            if (token == 0)
+            {
+                return false;
+            }
+
+            return hardFreezeTokens.Remove(token);
         }
 
         private void OnValidate()
@@ -79,6 +151,12 @@ namespace Deltatime.TimeSystem
                 Debug.LogError($"{nameof(WorldTimeController)} requires a {nameof(WorldTimeActivity)} reference.", this);
                 enabled = false;
             }
+        }
+
+        private void OnDisable()
+        {
+            hardFreezeTokens.Clear();
+            hardFreezeRemaining = 0f;
         }
     }
 }

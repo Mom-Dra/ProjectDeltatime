@@ -25,10 +25,36 @@ namespace Deltatime.Core
         public GameObject Source { get; }
     }
 
+    public readonly struct StunHit
+    {
+        public StunHit(
+            float duration,
+            Vector3 point,
+            Vector3 direction,
+            GameObject source)
+        {
+            Duration = Mathf.Max(0f, duration);
+            Point = point;
+            Direction = direction;
+            Source = source;
+        }
+
+        public float Duration { get; }
+        public Vector3 Point { get; }
+        public Vector3 Direction { get; }
+        public GameObject Source { get; }
+    }
+
     public interface IDamageable
     {
         CombatFaction Faction { get; }
         bool IsAlive { get; }
         void ReceiveHit(DamageHit hit);
+    }
+
+    public interface IStunnable
+    {
+        bool IsStunned { get; }
+        void ReceiveStun(StunHit hit);
     }
 }

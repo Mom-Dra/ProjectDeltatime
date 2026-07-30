@@ -8,12 +8,12 @@ namespace Deltatime.Combat
     [RequireComponent(typeof(LineRenderer))]
     public sealed class ThrownWeapon : MonoBehaviour
     {
-        [SerializeField, Min(0.1f)] private float speed = 14f;
+        [SerializeField, Min(0.1f)] private float speed = 7f;
         [SerializeField, Min(0.01f)] private float collisionRadius = 0.25f;
-        [SerializeField, Min(0.1f)] private float maximumWorldLifetime = 1.2f;
+        [SerializeField, Min(0.1f)] private float maximumTravelDistance = 6f;
+        [SerializeField, Min(0.01f)] private float stunDuration = 2f;
         [SerializeField, Min(0f)] private float maximumTrailLength = 1.2f;
         [SerializeField, Min(1f)] private float slowTimeTrailMultiplier = 2f;
-        [SerializeField, Min(1)] private int impactDamage = 1;
         [SerializeField] private Color trailColor = new Color(1f, 0.8f, 0.15f, 1f);
 
         private readonly RaycastHit[] castHits = new RaycastHit[24];
@@ -25,10 +25,15 @@ namespace Deltatime.Combat
         private GameObject source;
         private Vector3 direction;
         private Vector3 trailStart;
-        private float worldLifetime;
+        private float travelledDistance;
         private int ammunition;
         private bool initialized;
         private bool resolved;
+
+        public float Speed => speed;
+        public float MaximumTravelDistance => maximumTravelDistance;
+        public float StunDuration => stunDuration;
+        public float TravelledDistance => travelledDistance;
 
         private void Awake()
         {
@@ -43,16 +48,32 @@ namespace Deltatime.Combat
             }
 
             float deltaTime = worldTime.WorldDeltaTime;
-            float travelDistance = speed * deltaTime;
+            float remainingDistance = Mathf.Max(
+                0f,
+                maximumTravelDistance - travelledDistance);
+            if (remainingDistance <= 0.0001f)
+            {
+                Settle(transform.position);
+                return;
+            }
+
+            float travelDistance = Mathf.Min(
+                speed * deltaTime,
+                remainingDistance);
             Vector3 origin = transform.position;
 
             if (travelDistance > 0f &&
                 TryFindImpact(origin, travelDistance, out RaycastHit impact, out IDamageable target))
             {
                 transform.position = origin + (direction * impact.distance);
-                if (target != null)
+                travelledDistance += impact.distance;
+                if (target is IStunnable stunnable)
                 {
-                    target.ReceiveHit(new DamageHit(impactDamage, impact.point, direction, source));
+                    stunnable.ReceiveStun(new StunHit(
+                        stunDuration,
+                        impact.point,
+                        direction,
+                        source));
                 }
 
                 Settle(impact.point);
@@ -60,11 +81,11 @@ namespace Deltatime.Combat
             }
 
             transform.position = origin + (direction * travelDistance);
+            travelledDistance += travelDistance;
             transform.Rotate(0f, 900f * deltaTime, 0f, Space.World);
-            worldLifetime += deltaTime;
             UpdateTrail();
 
-            if (worldLifetime >= maximumWorldLifetime)
+            if (travelledDistance >= maximumTravelDistance - 0.0001f)
             {
                 Settle(transform.position);
             }
@@ -100,6 +121,16 @@ namespace Deltatime.Combat
                 Debug.LogError($"{nameof(ThrownWeapon)} was spawned without required data.", this);
                 Destroy(gameObject);
             }
+        }
+
+        public void ConfigurePrototype(
+            float throwSpeed,
+            float maxTravelDistance,
+            float stunWorldDuration)
+        {
+            speed = Mathf.Max(0.1f, throwSpeed);
+            maximumTravelDistance = Mathf.Max(0.1f, maxTravelDistance);
+            stunDuration = Mathf.Max(0.01f, stunWorldDuration);
         }
 
         private bool TryFindImpact(

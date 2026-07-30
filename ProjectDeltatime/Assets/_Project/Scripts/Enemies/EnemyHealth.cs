@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Deltatime.Enemies
 {
-    public sealed class EnemyHealth : MonoBehaviour, IDamageable
+    public sealed class EnemyHealth : MonoBehaviour, IDamageable, IStunnable
     {
         [SerializeField] private EnemyShooter shooter;
         [SerializeField] private EnemyWeaponDrop weaponDrop;
@@ -13,15 +13,39 @@ namespace Deltatime.Enemies
         [SerializeField] private Collider bodyCollider;
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private Color hitColor = new Color(1f, 0.25f, 0.2f, 1f);
+        [SerializeField] private Color stunColor = new Color(1f, 0.78f, 0.15f, 1f);
+
+        private Material bodyMaterial;
+        private Color normalColor;
+        private bool normalColorCaptured;
+        private bool showingStunColor;
 
         public CombatFaction Faction => CombatFaction.Enemy;
         public bool IsAlive { get; private set; } = true;
+        public bool IsStunned =>
+            IsAlive &&
+            shooter != null &&
+            shooter.CurrentState == EnemyShooter.ShooterState.Stunned;
+
+        private void Awake()
+        {
+            EnsureBodyMaterial();
+        }
 
         private void OnEnable()
         {
             if (stage != null && IsAlive)
             {
                 stage.RegisterEnemy(this);
+            }
+        }
+
+        private void Update()
+        {
+            if (showingStunColor && !IsStunned)
+            {
+                showingStunColor = false;
+                SetBodyColor(normalColor);
             }
         }
 
@@ -33,6 +57,7 @@ namespace Deltatime.Enemies
             }
 
             IsAlive = false;
+            showingStunColor = false;
             if (shooter != null)
             {
                 shooter.SetDead();
@@ -45,7 +70,7 @@ namespace Deltatime.Enemies
 
             if (bodyRenderer != null)
             {
-                bodyRenderer.material.color = hitColor;
+                SetBodyColor(hitColor);
             }
 
             if (weaponDrop != null)
@@ -62,6 +87,30 @@ namespace Deltatime.Enemies
             Destroy(gameObject);
         }
 
+        public void ReceiveStun(StunHit hit)
+        {
+            if (!IsAlive || shooter == null || hit.Duration <= 0f)
+            {
+                return;
+            }
+
+            shooter.ApplyStun(hit.Duration);
+            if (!IsStunned)
+            {
+                return;
+            }
+
+            if (weaponDrop != null)
+            {
+                weaponDrop.Drop();
+            }
+
+            shooter.Disarm();
+            showingStunColor = true;
+            SetBodyColor(stunColor);
+            HitFlash.Create(hit.Point, stunColor);
+        }
+
         public void Configure(
             EnemyShooter enemyShooter,
             EnemyWeaponDrop drop,
@@ -74,6 +123,36 @@ namespace Deltatime.Enemies
             stage = stageController;
             bodyCollider = collider;
             bodyRenderer = renderer;
+        }
+
+        private void SetBodyColor(Color color)
+        {
+            EnsureBodyMaterial();
+            if (bodyMaterial == null)
+            {
+                return;
+            }
+
+            bodyMaterial.color = color;
+        }
+
+        private void EnsureBodyMaterial()
+        {
+            if (bodyRenderer == null)
+            {
+                return;
+            }
+
+            if (bodyMaterial == null)
+            {
+                bodyMaterial = bodyRenderer.material;
+            }
+
+            if (!normalColorCaptured)
+            {
+                normalColor = bodyMaterial.color;
+                normalColorCaptured = true;
+            }
         }
 
         private void OnDisable()
