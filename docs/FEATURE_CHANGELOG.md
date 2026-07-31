@@ -21,6 +21,26 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-07-31 - 근접 공격 판정 및 라이플 후퇴 사격 개선
+
+- 변경 유형: 버그 수정, 적 AI 동작 개선, 씬 직렬화 갱신
+- 변경 내용: **구현 완료**. `EnemyPerception`의 시야 원점을 무기 끝에서 적 몸체로 변경해 밀착 시 목표 Raycast가 끊기던 근접 공격 판정을 수정했다. `EnemyChaser`는 0.42 월드초 선딜 중 플레이어를 바라보며 기본 속도의 35%로 계속 추적한다. `EnemyShooter`는 공격 단계와 이동 모드를 분리해 6 거리 미만에서 플레이어를 바라보며 기본 속도의 70%로 후퇴하고, 후퇴 중에도 조준·4발 점사·쿨다운을 진행한다.
+- 영향을 받은 시스템: 적 시야 판정, NavMesh 이동/회전, 근접 공격, 자동소총 조준·점사, Stage1/Stage2 직렬화
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyShooter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyChaser.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.1.1로 갱신하고 라이플 적의 공격/이동 병렬 상태, 후퇴 속도 70%, 근접 선딜 추적 속도 35%, 몸체 기준 시야 판정과 최신 검증 한계를 반영했다.
+- 테스트 결과: Unity Editor가 변경 스크립트를 컴파일해 소스 변경 시각 이후 `Library/ScriptAssemblies/Assembly-CSharp.dll`을 갱신한 것을 확인했다. `PrototypeSceneBuilder`의 사격/근접 감지 원점이 적 몸체를 사용하도록 구성된 것과 Stage1/Stage2의 사격 적 2명 `retreatMoveSpeedMultiplier: 0.7`, 근접 적 1명 `windupMoveSpeedMultiplier: 0.35`, 세 적의 몸체 Transform 기반 `sightOrigin`을 정적으로 확인했다. 사용자 요청에 따라 플레이 테스트와 `PrototypePlayModeSmokeTest`는 **미실행**했으며, 기존 로그는 이번 변경의 결과로 사용하지 않았다.
+- 남은 작업: **확인 불가**. 실제 조작 중 근접 공격 적중감, 후퇴 중 조준·연사 체감과 벽에 막힌 후퇴 상황은 플레이 테스트를 생략해 확인하지 않았다.
+
+## 2026-07-31 - NavMesh 기반 이동 연사형·지속 추격 근접형 적
+
+- 변경 유형: 기능 추가, 적 AI 구조 개선, 씬·데이터·패키지 갱신, 회귀 검사 확장
+- 변경 내용: **구현 완료**. 공통 `EnemyBehavior`, `EnemyPerception`, `EnemyMotor`를 추가해 기절/무장 해제/사망, 시야선/최근 위치, NavMesh 경로와 월드 시간 Rigidbody 이동을 분리했다. `EnemyShooter`를 6~9 거리 유지, 추적/후퇴, 0.65 월드초 조준, 자동소총 4발 점사형으로 확장했다. `EnemyChaser`는 플레이어 현재 위치를 계속 갱신해 추격하고 1.45 범위에서 0.42 월드초 선딜 후 근접 피해를 준다. 두 씬은 연사형 2명과 근접 추격형 1명으로 재구성했다.
+- 영향을 받은 시스템: 적 AI, 적 체력/기절/무장 해제, 3D 물리 이동, 월드 시간, NavMesh, 총기/탄약/드롭, 씬 생성/검증, 스모크 테스트, 리플레이 기록 대상
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyBehavior.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyPerception.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyShooter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyChaser.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Scenes/StageNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Packages/manifest.json`, `ProjectDeltatime/Packages/packages-lock.json`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.1.0으로 갱신하고 구현 현황, 적 AI 구조, 씬 구성, 클래스 책임, 확장 주의점, 자동소총/이동/근접 공격 밸런스, 의사결정과 최신 테스트 근거를 반영했다.
+- 테스트 결과: Unity 6000.1.13f1 배치 모드에서 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine` 통과. 텍스트 직렬화된 Stage1/Stage2와 외부 `StageNavigation.asset`을 생성하고 연사형 2, 근접 추격형 1, `EnemyMotor`/`EnemyPerception` 각 3, NavMeshSurface 1을 검증했다. 이어 `PrototypePlayModeSmokeTest` 통과. 적 누적 이동과 NavMesh 경로 획득, 근접형 추격 상태, 두 유형의 기절/회복 후 무장 해제, 사격형 2개의 중복 없는 공중 무기 드롭, 적 전멸 후 리플레이를 확인했다. 로그: `ProjectDeltatime/EnemyMovementBuild.log`, `ProjectDeltatime/EnemyMovementSmoke.log`.
+- 남은 작업: **부분 구현**. 근접 무기는 시각 표현과 직접 피해만 제공하며 획득/투척/드롭 가능한 무기 데이터는 없다. 런타임 동적 NavMesh 재베이크, 전술적 엄폐 선택, 적 협동/재무장, 플레이어 시야 밖 공격 정책, 수동 플레이 기반 체감 밸런스 확인이 남았다.
+
 ## 2026-07-30 - 프로젝트 현황 기준선 문서화
 
 - 변경 유형: 문서 추가

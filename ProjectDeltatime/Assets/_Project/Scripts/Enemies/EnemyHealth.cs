@@ -7,7 +7,7 @@ namespace Deltatime.Enemies
 {
     public sealed class EnemyHealth : MonoBehaviour, IDamageable, IStunnable
     {
-        [SerializeField] private EnemyShooter shooter;
+        [SerializeField] private EnemyBehavior behavior;
         [SerializeField] private EnemyWeaponDrop weaponDrop;
         [SerializeField] private StageController stage;
         [SerializeField] private Collider bodyCollider;
@@ -24,8 +24,8 @@ namespace Deltatime.Enemies
         public bool IsAlive { get; private set; } = true;
         public bool IsStunned =>
             IsAlive &&
-            shooter != null &&
-            shooter.CurrentState == EnemyShooter.ShooterState.Stunned;
+            behavior != null &&
+            behavior.IsStunned;
 
         private void Awake()
         {
@@ -58,9 +58,9 @@ namespace Deltatime.Enemies
 
             IsAlive = false;
             showingStunColor = false;
-            if (shooter != null)
+            if (behavior != null)
             {
-                shooter.SetDead();
+                behavior.SetDead();
             }
 
             if (bodyCollider != null)
@@ -89,12 +89,12 @@ namespace Deltatime.Enemies
 
         public void ReceiveStun(StunHit hit)
         {
-            if (!IsAlive || shooter == null || hit.Duration <= 0f)
+            if (!IsAlive || behavior == null || hit.Duration <= 0f)
             {
                 return;
             }
 
-            shooter.ApplyStun(hit.Duration);
+            behavior.ApplyStun(hit.Duration);
             if (!IsStunned)
             {
                 return;
@@ -105,20 +105,20 @@ namespace Deltatime.Enemies
                 weaponDrop.Drop();
             }
 
-            shooter.Disarm();
+            behavior.Disarm();
             showingStunColor = true;
             SetBodyColor(stunColor);
             HitFlash.Create(hit.Point, stunColor);
         }
 
         public void Configure(
-            EnemyShooter enemyShooter,
+            EnemyBehavior enemyBehavior,
             EnemyWeaponDrop drop,
             StageController stageController,
             Collider collider,
             Renderer renderer)
         {
-            shooter = enemyShooter;
+            behavior = enemyBehavior;
             weaponDrop = drop;
             stage = stageController;
             bodyCollider = collider;

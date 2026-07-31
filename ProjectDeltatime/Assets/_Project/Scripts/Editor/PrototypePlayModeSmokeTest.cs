@@ -8,6 +8,7 @@ using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -33,9 +34,16 @@ namespace Deltatime.EditorTools
 
         private static double playStartedAt;
         private static bool checksRan;
+        private static bool movementChecksRan;
         private static bool stunChecksRan;
         private static bool replayChecksRan;
         private static bool callbacksAttached;
+        private static readonly System.Collections.Generic.Dictionary<int, Vector3>
+            EnemyMovementStarts =
+                new System.Collections.Generic.Dictionary<int, Vector3>();
+        private static readonly System.Collections.Generic.Dictionary<int, float>
+            EnemyMovementDistances =
+                new System.Collections.Generic.Dictionary<int, float>();
 
         static PrototypePlayModeSmokeTest()
         {
@@ -94,6 +102,7 @@ namespace Deltatime.EditorTools
             {
                 playStartedAt = EditorApplication.timeSinceStartup;
                 checksRan = false;
+                movementChecksRan = false;
                 stunChecksRan = false;
                 replayChecksRan = false;
                 SessionState.SetString(PhaseKey, "playing");
@@ -124,33 +133,46 @@ namespace Deltatime.EditorTools
                 {
                     playStartedAt = EditorApplication.timeSinceStartup;
                     checksRan = false;
+                    movementChecksRan = false;
                     stunChecksRan = false;
                     replayChecksRan = false;
                     SessionState.SetString(PhaseKey, "playing");
                 }
 
                 double elapsed = EditorApplication.timeSinceStartup - playStartedAt;
+                if (checksRan && !movementChecksRan)
+                {
+                    SustainMovementProbe();
+                }
+
                 if (!checksRan && elapsed >= 0.5d)
                 {
                     checksRan = true;
                     ValidateRuntimeState();
+                    BeginMovementValidation();
+                }
+
+                if (!movementChecksRan && elapsed >= 1.1d)
+                {
+                    movementChecksRan = true;
+                    ValidateEnemyMovement();
                     BeginStunValidation();
                 }
 
-                if (!stunChecksRan && elapsed >= 3d)
+                if (!stunChecksRan && elapsed >= 3.6d)
                 {
                     stunChecksRan = true;
                     ValidateStunRecovery();
                     ClearStage();
                 }
 
-                if (!replayChecksRan && elapsed >= 3.35d)
+                if (!replayChecksRan && elapsed >= 3.95d)
                 {
                     replayChecksRan = true;
                     ValidateReplayState();
                 }
 
-                if (elapsed >= 3.9d)
+                if (elapsed >= 4.5d)
                 {
                     SessionState.SetString(PhaseKey, "stopping");
                     EditorApplication.isPlaying = false;
@@ -160,6 +182,104 @@ namespace Deltatime.EditorTools
             {
                 Finish();
             }
+        }
+
+        private static void BeginMovementValidation()
+        {
+            WorldTimeActivity activity =
+                UnityEngine.Object.FindObjectOfType<WorldTimeActivity>();
+            EnemyMotor[] motors =
+                UnityEngine.Object.FindObjectsOfType<EnemyMotor>();
+
+            Require(
+                activity != null,
+                "WorldTimeActivity is missing before movement validation.");
+            Require(
+                motors.Length == 3,
+                $"Movement validation expected 3 motors, found {motors.Length}.");
+
+            EnemyMovementStarts.Clear();
+            EnemyMovementDistances.Clear();
+            for (int i = 0; i < motors.Length; i++)
+            {
+                EnemyMovementStarts[motors[i].GetInstanceID()] =
+                    motors[i].transform.position;
+                EnemyMovementDistances[motors[i].GetInstanceID()] =
+                    motors[i].TotalDistanceMoved;
+            }
+
+            activity?.Pulse(1f, 0.45f);
+        }
+
+        private static void SustainMovementProbe()
+        {
+            WorldTimeActivity activity =
+                UnityEngine.Object.FindObjectOfType<WorldTimeActivity>();
+            activity?.Pulse(1f, 0.2f);
+        }
+
+        private static void ValidateEnemyMovement()
+        {
+            EnemyMotor[] motors =
+                UnityEngine.Object.FindObjectsOfType<EnemyMotor>();
+            EnemyChaser chaser =
+                UnityEngine.Object.FindObjectOfType<EnemyChaser>();
+            int movedEnemyCount = 0;
+            StringBuilder movementDetails = new StringBuilder();
+
+            for (int i = 0; i < motors.Length; i++)
+            {
+                EnemyMotor motor = motors[i];
+                if (!EnemyMovementStarts.TryGetValue(
+                        motor.GetInstanceID(),
+                        out Vector3 start))
+                {
+                    continue;
+                }
+
+                Vector3 displacement =
+                    motor.transform.position - start;
+                displacement.y = 0f;
+                EnemyMovementDistances.TryGetValue(
+                    motor.GetInstanceID(),
+                    out float startDistance);
+                float traveledDistance =
+                    motor.TotalDistanceMoved - startDistance;
+                if (movementDetails.Length > 0)
+                {
+                    movementDetails.Append("; ");
+                }
+
+                EnemyShooter shooter =
+                    motor.GetComponent<EnemyShooter>();
+                EnemyChaser motorChaser =
+                    motor.GetComponent<EnemyChaser>();
+                movementDetails.Append(
+                    $"{motor.name}: displacement={displacement.magnitude:0.000}, " +
+                    $"traveled={traveledDistance:0.000}, " +
+                    $"moving={motor.IsMoving}, path={motor.HasNavigationPath}, " +
+                    $"state={(shooter != null ? shooter.CurrentState.ToString() : motorChaser?.CurrentState.ToString())}");
+                if (traveledDistance > 0.05f &&
+                    displacement.magnitude > 0.01f)
+                {
+                    movedEnemyCount++;
+                }
+            }
+
+            Require(
+                movedEnemyCount >= 2,
+                $"Only {movedEnemyCount} enemies moved during the movement probe. " +
+                movementDetails);
+            Require(
+                chaser != null &&
+                chaser.CurrentState != EnemyChaser.ChaserState.Detecting,
+                "The melee chaser did not begin following the player.");
+            Require(
+                motors.Length == 3 &&
+                System.Array.Exists(
+                    motors,
+                    motor => motor.HasNavigationPath),
+                "No enemy acquired a NavMesh path while moving.");
         }
 
         private static void BeginStunValidation()
@@ -174,6 +294,8 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.FindObjectOfType<PlayerCombat>();
             EnemyHealth[] enemies =
                 UnityEngine.Object.FindObjectsOfType<EnemyHealth>();
+            EnemyShooter[] shooters =
+                UnityEngine.Object.FindObjectsOfType<EnemyShooter>();
             int airborneCountBefore =
                 UnityEngine.Object.FindObjectsOfType<InterceptableWeapon>().Length;
 
@@ -203,24 +325,44 @@ namespace Deltatime.EditorTools
                     Vector3.forward,
                     null));
 
-                EnemyShooter shooter = enemy.GetComponent<EnemyShooter>();
-                WeaponController weapon = enemy.GetComponent<WeaponController>();
+                EnemyBehavior behavior =
+                    enemy.GetComponent<EnemyBehavior>();
+                EnemyShooter shooter =
+                    enemy.GetComponent<EnemyShooter>();
+                EnemyChaser chaser =
+                    enemy.GetComponent<EnemyChaser>();
+                WeaponController weapon =
+                    enemy.GetComponent<WeaponController>();
                 Require(enemy.IsAlive, "A stun killed an enemy.");
                 Require(enemy.IsStunned, "An enemy did not enter the stunned state.");
                 Require(
-                    shooter != null &&
-                    shooter.CurrentState == EnemyShooter.ShooterState.Stunned,
-                    "Enemy shooting behavior remained active while stunned.");
-                Require(
-                    weapon != null && !weapon.HasWeapon,
-                    "A stunned enemy retained its held weapon.");
+                    behavior != null && behavior.IsStunned,
+                    "Enemy behavior remained active while stunned.");
+                if (shooter != null)
+                {
+                    Require(
+                        shooter.CurrentState ==
+                        EnemyShooter.ShooterState.Stunned,
+                        "Enemy shooting behavior remained active while stunned.");
+                    Require(
+                        weapon != null && !weapon.HasWeapon,
+                        "A stunned ranged enemy retained its held weapon.");
+                }
+                else
+                {
+                    Require(
+                        chaser != null &&
+                        chaser.CurrentState ==
+                        EnemyChaser.ChaserState.Stunned,
+                        "Enemy chasing behavior remained active while stunned.");
+                }
             }
 
             int airborneCountAfter =
                 UnityEngine.Object.FindObjectsOfType<InterceptableWeapon>().Length;
             Require(
-                airborneCountAfter == airborneCountBefore + enemies.Length,
-                "Stunning enemies did not create exactly one weapon drop each.");
+                airborneCountAfter == airborneCountBefore + shooters.Length,
+                "Stunning ranged enemies did not create exactly one weapon drop each.");
             Require(
                 stage.CurrentState == StageController.StageState.Active &&
                 stage.RemainingEnemyCount == enemies.Length,
@@ -236,11 +378,11 @@ namespace Deltatime.EditorTools
                 airborneCountAfter,
                 "Repeated stun created a duplicate weapon drop.");
 
-            EnemyShooter firstShooter =
-                enemies[0].GetComponent<EnemyShooter>();
+            EnemyBehavior firstBehavior =
+                enemies[0].GetComponent<EnemyBehavior>();
             Require(
-                firstShooter != null &&
-                firstShooter.StunTimeRemaining > 1.99f,
+                firstBehavior != null &&
+                firstBehavior.StunTimeRemaining > 1.99f,
                 "Repeated stun did not refresh the stun duration.");
         }
 
@@ -304,13 +446,29 @@ namespace Deltatime.EditorTools
             for (int i = 0; i < enemies.Length; i++)
             {
                 EnemyShooter shooter = enemies[i].GetComponent<EnemyShooter>();
+                EnemyChaser chaser = enemies[i].GetComponent<EnemyChaser>();
+                EnemyBehavior behavior =
+                    enemies[i].GetComponent<EnemyBehavior>();
                 Require(enemies[i].IsAlive, "A stunned enemy did not remain alive.");
                 Require(!enemies[i].IsStunned, "An enemy did not recover from stun.");
                 Require(
-                    shooter != null &&
-                    shooter.CurrentState == EnemyShooter.ShooterState.Disarmed &&
-                    shooter.IsDisarmed,
+                    behavior != null && behavior.IsDisarmed,
                     "A recovered enemy did not remain disarmed.");
+                if (shooter != null)
+                {
+                    Require(
+                        shooter.CurrentState ==
+                        EnemyShooter.ShooterState.Disarmed,
+                        "A recovered ranged enemy did not remain disarmed.");
+                }
+                else
+                {
+                    Require(
+                        chaser != null &&
+                        chaser.CurrentState ==
+                        EnemyChaser.ChaserState.Disarmed,
+                        "A recovered chasing enemy did not remain disarmed.");
+                }
             }
 
             ThrownWeapon[] thrownWeapons =
@@ -415,12 +573,22 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.FindObjectOfType<WorldTimeController>();
             PlayerHealth player = UnityEngine.Object.FindObjectOfType<PlayerHealth>();
             WeaponController weapon =
-                UnityEngine.Object.FindObjectOfType<WeaponController>();
+                player == null
+                    ? null
+                    : player.GetComponent<WeaponController>();
             GameHud hud = UnityEngine.Object.FindObjectOfType<GameHud>();
             StageReplayController replay =
                 UnityEngine.Object.FindObjectOfType<StageReplayController>();
-            EnemyShooter[] enemies =
+            EnemyShooter[] shooters =
                 UnityEngine.Object.FindObjectsOfType<EnemyShooter>();
+            EnemyChaser[] chasers =
+                UnityEngine.Object.FindObjectsOfType<EnemyChaser>();
+            EnemyMotor[] motors =
+                UnityEngine.Object.FindObjectsOfType<EnemyMotor>();
+            EnemyPerception[] perceptions =
+                UnityEngine.Object.FindObjectsOfType<EnemyPerception>();
+            NavMeshSurface navigationSurface =
+                UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
             TopDownCameraController cameraRig =
                 UnityEngine.Object.FindObjectOfType<TopDownCameraController>();
             Camera gameplayCamera = Camera.main;
@@ -439,7 +607,19 @@ namespace Deltatime.EditorTools
             Require(
                 replay != null && replay.TrackedLightCount == 2,
                 "Stage replay did not register both dark-vision lights.");
-            Require(enemies.Length == 3, $"Expected 3 enemies, found {enemies.Length}.");
+            Require(
+                shooters.Length == 2,
+                $"Expected 2 ranged enemies, found {shooters.Length}.");
+            Require(
+                chasers.Length == 1,
+                $"Expected 1 chasing enemy, found {chasers.Length}.");
+            Require(
+                motors.Length == 3 && perceptions.Length == 3,
+                "Enemy movement or perception components are missing.");
+            Require(
+                navigationSurface != null &&
+                navigationSurface.navMeshData != null,
+                "The stage has no baked NavMesh data.");
             Require(
                 gameplayCamera != null && !gameplayCamera.orthographic,
                 "The gameplay camera is not a perspective camera.");

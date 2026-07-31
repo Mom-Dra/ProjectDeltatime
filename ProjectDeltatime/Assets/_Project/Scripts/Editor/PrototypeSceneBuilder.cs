@@ -9,9 +9,11 @@ using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
 using Deltatime.Vision;
+using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
@@ -27,13 +29,19 @@ namespace Deltatime.EditorTools
         private const string Scenes = Root + "/Scenes";
         private const string Stage1ScenePath = Scenes + "/Stage1.unity";
         private const string Stage2ScenePath = Scenes + "/Stage2.unity";
+        private const string NavigationDataPath =
+            Scenes + "/StageNavigation.asset";
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
+        private const string AutomaticRifleDefinitionPath =
+            Root + "/AutomaticRifle.asset";
         private const string LineMaterialPath = Materials + "/PrototypeLine.mat";
         private const string FloorMaterialPath = Materials + "/PrototypeFloor3D.mat";
         private const string WallMaterialPath = Materials + "/PrototypeWall3D.mat";
         private const string CoverMaterialPath = Materials + "/PrototypeCover3D.mat";
         private const string PlayerMaterialPath = Materials + "/PrototypePlayer3D.mat";
         private const string EnemyMaterialPath = Materials + "/PrototypeEnemy3D.mat";
+        private const string ChaserMaterialPath =
+            Materials + "/PrototypeChaser3D.mat";
         private const string WeaponMaterialPath = Materials + "/PrototypeWeapon3D.mat";
         private const string PickupMaterialPath = Materials + "/PrototypePickup3D.mat";
         private const string AccentMaterialPath = Materials + "/PrototypeAccent3D.mat";
@@ -80,6 +88,12 @@ namespace Deltatime.EditorTools
                 0.38f,
                 0.52f,
                 new Color(0.06f, 0.004f, 0.003f, 1f));
+            Material chaserMaterial = EnsureStandardMaterial(
+                ChaserMaterialPath,
+                new Color(1f, 0.38f, 0.035f, 1f),
+                0.32f,
+                0.48f,
+                new Color(0.08f, 0.012f, 0.001f, 1f));
             Material weaponMaterial = EnsureStandardMaterial(
                 WeaponMaterialPath,
                 new Color(0.5f, 0.55f, 0.62f, 1f),
@@ -102,6 +116,8 @@ namespace Deltatime.EditorTools
                 new Color(0.08f, 0.85f, 1f, 0.13f));
 
             WeaponDefinition pistol = EnsurePistolDefinition();
+            WeaponDefinition automaticRifle =
+                EnsureAutomaticRifleDefinition();
             EnsureProjectilePrefab(lineMaterial);
             EnsurePickupPrefab(pickupMaterial);
             EnsureThrownWeaponPrefab(pickupMaterial, lineMaterial);
@@ -138,6 +154,7 @@ namespace Deltatime.EditorTools
                 wallMaterial,
                 coverMaterial,
                 accentMaterial);
+            CreateNavigationSurface();
 
             PlayerBundle player = CreatePlayer(
                 playerMaterial,
@@ -167,13 +184,13 @@ namespace Deltatime.EditorTools
                 pistol,
                 8);
 
-            CreateEnemy(
+            CreateRangedEnemy(
                 "Enemy West",
                 new Vector3(-6.3f, 0.75f, 4.7f),
                 enemyMaterial,
                 weaponMaterial,
                 lineMaterial,
-                pistol,
+                automaticRifle,
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
@@ -183,29 +200,24 @@ namespace Deltatime.EditorTools
                 player.Health,
                 player.Vision,
                 stage);
-            CreateEnemy(
+            CreateChasingEnemy(
                 "Enemy Center",
-                new Vector3(0f, 0.75f, 6.2f),
-                enemyMaterial,
+                new Vector3(2.8f, 0.78f, 5.8f),
+                chaserMaterial,
                 weaponMaterial,
                 lineMaterial,
-                pistol,
-                projectilePrefab,
-                pickupPrefab,
-                thrownPrefab,
-                interceptablePrefab,
                 worldTime,
                 player.Root.transform,
                 player.Health,
                 player.Vision,
                 stage);
-            CreateEnemy(
+            CreateRangedEnemy(
                 "Enemy East",
                 new Vector3(6.3f, 0.75f, 4.7f),
                 enemyMaterial,
                 weaponMaterial,
                 lineMaterial,
-                pistol,
+                automaticRifle,
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
@@ -235,6 +247,14 @@ namespace Deltatime.EditorTools
             if (!EditorSceneManager.SaveScene(scene, Stage1ScenePath))
             {
                 throw new InvalidOperationException($"Failed to save {Stage1ScenePath}.");
+            }
+
+            BuildNavigationSurface();
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, Stage1ScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save baked navigation data for {Stage1ScenePath}.");
             }
 
             ApplyStageLightingProfile(visualFeedback, keyLight, false);
@@ -591,13 +611,13 @@ namespace Deltatime.EditorTools
                 visionCone);
         }
 
-        private static void CreateEnemy(
+        private static void CreateRangedEnemy(
             string name,
             Vector3 position,
             Material enemyMaterial,
             Material weaponMaterial,
             Material lineMaterial,
-            WeaponDefinition pistol,
+            WeaponDefinition automaticRifle,
             Projectile projectilePrefab,
             WeaponPickup pickupPrefab,
             ThrownWeapon thrownPrefab,
@@ -642,7 +662,7 @@ namespace Deltatime.EditorTools
                 projectilePrefab,
                 pickupPrefab,
                 thrownPrefab,
-                pistol);
+                automaticRifle);
 
             LineRenderer warningLine = root.AddComponent<LineRenderer>();
             ConfigureLine(
@@ -656,16 +676,27 @@ namespace Deltatime.EditorTools
             drop.Configure(
                 pickupPrefab,
                 interceptablePrefab,
-                pistol,
+                automaticRifle,
                 worldTime,
-                4);
+                8);
+
+            EnemyMotor motor = root.AddComponent<EnemyMotor>();
+            motor.Configure(worldTime, 3.4f, 220f);
+
+            EnemyPerception perception =
+                root.AddComponent<EnemyPerception>();
+            perception.Configure(
+                player,
+                playerHealth,
+                root.transform,
+                18f);
 
             EnemyShooter shooter = root.AddComponent<EnemyShooter>();
             Renderer bodyRenderer = root.GetComponent<Renderer>();
             shooter.Configure(
                 worldTime,
-                player,
-                playerHealth,
+                perception,
+                motor,
                 weapon,
                 warningLine,
                 playerVision,
@@ -679,6 +710,139 @@ namespace Deltatime.EditorTools
                 stage,
                 collider,
                 bodyRenderer);
+        }
+
+        private static void CreateChasingEnemy(
+            string name,
+            Vector3 position,
+            Material enemyMaterial,
+            Material weaponMaterial,
+            Material lineMaterial,
+            WorldTimeController worldTime,
+            Transform player,
+            PlayerHealth playerHealth,
+            VisionCone playerVision,
+            StageController stage)
+        {
+            GameObject root = CreatePrimitiveObject(
+                name,
+                PrimitiveType.Capsule,
+                position,
+                new Vector3(0.9f, 0.78f, 0.9f),
+                enemyMaterial,
+                true);
+
+            Rigidbody body = root.AddComponent<Rigidbody>();
+            body.isKinematic = true;
+            body.useGravity = false;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.constraints =
+                RigidbodyConstraints.FreezePositionY |
+                RigidbodyConstraints.FreezeRotationX |
+                RigidbodyConstraints.FreezeRotationZ;
+
+            Collider collider = root.GetComponent<Collider>();
+
+            Transform weaponTip;
+            Renderer heldWeaponRenderer;
+            CreateWeaponVisual(
+                root.transform,
+                weaponMaterial,
+                out weaponTip,
+                out heldWeaponRenderer);
+            heldWeaponRenderer.transform.localScale =
+                new Vector3(0.14f, 0.14f, 1.05f);
+
+            LineRenderer warningLine = root.AddComponent<LineRenderer>();
+            ConfigureLine(
+                warningLine,
+                lineMaterial,
+                new Color(1f, 0.55f, 0.03f, 0.9f),
+                0.065f);
+            warningLine.enabled = false;
+
+            EnemyMotor motor = root.AddComponent<EnemyMotor>();
+            motor.Configure(worldTime, 4.8f, 260f, 0.1f);
+
+            EnemyPerception perception =
+                root.AddComponent<EnemyPerception>();
+            perception.Configure(
+                player,
+                playerHealth,
+                root.transform,
+                20f);
+
+            EnemyChaser chaser = root.AddComponent<EnemyChaser>();
+            Renderer bodyRenderer = root.GetComponent<Renderer>();
+            chaser.Configure(
+                worldTime,
+                perception,
+                motor,
+                warningLine,
+                playerVision,
+                bodyRenderer,
+                heldWeaponRenderer);
+
+            EnemyHealth health = root.AddComponent<EnemyHealth>();
+            health.Configure(
+                chaser,
+                null,
+                stage,
+                collider,
+                bodyRenderer);
+        }
+
+        private static void CreateNavigationSurface()
+        {
+            GameObject navigationObject = new GameObject("Navigation");
+            NavMeshSurface surface =
+                navigationObject.AddComponent<NavMeshSurface>();
+            surface.collectObjects = CollectObjects.All;
+            surface.useGeometry =
+                NavMeshCollectGeometry.PhysicsColliders;
+            surface.layerMask = ~0;
+        }
+
+        private static void BuildNavigationSurface()
+        {
+            NavMeshSurface surface =
+                UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
+            if (surface == null)
+            {
+                throw new InvalidOperationException(
+                    "Navigation surface is missing.");
+            }
+
+            Physics.SyncTransforms();
+            surface.BuildNavMesh();
+            if (surface.navMeshData == null)
+            {
+                throw new InvalidOperationException(
+                    "Navigation surface failed to build.");
+            }
+
+            NavMeshData bakedData = surface.navMeshData;
+            NavMeshData savedData =
+                AssetDatabase.LoadAssetAtPath<NavMeshData>(
+                    NavigationDataPath);
+            if (savedData == null)
+            {
+                AssetDatabase.CreateAsset(
+                    bakedData,
+                    NavigationDataPath);
+            }
+            else
+            {
+                surface.RemoveData();
+                EditorUtility.CopySerialized(bakedData, savedData);
+                surface.navMeshData = savedData;
+                surface.AddData();
+                UnityEngine.Object.DestroyImmediate(bakedData);
+                EditorUtility.SetDirty(savedData);
+            }
+
+            EditorUtility.SetDirty(surface);
+            AssetDatabase.SaveAssets();
         }
 
         private static void CreateFloorAndWalls(
@@ -1060,6 +1224,31 @@ namespace Deltatime.EditorTools
             return definition;
         }
 
+        private static WeaponDefinition EnsureAutomaticRifleDefinition()
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    AutomaticRifleDefinitionPath);
+            if (definition == null)
+            {
+                definition =
+                    ScriptableObject.CreateInstance<WeaponDefinition>();
+                AssetDatabase.CreateAsset(
+                    definition,
+                    AutomaticRifleDefinitionPath);
+            }
+
+            definition.ConfigurePrototype(
+                "Automatic Rifle",
+                30,
+                0.12f,
+                16f,
+                1,
+                0.075f);
+            EditorUtility.SetDirty(definition);
+            return definition;
+        }
+
         private static Material EnsureLineMaterial()
         {
             Shader shader = Shader.Find("Sprites/Default");
@@ -1233,6 +1422,16 @@ namespace Deltatime.EditorTools
             int inputCount = CountComponentsInScene<PlayerInputReader>(scene);
             int deadlineCount = CountComponentsInScene<DeadlineController>(scene);
             int enemyCount = CountComponentsInScene<EnemyHealth>(scene);
+            int rangedEnemyCount =
+                CountComponentsInScene<EnemyShooter>(scene);
+            int chasingEnemyCount =
+                CountComponentsInScene<EnemyChaser>(scene);
+            int enemyMotorCount =
+                CountComponentsInScene<EnemyMotor>(scene);
+            int perceptionCount =
+                CountComponentsInScene<EnemyPerception>(scene);
+            int navigationSurfaceCount =
+                CountComponentsInScene<NavMeshSurface>(scene);
             int stageCount = CountComponentsInScene<StageController>(scene);
             int replayCount = CountComponentsInScene<StageReplayController>(scene);
             int pickupCount = CountComponentsInScene<WeaponPickup>(scene);
@@ -1241,24 +1440,36 @@ namespace Deltatime.EditorTools
             int rigidbody2DCount = CountComponentsInScene<Rigidbody2D>(scene);
 
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
+            NavMeshSurface navigationSurface =
+                UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
             if (playerCount != 1 ||
                 inputCount != 1 ||
                 deadlineCount != 1 ||
                 enemyCount != 3 ||
+                rangedEnemyCount != 2 ||
+                chasingEnemyCount != 1 ||
+                enemyMotorCount != 3 ||
+                perceptionCount != 3 ||
+                navigationSurfaceCount != 1 ||
                 stageCount != 1 ||
                 replayCount != 1 ||
                 pickupCount < 1 ||
                 cameraCount != 1 ||
                 cameraRigCount != 1 ||
                 rigidbody2DCount != 0 ||
+                navigationSurface == null ||
+                navigationSurface.navMeshData == null ||
                 camera == null ||
                 camera.orthographic)
             {
                 throw new InvalidOperationException(
                     "3D stage validation failed: " +
                     $"players={playerCount}, inputs={inputCount}, deadlines={deadlineCount}, enemies={enemyCount}, " +
+                    $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
+                    $"perception={perceptionCount}, navSurfaces={navigationSurfaceCount}, " +
                     $"stages={stageCount}, replays={replayCount}, pickups={pickupCount}, cameras={cameraCount}, " +
                     $"cameraRigs={cameraRigCount}, rigidbodies2D={rigidbody2DCount}, " +
+                    $"navData={navigationSurface != null && navigationSurface.navMeshData != null}, " +
                     $"perspective={camera != null && !camera.orthographic}.");
             }
 
