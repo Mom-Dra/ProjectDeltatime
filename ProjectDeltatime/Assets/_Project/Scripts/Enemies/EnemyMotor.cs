@@ -26,6 +26,7 @@ namespace Deltatime.Enemies
         private readonly RaycastHit[] movementHits = new RaycastHit[24];
         private readonly Collider[] separationHits = new Collider[16];
         private NavMeshPath path;
+        private NavMeshPath queryPath;
 
         private Rigidbody body;
         private CapsuleCollider capsule;
@@ -46,6 +47,7 @@ namespace Deltatime.Enemies
             body = GetComponent<Rigidbody>();
             capsule = GetComponent<CapsuleCollider>();
             path = new NavMeshPath();
+            queryPath = new NavMeshPath();
             if (worldTime == null)
             {
                 Debug.LogError(
@@ -150,6 +152,53 @@ namespace Deltatime.Enemies
         public void Stop()
         {
             IsMoving = false;
+        }
+
+        public bool TryCalculatePathLength(
+            Vector3 destination,
+            out float pathLength)
+        {
+            pathLength = 0f;
+            if (body == null ||
+                !NavMesh.SamplePosition(
+                    body.position,
+                    out NavMeshHit startHit,
+                    1.5f,
+                    NavMesh.AllAreas) ||
+                !NavMesh.SamplePosition(
+                    destination,
+                    out NavMeshHit destinationHit,
+                    3f,
+                    NavMesh.AllAreas))
+            {
+                return false;
+            }
+
+            if (queryPath == null)
+            {
+                queryPath = new NavMeshPath();
+            }
+
+            if (!NavMesh.CalculatePath(
+                    startHit.position,
+                    destinationHit.position,
+                    NavMesh.AllAreas,
+                    queryPath) ||
+                queryPath.status != NavMeshPathStatus.PathComplete ||
+                queryPath.corners.Length < 1)
+            {
+                return false;
+            }
+
+            Vector3 previous = startHit.position;
+            for (int i = 0; i < queryPath.corners.Length; i++)
+            {
+                Vector3 corner = queryPath.corners[i];
+                pathLength += Vector3.Distance(previous, corner);
+                previous = corner;
+            }
+
+            return true;
         }
 
         public void ClearPath()

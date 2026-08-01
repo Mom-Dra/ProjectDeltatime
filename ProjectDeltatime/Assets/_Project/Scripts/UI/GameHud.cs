@@ -52,7 +52,9 @@ namespace Deltatime.UI
                 : weapon.Definition.DisplayName.ToUpperInvariant();
             string ammunition = weapon.Definition == null
                 ? "--"
-                : $"{weapon.Ammunition}/{weapon.Definition.AmmunitionCapacity}";
+                : weapon.Definition.IsMelee
+                    ? "MELEE"
+                    : $"{weapon.Ammunition}/{weapon.Definition.AmmunitionCapacity}";
             string dashState = playerDash.CooldownRemaining <= 0f
                 ? "READY"
                 : $"{playerDash.CooldownRemaining:0.0}s";
@@ -67,16 +69,17 @@ namespace Deltatime.UI
                 : $"REAL TIME  {stage.RealPlayTime:0.0}s\nWORLD  {worldTime.CurrentTimeScale:0.00}x";
             string status =
                 $"ENEMIES  {stage.RemainingEnemyCount}\n" +
+                $"HEALTH  {playerHealth.CurrentHealth}/{playerHealth.MaximumHealth}\n" +
                 $"{timeStatus}\n" +
                 $"DASH  {dashState}\n" +
                 $"DEADLINE  {deadlineState}\n" +
                 $"WEAPON  {weaponName}  {ammunition}";
 
-            Rect statusPanel = new Rect(18f, 18f, 300f, 202f);
+            Rect statusPanel = new Rect(18f, 18f, 300f, 222f);
             GUI.DrawTexture(statusPanel, panelTexture);
             GUI.Label(new Rect(32f, 28f, 270f, 166f), status, statusStyle);
 
-            Rect barBackground = new Rect(32f, 192f, 270f, 10f);
+            Rect barBackground = new Rect(32f, 212f, 270f, 10f);
             GUI.DrawTexture(barBackground, whiteTexture);
             Color previousColor = GUI.color;
             GUI.color = accentColor;
@@ -120,7 +123,7 @@ namespace Deltatime.UI
             DrawDeadlineFeedback();
 
             const string controls =
-                "WASD Move  |  Mouse Aim  |  LMB Fire  |  RMB Throw\n" +
+                "WASD Move  |  Mouse Aim  |  LMB Attack  |  RMB Throw\n" +
                 "Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),

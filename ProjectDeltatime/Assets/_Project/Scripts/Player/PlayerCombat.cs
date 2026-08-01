@@ -31,7 +31,11 @@ namespace Deltatime.Player
         [SerializeField, Min(0.01f)] private float throwActivityDuration = 0.22f;
 
         private readonly Collider[] interactionResults = new Collider[24];
+        private readonly WeaponController.StagedMeleeAttack[]
+            stagedMeleeAttacks =
+                new WeaponController.StagedMeleeAttack[2];
         private float catchBufferRemaining;
+        private int stagedMeleeAttackCount;
 
         public bool CombatEnabled { get; private set; } = true;
         public WeaponController Weapon => weapon;
@@ -64,12 +68,14 @@ namespace Deltatime.Player
             if (!health.IsAlive)
             {
                 catchBufferRemaining = 0f;
+                ClearStagedMeleeAttacks();
                 return;
             }
 
             if (!CombatEnabled)
             {
                 catchBufferRemaining = 0f;
+                ClearStagedMeleeAttacks();
                 return;
             }
 
@@ -95,12 +101,7 @@ namespace Deltatime.Player
                 catchBufferRemaining = 0f;
             }
 
-            if (input.FirePressed &&
-                weapon.TryFire(
-                    CombatFaction.Player,
-                    aim.AimDirection,
-                    UnityEngine.Time.unscaledTime,
-                    worldTime))
+            if (input.FirePressed && TryUseEquippedWeapon())
             {
                 worldTimeActivity.Pulse(fireActivity, fireActivityDuration);
             }
@@ -118,6 +119,7 @@ namespace Deltatime.Player
             if (!value)
             {
                 catchBufferRemaining = 0f;
+                ClearStagedMeleeAttacks();
             }
         }
 
@@ -147,10 +149,7 @@ namespace Deltatime.Player
                 {
                     deadline.NotifyActionRejected();
                 }
-                else if (weapon.TryStageFire(
-                             CombatFaction.Player,
-                             aim.AimDirection,
-                             worldTime))
+                else if (TryStageEquippedAttack())
                 {
                     deadline.RegisterStagedAction();
                 }
@@ -174,11 +173,92 @@ namespace Deltatime.Player
 
         private void HandleDeadlineReleased()
         {
-            if (weapon != null)
+            if (weapon == null || deadline == null)
             {
-                weapon.CommitStagedFireCooldown(
-                    UnityEngine.Time.unscaledTime);
+                ClearStagedMeleeAttacks();
+                return;
             }
+
+            if (!deadline.ReleasedThisFrame)
+            {
+                weapon.CancelStagedUse();
+                ClearStagedMeleeAttacks();
+                return;
+            }
+
+            float clock = UnityEngine.Time.unscaledTime;
+            weapon.CommitStagedFireCooldown(clock);
+            for (int i = 0; i < stagedMeleeAttackCount; i++)
+            {
+                weapon.CommitStagedMeleeAttack(
+                    CombatFaction.Player,
+                    gameObject,
+                    stagedMeleeAttacks[i],
+                    clock);
+            }
+
+            if (stagedMeleeAttackCount > 0)
+            {
+                worldTimeActivity.Pulse(
+                    fireActivity,
+                    fireActivityDuration);
+            }
+
+            ClearStagedMeleeAttacks();
+        }
+
+        private bool TryUseEquippedWeapon()
+        {
+            if (weapon.Definition == null)
+            {
+                return false;
+            }
+
+            float clock = UnityEngine.Time.unscaledTime;
+            return weapon.Definition.IsMelee
+                ? weapon.TryMeleeAttack(
+                    CombatFaction.Player,
+                    gameObject,
+                    aim.AimDirection,
+                    clock)
+                : weapon.TryFire(
+                    CombatFaction.Player,
+                    aim.AimDirection,
+                    clock,
+                    worldTime);
+        }
+
+        private bool TryStageEquippedAttack()
+        {
+            if (weapon.Definition == null)
+            {
+                return false;
+            }
+
+            if (weapon.Definition.IsFirearm)
+            {
+                return weapon.TryStageFire(
+                    CombatFaction.Player,
+                    aim.AimDirection,
+                    worldTime);
+            }
+
+            if (stagedMeleeAttackCount >= stagedMeleeAttacks.Length ||
+                !weapon.TryStageMeleeAttack(
+                    aim.AimDirection,
+                    out WeaponController.StagedMeleeAttack stagedAttack))
+            {
+                return false;
+            }
+
+            stagedMeleeAttacks[stagedMeleeAttackCount] = stagedAttack;
+            stagedMeleeAttackCount++;
+            return true;
+        }
+
+        private void ClearStagedMeleeAttacks()
+        {
+            stagedMeleeAttackCount = 0;
         }
 
         private void UpdateWeaponInteraction()
@@ -299,6 +379,7 @@ namespace Deltatime.Player
 
         private void OnDisable()
         {
+            ClearStagedMeleeAttacks();
             if (deadline != null)
             {
                 deadline.Released -= HandleDeadlineReleased;

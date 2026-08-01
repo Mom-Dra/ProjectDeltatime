@@ -1,3 +1,4 @@
+using Deltatime.Enemies;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -9,8 +10,11 @@ namespace Deltatime.Combat
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private Color pickupColor = new Color(1f, 0.8f, 0.15f, 1f);
 
+        private EnemyCombatant reservationOwner;
+
         public WeaponDefinition Definition => definition;
         public int Ammunition => ammunition;
+        public EnemyCombatant ReservationOwner => reservationOwner;
 
         private void Awake()
         {
@@ -20,6 +24,31 @@ namespace Deltatime.Combat
             }
 
             ApplyVisual();
+        }
+
+        public bool IsAvailableTo(EnemyCombatant requester)
+        {
+            return reservationOwner == null ||
+                   reservationOwner == requester;
+        }
+
+        public bool TryReserve(EnemyCombatant requester)
+        {
+            if (requester == null || !IsAvailableTo(requester))
+            {
+                return false;
+            }
+
+            reservationOwner = requester;
+            return true;
+        }
+
+        public void ReleaseReservation(EnemyCombatant requester)
+        {
+            if (reservationOwner == requester)
+            {
+                reservationOwner = null;
+            }
         }
 
         public void Initialize(WeaponDefinition weaponDefinition, int remainingAmmunition)
@@ -33,7 +62,24 @@ namespace Deltatime.Combat
 
         public bool TryTake(WeaponController collector)
         {
-            if (collector == null || definition == null)
+            return TryTakeInternal(collector, null, true);
+        }
+
+        public bool TryTake(
+            WeaponController collector,
+            EnemyCombatant requester)
+        {
+            return TryTakeInternal(collector, requester, false);
+        }
+
+        private bool TryTakeInternal(
+            WeaponController collector,
+            EnemyCombatant requester,
+            bool ignoreReservation)
+        {
+            if (collector == null ||
+                definition == null ||
+                (!ignoreReservation && !IsAvailableTo(requester)))
             {
                 return false;
             }
@@ -41,6 +87,7 @@ namespace Deltatime.Combat
             WeaponDefinition previousDefinition = collector.Definition;
             int previousAmmunition = collector.Ammunition;
 
+            reservationOwner = null;
             collector.Equip(definition, ammunition);
 
             if (previousDefinition == null)
@@ -59,7 +106,14 @@ namespace Deltatime.Combat
         {
             if (bodyRenderer != null)
             {
-                bodyRenderer.material.color = pickupColor;
+                bodyRenderer.material.color = definition == null
+                    ? pickupColor
+                    : definition.VisualColor;
+            }
+
+            if (definition != null)
+            {
+                transform.localScale = definition.WorldVisualScale;
             }
         }
     }

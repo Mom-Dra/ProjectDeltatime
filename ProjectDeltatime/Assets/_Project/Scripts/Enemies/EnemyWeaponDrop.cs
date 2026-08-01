@@ -4,19 +4,18 @@ using UnityEngine;
 
 namespace Deltatime.Enemies
 {
+    [RequireComponent(typeof(WeaponController))]
     public sealed class EnemyWeaponDrop : MonoBehaviour
     {
         [SerializeField] private WeaponPickup pickupPrefab;
         [SerializeField] private InterceptableWeapon interceptablePrefab;
-        [SerializeField] private WeaponDefinition definition;
+        [SerializeField] private WeaponController equipment;
         [SerializeField] private WorldTimeController worldTime;
-        [SerializeField, Min(0)] private int ammunitionOnDrop = 4;
 
         [Header("Drop Direction")]
         [SerializeField, Min(0f)] private float minimumMovementDistance = 0.001f;
         [SerializeField, Min(0f)] private float movementDirectionFreshness = 0.2f;
 
-        private bool hasDropped;
         private bool hasPreviousPosition;
         private Vector3 previousPosition;
         private Vector3 lastMovementDirection;
@@ -57,19 +56,19 @@ namespace Deltatime.Enemies
             }
         }
 
-        public void Drop()
+        public bool Drop()
         {
-            if (hasDropped ||
-                pickupPrefab == null ||
+            if (pickupPrefab == null ||
                 interceptablePrefab == null ||
-                definition == null ||
-                worldTime == null)
+                equipment == null ||
+                worldTime == null ||
+                !TryRemoveCurrentWeapon(
+                    out WeaponDefinition definition,
+                    out int ammunition))
             {
-                return;
+                return false;
             }
 
-            hasDropped = true;
-            Vector3 direction = ResolveDropDirection();
             Vector3 spawnPosition =
                 transform.position +
                 (Vector3.up * 0.45f);
@@ -81,22 +80,61 @@ namespace Deltatime.Enemies
                 worldTime,
                 pickupPrefab,
                 definition,
-                ammunitionOnDrop,
-                direction);
+                ammunition,
+                ResolveDropDirection());
+            return true;
+        }
+
+        public bool DropGround()
+        {
+            if (pickupPrefab == null ||
+                equipment == null ||
+                !TryRemoveCurrentWeapon(
+                    out WeaponDefinition definition,
+                    out int ammunition))
+            {
+                return false;
+            }
+
+            Vector3 pickupPosition = transform.position;
+            pickupPosition.y = 0.18f;
+            WeaponPickup pickup = Instantiate(
+                pickupPrefab,
+                pickupPosition,
+                Quaternion.identity);
+            pickup.Initialize(definition, ammunition);
+            return true;
         }
 
         public void Configure(
             WeaponPickup dropPrefab,
             InterceptableWeapon airbornePrefab,
-            WeaponDefinition weaponDefinition,
-            WorldTimeController timeSource,
-            int remainingAmmunition)
+            WeaponController weaponController,
+            WorldTimeController timeSource)
         {
             pickupPrefab = dropPrefab;
             interceptablePrefab = airbornePrefab;
-            definition = weaponDefinition;
+            equipment = weaponController;
             worldTime = timeSource;
-            ammunitionOnDrop = remainingAmmunition;
+        }
+
+        private bool TryRemoveCurrentWeapon(
+            out WeaponDefinition definition,
+            out int ammunition)
+        {
+            definition = equipment == null
+                ? null
+                : equipment.Definition;
+            ammunition = equipment == null
+                ? 0
+                : equipment.Ammunition;
+            if (definition == null)
+            {
+                return false;
+            }
+
+            equipment.Clear();
+            return true;
         }
 
         private Vector3 ResolveDropDirection()

@@ -24,6 +24,7 @@ namespace Deltatime.Combat
         [SerializeField] private LineRenderer trail;
         [SerializeField] private LineRenderer predictionLine;
         [SerializeField] private Renderer landingMarkerRenderer;
+        [SerializeField] private Renderer bodyRenderer;
         [SerializeField, Min(0f)] private float maximumTrailLength = 1.2f;
         [SerializeField] private Color catchColor =
             new Color(1f, 0.72f, 0.08f, 1f);
@@ -116,6 +117,8 @@ namespace Deltatime.Combat
                 pickupPrefab != null &&
                 definition != null;
 
+            ApplyWeaponVisual();
+
             UpdateTrail();
             UpdatePrediction();
 
@@ -164,12 +167,26 @@ namespace Deltatime.Combat
             LineRenderer trailRenderer,
             LineRenderer trajectoryRenderer,
             Renderer landingRenderer,
+            Renderer weaponBodyRenderer,
             LayerMask obstacleLayers)
         {
             trail = trailRenderer;
             predictionLine = trajectoryRenderer;
             landingMarkerRenderer = landingRenderer;
+            bodyRenderer = weaponBodyRenderer;
             collisionLayers = obstacleLayers;
+        }
+
+        private void ApplyWeaponVisual()
+        {
+            if (definition == null || bodyRenderer == null)
+            {
+                return;
+            }
+
+            bodyRenderer.transform.localScale =
+                definition.WorldVisualScale;
+            bodyRenderer.material.color = definition.VisualColor;
         }
 
         private void AdvanceFlight(float deltaTime)

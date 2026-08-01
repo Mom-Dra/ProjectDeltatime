@@ -12,9 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51b0ffba23a8c454d8c6bb90c31692bf, type: 3}
   m_Name: AutomaticRifle
   m_EditorClassIdentifier: 
+  kind: 0
   displayName: Automatic Rifle
   ammunitionCapacity: 30
   fireInterval: 0.12
   projectileSpeed: 16
-  damage: 1
+  damage: 3
   projectileRadius: 0.075
+  enemyBurstShotCount: 4
+  meleeRange: 1.45
+  meleeHalfAngle: 35
+  heldVisualScale: {x: 0.18, y: 0.16, z: 0.78}
+  worldVisualScale: {x: 0.82, y: 0.16, z: 0.26}
+  visualColor: {r: 0.5, g: 0.55, b: 0.62, a: 1}

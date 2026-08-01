@@ -272,7 +272,8 @@ namespace Deltatime.EditorTools
                 movementDetails);
             Require(
                 chaser != null &&
-                chaser.CurrentState != EnemyChaser.ChaserState.Detecting,
+                chaser.CurrentState !=
+                EnemyCombatant.CombatState.Detecting,
                 "The melee chaser did not begin following the player.");
             Require(
                 motors.Length == 3 &&
@@ -294,8 +295,6 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.FindObjectOfType<PlayerCombat>();
             EnemyHealth[] enemies =
                 UnityEngine.Object.FindObjectsOfType<EnemyHealth>();
-            EnemyShooter[] shooters =
-                UnityEngine.Object.FindObjectsOfType<EnemyShooter>();
             int airborneCountBefore =
                 UnityEngine.Object.FindObjectsOfType<InterceptableWeapon>().Length;
 
@@ -342,27 +341,28 @@ namespace Deltatime.EditorTools
                 {
                     Require(
                         shooter.CurrentState ==
-                        EnemyShooter.ShooterState.Stunned,
+                        EnemyCombatant.CombatState.Stunned,
                         "Enemy shooting behavior remained active while stunned.");
-                    Require(
-                        weapon != null && !weapon.HasWeapon,
-                        "A stunned ranged enemy retained its held weapon.");
                 }
                 else
                 {
                     Require(
                         chaser != null &&
                         chaser.CurrentState ==
-                        EnemyChaser.ChaserState.Stunned,
+                        EnemyCombatant.CombatState.Stunned,
                         "Enemy chasing behavior remained active while stunned.");
                 }
+
+                Require(
+                    weapon != null && !weapon.HasWeapon,
+                    "A stunned enemy retained its held weapon.");
             }
 
             int airborneCountAfter =
                 UnityEngine.Object.FindObjectsOfType<InterceptableWeapon>().Length;
             Require(
-                airborneCountAfter == airborneCountBefore + shooters.Length,
-                "Stunning ranged enemies did not create exactly one weapon drop each.");
+                airborneCountAfter == airborneCountBefore + enemies.Length,
+                "Stunning enemies did not create exactly one weapon drop each.");
             Require(
                 stage.CurrentState == StageController.StageState.Active &&
                 stage.RemainingEnemyCount == enemies.Length,
@@ -452,22 +452,30 @@ namespace Deltatime.EditorTools
                 Require(enemies[i].IsAlive, "A stunned enemy did not remain alive.");
                 Require(!enemies[i].IsStunned, "An enemy did not recover from stun.");
                 Require(
-                    behavior != null && behavior.IsDisarmed,
-                    "A recovered enemy did not remain disarmed.");
+                    behavior != null && !behavior.IsDead,
+                    "A recovered enemy did not return to combat decisions.");
                 if (shooter != null)
                 {
                     Require(
                         shooter.CurrentState ==
-                        EnemyShooter.ShooterState.Disarmed,
-                        "A recovered ranged enemy did not remain disarmed.");
+                        EnemyCombatant.CombatState.Detecting ||
+                        shooter.CurrentState ==
+                        EnemyCombatant.CombatState.Pursuing ||
+                        shooter.CurrentState ==
+                        EnemyCombatant.CombatState.SeekingWeapon ||
+                        shooter.CurrentState ==
+                        EnemyCombatant.CombatState.AttackWindup,
+                        "A recovered ranged enemy did not resume decisions.");
                 }
                 else
                 {
                     Require(
                         chaser != null &&
-                        chaser.CurrentState ==
-                        EnemyChaser.ChaserState.Disarmed,
-                        "A recovered chasing enemy did not remain disarmed.");
+                        chaser.CurrentState !=
+                        EnemyCombatant.CombatState.Stunned &&
+                        chaser.CurrentState !=
+                        EnemyCombatant.CombatState.Dead,
+                        "A recovered chasing enemy did not resume decisions.");
                 }
             }
 

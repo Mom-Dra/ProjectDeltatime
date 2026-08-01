@@ -76,6 +76,26 @@ namespace Deltatime.Enemies
             }
         }
 
+        public void Rearm()
+        {
+            if (IsDead)
+            {
+                return;
+            }
+
+            bool wasDisarmed = isDisarmed;
+            isDisarmed = false;
+            if (!IsStunned)
+            {
+                Status = BehaviorStatus.Active;
+            }
+
+            if (wasDisarmed)
+            {
+                OnRearmed();
+            }
+        }
+
         protected bool AdvanceStatus(float worldDeltaTime)
         {
             if (Status == BehaviorStatus.Stunned)
@@ -92,7 +112,8 @@ namespace Deltatime.Enemies
                 }
             }
 
-            return Status == BehaviorStatus.Active;
+            return Status == BehaviorStatus.Active ||
+                   Status == BehaviorStatus.Disarmed;
         }
 
         protected virtual void OnStunned()
@@ -104,6 +125,10 @@ namespace Deltatime.Enemies
         }
 
         protected virtual void OnDisarmed()
+        {
+        }
+
+        protected virtual void OnRearmed()
         {
         }
 

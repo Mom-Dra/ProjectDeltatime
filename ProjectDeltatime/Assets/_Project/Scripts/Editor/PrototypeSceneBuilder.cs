@@ -34,6 +34,8 @@ namespace Deltatime.EditorTools
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
         private const string AutomaticRifleDefinitionPath =
             Root + "/AutomaticRifle.asset";
+        private const string MeleeWeaponDefinitionPath =
+            Root + "/MeleeWeapon.asset";
         private const string LineMaterialPath = Materials + "/PrototypeLine.mat";
         private const string FloorMaterialPath = Materials + "/PrototypeFloor3D.mat";
         private const string WallMaterialPath = Materials + "/PrototypeWall3D.mat";
@@ -118,6 +120,7 @@ namespace Deltatime.EditorTools
             WeaponDefinition pistol = EnsurePistolDefinition();
             WeaponDefinition automaticRifle =
                 EnsureAutomaticRifleDefinition();
+            WeaponDefinition meleeWeapon = EnsureMeleeWeaponDefinition();
             EnsureProjectilePrefab(lineMaterial);
             EnsurePickupPrefab(pickupMaterial);
             EnsureThrownWeaponPrefab(pickupMaterial, lineMaterial);
@@ -206,6 +209,11 @@ namespace Deltatime.EditorTools
                 chaserMaterial,
                 weaponMaterial,
                 lineMaterial,
+                meleeWeapon,
+                projectilePrefab,
+                pickupPrefab,
+                thrownPrefab,
+                interceptablePrefab,
                 worldTime,
                 player.Root.transform,
                 player.Health,
@@ -676,9 +684,8 @@ namespace Deltatime.EditorTools
             drop.Configure(
                 pickupPrefab,
                 interceptablePrefab,
-                automaticRifle,
-                worldTime,
-                8);
+                weapon,
+                worldTime);
 
             EnemyMotor motor = root.AddComponent<EnemyMotor>();
             motor.Configure(worldTime, 3.4f, 220f);
@@ -698,10 +705,12 @@ namespace Deltatime.EditorTools
                 perception,
                 motor,
                 weapon,
+                drop,
                 warningLine,
                 playerVision,
                 bodyRenderer,
-                heldWeaponRenderer);
+                heldWeaponRenderer,
+                ~0);
 
             EnemyHealth health = root.AddComponent<EnemyHealth>();
             health.Configure(
@@ -718,6 +727,11 @@ namespace Deltatime.EditorTools
             Material enemyMaterial,
             Material weaponMaterial,
             Material lineMaterial,
+            WeaponDefinition meleeWeapon,
+            Projectile projectilePrefab,
+            WeaponPickup pickupPrefab,
+            ThrownWeapon thrownPrefab,
+            InterceptableWeapon interceptablePrefab,
             WorldTimeController worldTime,
             Transform player,
             PlayerHealth playerHealth,
@@ -751,7 +765,23 @@ namespace Deltatime.EditorTools
                 out weaponTip,
                 out heldWeaponRenderer);
             heldWeaponRenderer.transform.localScale =
-                new Vector3(0.14f, 0.14f, 1.05f);
+                meleeWeapon.HeldVisualScale;
+
+            WeaponController weapon = root.AddComponent<WeaponController>();
+            weapon.Configure(
+                weaponTip,
+                heldWeaponRenderer,
+                projectilePrefab,
+                pickupPrefab,
+                thrownPrefab,
+                meleeWeapon);
+
+            EnemyWeaponDrop drop = root.AddComponent<EnemyWeaponDrop>();
+            drop.Configure(
+                pickupPrefab,
+                interceptablePrefab,
+                weapon,
+                worldTime);
 
             LineRenderer warningLine = root.AddComponent<LineRenderer>();
             ConfigureLine(
@@ -778,15 +808,18 @@ namespace Deltatime.EditorTools
                 worldTime,
                 perception,
                 motor,
+                weapon,
+                drop,
                 warningLine,
                 playerVision,
                 bodyRenderer,
-                heldWeaponRenderer);
+                heldWeaponRenderer,
+                ~0);
 
             EnemyHealth health = root.AddComponent<EnemyHealth>();
             health.Configure(
                 chaser,
-                null,
+                drop,
                 stage,
                 collider,
                 bodyRenderer);
@@ -1165,6 +1198,7 @@ namespace Deltatime.EditorTools
                 trail,
                 prediction,
                 landingRenderer,
+                body.GetComponent<Renderer>(),
                 1 << VisionObstacleLayer);
 
             PrefabUtility.SaveAsPrefabAsset(
@@ -1219,7 +1253,14 @@ namespace Deltatime.EditorTools
                 AssetDatabase.CreateAsset(definition, PistolDefinitionPath);
             }
 
-            definition.ConfigurePrototype("Pistol", 8, 0.24f, 17f, 1, 0.08f);
+            definition.ConfigureFirearmPrototype(
+                "Pistol",
+                8,
+                0.24f,
+                17f,
+                3,
+                0.08f,
+                1);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1238,13 +1279,38 @@ namespace Deltatime.EditorTools
                     AutomaticRifleDefinitionPath);
             }
 
-            definition.ConfigurePrototype(
+            definition.ConfigureFirearmPrototype(
                 "Automatic Rifle",
                 30,
                 0.12f,
                 16f,
-                1,
-                0.075f);
+                3,
+                0.075f,
+                4);
+            EditorUtility.SetDirty(definition);
+            return definition;
+        }
+
+        private static WeaponDefinition EnsureMeleeWeaponDefinition()
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    MeleeWeaponDefinitionPath);
+            if (definition == null)
+            {
+                definition =
+                    ScriptableObject.CreateInstance<WeaponDefinition>();
+                AssetDatabase.CreateAsset(
+                    definition,
+                    MeleeWeaponDefinitionPath);
+            }
+
+            definition.ConfigureMeleePrototype(
+                "Melee Weapon",
+                0.72f,
+                3,
+                1.45f,
+                35f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1430,6 +1496,12 @@ namespace Deltatime.EditorTools
                 CountComponentsInScene<EnemyMotor>(scene);
             int perceptionCount =
                 CountComponentsInScene<EnemyPerception>(scene);
+            int combatantCount =
+                CountComponentsInScene<EnemyCombatant>(scene);
+            int weaponControllerCount =
+                CountComponentsInScene<WeaponController>(scene);
+            int enemyWeaponDropCount =
+                CountComponentsInScene<EnemyWeaponDrop>(scene);
             int navigationSurfaceCount =
                 CountComponentsInScene<NavMeshSurface>(scene);
             int stageCount = CountComponentsInScene<StageController>(scene);
@@ -1450,6 +1522,9 @@ namespace Deltatime.EditorTools
                 chasingEnemyCount != 1 ||
                 enemyMotorCount != 3 ||
                 perceptionCount != 3 ||
+                combatantCount != 3 ||
+                weaponControllerCount != 4 ||
+                enemyWeaponDropCount != 3 ||
                 navigationSurfaceCount != 1 ||
                 stageCount != 1 ||
                 replayCount != 1 ||
@@ -1466,7 +1541,9 @@ namespace Deltatime.EditorTools
                     "3D stage validation failed: " +
                     $"players={playerCount}, inputs={inputCount}, deadlines={deadlineCount}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
-                    $"perception={perceptionCount}, navSurfaces={navigationSurfaceCount}, " +
+                    $"perception={perceptionCount}, combatants={combatantCount}, " +
+                    $"weapons={weaponControllerCount}, enemyDrops={enemyWeaponDropCount}, " +
+                    $"navSurfaces={navigationSurfaceCount}, " +
                     $"stages={stageCount}, replays={replayCount}, pickups={pickupCount}, cameras={cameraCount}, " +
                     $"cameraRigs={cameraRigCount}, rigidbodies2D={rigidbody2DCount}, " +
                     $"navData={navigationSurface != null && navigationSurface.navMeshData != null}, " +

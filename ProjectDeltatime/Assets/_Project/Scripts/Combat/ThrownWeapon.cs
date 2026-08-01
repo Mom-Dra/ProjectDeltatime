@@ -21,6 +21,7 @@ namespace Deltatime.Combat
         private WeaponPickup pickupPrefab;
         private WeaponDefinition definition;
         private LineRenderer trail;
+        private Renderer bodyRenderer;
         private CombatFaction faction;
         private GameObject source;
         private Vector3 direction;
@@ -38,6 +39,7 @@ namespace Deltatime.Combat
         private void Awake()
         {
             trail = GetComponent<LineRenderer>();
+            bodyRenderer = GetComponentInChildren<Renderer>();
         }
 
         private void Update()
@@ -111,6 +113,15 @@ namespace Deltatime.Combat
                 : Vector3.forward;
             trailStart = transform.position;
             initialized = worldTime != null && pickupPrefab != null && definition != null;
+
+            if (definition != null)
+            {
+                transform.localScale = definition.WorldVisualScale;
+                if (bodyRenderer != null)
+                {
+                    bodyRenderer.material.color = definition.VisualColor;
+                }
+            }
 
             trail.startColor = trailColor;
             trail.endColor = new Color(trailColor.r, trailColor.g, trailColor.b, 0.1f);

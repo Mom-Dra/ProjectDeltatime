@@ -6,9 +6,9 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-07-31 (KST) |
-| 문서 버전 | 1.1.1 |
-| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 후퇴 중에도 조준·점사하는 이동 연사형 적 2명과 선딜 중 저속 추적하는 근접형 적 1명, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
+| 마지막 분석일 | 2026-08-01 (KST) |
+| 문서 버전 | 1.2.0 |
+| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 현재 장비에 따라 총기·근접 무기·주먹을 사용하는 공통 적 전투 AI, 적 무기 드롭·재무장, 플레이어 HP 3과 근접 무기 사용, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
 
 ### 1.1 분석 기준과 범위
 
@@ -16,7 +16,7 @@
 - 실제 Unity 프로젝트 루트는 저장소 안의 `ProjectDeltatime/`이다. 따라서 Unity의 `Assets`, `Packages`, `ProjectSettings`는 각각 `ProjectDeltatime/Assets`, `ProjectDeltatime/Packages`, `ProjectDeltatime/ProjectSettings`에 있다.
 - 확정된 내용은 현재 파일, 직렬화된 씬/프리팹/데이터, 프로젝트 설정, Git 상태에서 직접 확인한 사실만 사용했다.
 - 의도나 장르처럼 파일만으로 확정할 수 없는 내용에는 **추정**을 표시했다.
-- 현재 브랜치는 `develop`이다. 2026-07-31 적 이동 기능 구현은 코드, 씬, NavMeshData, ScriptableObject, 패키지와 문서를 함께 갱신한 작업 트리를 기준으로 기록한다.
+- 현재 브랜치는 `feature/EnemyAI`다. 2026-08-01 적 무기 드롭·재무장·주먹 공격 구현은 코드, 씬, 프리팹, ScriptableObject와 문서를 함께 갱신한 작업 트리를 기준으로 기록한다.
 - 기존 `README`, 기획 문서, `AGENTS.md`는 분석 시작 시 없었다. `Assets/_Project/Tests` 폴더는 비어 있고 `.asmdef` 및 Unity Test Framework 테스트 어셈블리는 없다.
 - 비생성 스크립트에서 `TODO`, `FIXME`, `HACK` 표식과 설명 주석은 확인되지 않았다.
 
@@ -25,7 +25,8 @@
 - `ProjectDeltatime/EnemyMovementSmoke.log`에는 2026-07-31에 `Prototype play-mode smoke test passed.`가 기록되어 있다.
 - 커스텀 스모크 테스트는 `Stage2`를 열고 초기 플레이어/적/카메라/월드 시간, NavMeshData, 적 이동 누적 거리와 경로 획득, 근접형 추격 상태, 투척 무기 6 거리, 두 적 유형의 기절·무장 해제, 사격 적 무기 드롭, 적 전멸 후 리플레이와 시야 조명 프록시를 검사한다.
 - 현재 테스트 코드에는 `DEADLINE` 발동/행동 준비와 플레이어의 공중 무기 가로채기를 직접 검증하는 어설션이 없다.
-- 이번 근접 판정·후퇴 사격 코드와 직렬화 씬은 위 스모크 테스트보다 최신이다. Unity 스크립트 컴파일과 씬 직렬화 값은 확인했지만 사용자 요청에 따라 플레이 테스트와 스모크 테스트는 **미실행**했으므로 실제 전투 동작은 최신 통합 결과로 확인하지 않았다.
+- 이번 적 무기 드롭·재무장·주먹 공격 및 플레이어 근접 전투 코드는 위 스모크 테스트보다 최신이다. Unity 6000.1.13f1 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 씬·에셋 정적 검증은 통과했지만, 사용자 요청에 따라 플레이 테스트와 스모크 테스트는 **미실행**했으므로 실제 전투 동작은 최신 통합 결과로 확인하지 않았다.
+- 근접 무기 드롭·재획득, 시작 유형과 다른 무기 사용, 주먹 세 번 피격, 근거리 주먹 우선, 원거리 무기 탐색, 픽업 경쟁, 플레이어 근접 공격과 `DEADLINE` 해제 판정은 구현 코드와 직렬화 연결만 확인했으며 런타임 결과는 **확인 불가**다.
 - 정식 Unity Test Framework 어셈블리는 없으며 `DEADLINE` 발동/행동 준비와 실제 입력 기반 공중 가로채기는 여전히 직접 검증하지 않는다.
 
 ## 2. 프로젝트 개요
@@ -42,10 +43,10 @@
 
 - 플레이어가 이동하거나 조준 방향을 돌리거나 사격·투척·대시할 때 월드 시간이 빨라진다.
 - 플레이어는 실제 시간 기준으로 조작되며, 적·투사체·투척 무기 등 월드 객체는 별도의 `WorldDeltaTime`으로 진행된다.
-- 적은 베이크된 NavMesh 경로와 충돌 안전 캡슐 이동으로 엄폐물을 우회하며, 사격형은 거리를 유지하고 근접형은 플레이어의 현재 위치를 계속 추격한다.
+- 적은 베이크된 NavMesh 경로와 충돌 안전 캡슐 이동으로 엄폐물을 우회하며, 시작 유형과 무관하게 현재 장비에 따라 총기 거리 유지·근접 추격·빈손 주먹 및 무기 탐색을 선택한다.
 - 플레이어의 시야 부채꼴과 장애물 판정에 따라 적의 렌더러가 보이거나 숨겨지고, 어두운 스테이지에서는 시야 조명이 가시성을 보조한다.
-- 적의 총알이 임박한 순간 이동을 멈추면 `DEADLINE` 하드 프리즈가 발동할 수 있고, 정지 중 최대 2개의 사격/투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
-- 무기는 발사하여 탄약을 소모하고, 던져 적을 기절·무장 해제하거나, 바닥 무기와 교환하거나, 적에게서 날아온 무기를 공중에서 가로챌 수 있다.
+- 적의 총알이 임박한 순간 이동을 멈추면 `DEADLINE` 하드 프리즈가 발동할 수 있고, 정지 중 최대 2개의 사격·근접 공격·투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
+- 무기는 종류에 따라 발사하거나 근접 공격에 사용하며, 던져 모든 적을 기절·무장 해제하거나, 플레이어와 적이 바닥 무기를 확보하고, 적에게서 날아온 무기를 플레이어가 공중에서 가로챌 수 있다.
 - 모든 적을 제거하면 실시간 시뮬레이션을 멈추고 기록된 시각 상태를 1.00배 월드 시간으로 반복 재생한다.
 
 근거 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`
@@ -74,7 +75,7 @@
 
 - 3D 물리 기반 전투 프로토타입으로 전환된 상태다. 씬 검증 코드도 `Rigidbody2D`가 없어야 하고 원근 카메라여야 한다고 검사한다.
 - Git 이력에는 `3D 프로토타입 제작`, `KillCam 구현`, `암흑시야와 Light 구현`이 기록되어 있다.
-- 현재 미커밋 변경에는 기존 `PrototypeRoom`을 `Stage1`/`Stage2`로 교체하고, 공중 무기 가로채기와 `DEADLINE`을 추가한 내용이 포함된다.
+- 현재 미커밋 변경에는 공통 적 전투 컴포넌트, 근접 판정, 플레이어 체력/근접 공격, 근접 무기 데이터와 재생성된 Stage1/Stage2가 포함된다.
 - `Stage1`과 `Stage2`의 게임 오브젝트 구성은 동일하고 조명 프로필만 다르다. 두 씬을 별도 콘텐츠 단계로 사용할지, 밝기 비교용 변형으로 사용할지는 **확인 불가**다.
 
 ## 3. 현재 구현 현황
@@ -85,24 +86,24 @@
 | 마우스 조준 | 구현 완료 | 화면 포인터를 지면 평면에 투영하여 플레이어 회전과 조준선을 갱신 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs` | 마우스 전용 |
 | 대시 | 구현 완료 | 이동 방향으로 최대 3.5 거리, 0.03 스킨의 축소 캡슐 캐스트, 대시 중 무적, 0.8초 쿨다운 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerDash.cs` | 벽 0.01 겹침 시작 회귀 검사 포함 스모크 통과 |
 | 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
-| `DEADLINE` | 부분 구현 | 임박한 적 투사체와 이동 정지를 감지해 하드 프리즈, 최대 2개 행동 준비, 이동 시 해제 | `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs` | 씬 연결은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
-| 총기 사격 | 구현 완료 | 권총과 자동소총이 공통 탄약·발사 간격 검사와 팩션 기반 투사체 생성을 사용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 플레이어 입력은 눌림 프레임 기반, 적 AI가 자동소총 연사를 수행 |
-| 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 체력 시스템은 1회 피격 사망 |
+| `DEADLINE` | 부분 구현 | 임박한 적 투사체와 이동 정지를 감지해 하드 프리즈, 사격·근접 공격·투척 중 최대 2개 행동 준비, 이동 시 해제 | `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 씬 연결과 컴파일은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
+| 총기 사격 | 구현 완료 | 권총과 자동소총이 공통 탄약·발사 간격 검사와 팩션 기반 투사체 생성을 사용하며 피해는 3 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 권총 적 사용 시 단발, 자동소총 적 사용 시 4발 점사 |
+| 근접 무기 공격 | 구현 완료 | 전방 반각 35도·거리 1.45 안에서 시야가 확보된 가장 가까운 적대 대상 하나에 피해 3을 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | 플레이어는 실제 시간 쿨다운, 적은 월드 시간 상태 머신 사용. 플레이 검증 미실행 |
+| 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 총기 피해 3은 플레이어 최대 체력과 같음 |
 | 무기 투척 | 구현 완료 | 장비 무기를 던지고 적 명중 시 기절, 최대 6 거리 후 바닥 픽업으로 변환 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs` | 기존 스모크 테스트 범위에 포함 |
-| 적 기절·무장 해제 | 구현 완료 | 공통 `EnemyBehavior`가 이동/공격을 중단하고 2 월드초 후 비무장 상태를 유지. 사격형은 자동소총을 한 번 드롭 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyBehavior.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs` | 근접 무기 드롭·획득과 재무장 로직 없음 |
-| 바닥 무기 획득·교환 | 구현 완료 | `E`로 근처 픽업을 장비하고 기존 장비가 있으면 그 픽업과 교환 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 인벤토리 슬롯은 없음 |
-| 적 무기 공중 드롭 | 구현 완료 | 이동 방향 또는 전방으로 자동소총을 포물선 드롭하고 착지 예측선을 표시 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs` | 사격 적 2명의 기절 드롭 수를 최신 스모크에서 확인 |
+| 적 기절·무장 해제·재무장 | 구현 완료 | 모든 적이 기절 시 현재 장비와 남은 탄약을 드롭하고, 2 월드초 후 빈손 판단을 재개해 주먹 공격 또는 예약한 바닥 무기 획득을 시도 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyBehavior.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs` | 재무장 후 다시 기절/사망하면 새 현재 장비를 다시 드롭. 플레이 검증 미실행 |
+| 바닥 무기 획득·교환·예약 | 구현 완료 | 플레이어는 `E`로 근처 픽업을 획득/교환하며 적 예약을 무시한다. 빈손 적은 NavMesh 완전 경로가 있는 픽업을 예약해 획득 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs` | 여러 적의 동일 픽업 추적을 예약으로 방지. 런타임 경쟁 결과 확인 불가 |
+| 적 무기 공중 드롭 | 구현 완료 | 이동 방향 또는 전방으로 현재 총기/근접 무기를 포물선 드롭하고 종류별 큐브 스케일과 착지 예측선을 표시 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs` | 모든 적에 드롭 컴포넌트가 직렬화됨. 최신 스모크 미실행 |
 | 공중 무기 가로채기 | 부분 구현 | `E` 입력과 0.18초 버퍼로 반경 1.15 내 공중 무기를 장비하고 0.2초 하드 프리즈 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 최신 플레이 테스트 없음 |
 | 적 이동·경로 탐색 | 구현 완료 | 외부 `StageNavigation.asset`의 NavMesh 경로를 사용하고 Kinematic Rigidbody 캡슐을 `WorldDeltaTime`만큼 이동. 벽 충돌과 적 간 분리를 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scenes/StageNavigation.asset` | 런타임 동적 NavMesh 재베이크는 없음 |
-| 이동 연사형 AI | 구현 완료 | 공격 단계와 이동 모드를 분리해 6~9 거리를 유지하고, 6 미만에서는 플레이어를 바라보며 70% 속도로 후퇴하는 동안에도 조준·4발 점사·쿨다운을 진행 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyShooter.cs` | 두 씬에 2명 배치, 최신 플레이 검증 미실행 |
-| 지속 추격 근접형 AI | 구현 완료 | 몸체 기준 시야선으로 플레이어를 추격하고 1.45 범위에서 선딜 중 35% 속도로 따라붙은 뒤 근접 피해·후딜을 수행 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyChaser.cs` | 근접 무기는 시각 표현이며 획득 가능한 무기 데이터는 미구현 |
-| 플레이어/적 체력 | 부분 구현 | 생존 여부와 사망 이벤트는 있으나 누적 HP 없이 유효 피격 1회에 사망 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs` | `DamageHit.Damage`를 누적 계산하지 않음 |
+| 장비 기반 공통 적 전투 AI | 구현 완료 | `EnemyCombatant`가 현재 장비에 따라 총기 거리 유지·후퇴 사격, 근접 무기 선딜 추격, 빈손 주먹/무기 탐색을 전환하며 `EnemyShooter`/`EnemyChaser`는 시작 유형 래퍼로 유지 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyShooter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyChaser.cs` | 시작 이동 속도는 유지하고 공격 방식은 현재 장비가 결정. 플레이 검증 미실행 |
+| 플레이어/적 체력 | 부분 구현 | 플레이어는 최대 체력 3과 현재 체력, 변경 이벤트를 가지며 주먹 피해 1은 세 번 누적되어 사망한다. 적은 기존처럼 유효 피해 한 번에 사망 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs` | 총기·근접 무기 피해 3은 플레이어 즉사 유지. 세 번 주먹 피격은 런타임 확인 불가 |
 | 시야 부채꼴·암흑 시야 | 구현 완료 | 장애물 Raycast로 메시를 갱신하고 시야 포함 여부로 적 렌더러를 토글 | `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | 적 AI의 감지 여부와 플레이어 가시성은 별도 |
 | 탑다운 카메라 | 구현 완료 | 원근 카메라가 플레이어와 조준 선행 지점을 부드럽게 추적 | `ProjectDeltatime/Assets/_Project/Scripts/Player/TopDownCameraController.cs` | 카메라 1대 |
 | 스테이지 적 등록·클리어 | 구현 완료 | 생존 적을 등록하고 0명이 되면 전투를 막고 리플레이 요청 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 적 3명 고정 콘텐츠 |
 | 사망·재시작 | 구현 완료 | 플레이어 사망 시 전투를 막고 `R`로 현재 씬 재로드 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 체크포인트 없음 |
 | 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz로 기록해 프록시로 반복 재생 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs` | 시각 리플레이만 제공, 종료/스킵/다음 씬 없음 |
-| HUD | 부분 구현 | IMGUI로 적 수, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
+| HUD | 부분 구현 | IMGUI로 적 수, 체력 `HEALTH 3/3`, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, `LMB Attack` 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
 | Stage1/Stage2 콘텐츠 | 부분 구현 | 두 씬 모두 44개 GameObject, 플레이어 1, 이동 연사형 2, 근접 추격형 1, 픽업 1, Navigation 1로 동일 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity` | 조명만 밝음/어두움으로 다름 |
 | 씬 전환 | 미구현 | 현재 씬 재시작 외에 다른 씬을 로드하는 코드가 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | `Stage1 → Stage2` 흐름 필요 여부 확인 |
 | 메인 메뉴·일시정지·설정 | 미구현 | 관련 씬, UI, 입력, 코드가 없음 | `ProjectDeltatime/Assets/_Project` | 계획 필요 |
@@ -111,7 +112,7 @@
 | 세이브/로드 | 미구현 | 런타임 저장 API와 저장 데이터가 없음 | `ProjectDeltatime/Assets/_Project/Scripts` | 계획 필요 |
 | 사운드 | 미구현 | `AudioSource`, `AudioClip`, 오디오 에셋이 없고 `Audio` 폴더가 비어 있음 | `ProjectDeltatime/Assets/_Project/Audio` | 계획 필요 |
 | 게임패드·리바인딩 | 미구현 | `Keyboard&Mouse` 제어 스킴만 정의 | `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions` | 목표 플랫폼 확인 필요 |
-| 자동 테스트 | 부분 구현 | 커스텀 배치 스모크는 최신 적 이동·경로·추격·기절·리플레이까지 통과했으나 정식 테스트 어셈블리는 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs` | `DEADLINE`과 입력 기반 가로채기 전용 어설션은 없음 |
+| 자동 테스트 | 부분 구현 | 커스텀 배치 스모크 코드를 공통 적 상태 API에 맞게 컴파일 가능하도록 갱신했으나 이번 기능 변경에서는 실행하지 않음 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs` | Unity 컴파일·씬 생성기 정적 검증만 통과, 런타임 결과 확인 불가 |
 
 ## 4. 핵심 게임 루프
 
@@ -136,39 +137,41 @@ flowchart TD
 - `EditorBuildSettings.asset`의 활성 씬 순서는 `Stage1`, `Stage2`다.
 - 별도 부트스트랩이나 메인 메뉴는 없다.
 - 각 씬은 플레이어 1명, 권총 픽업 1개, 이동 연사형 2명, 지속 추격 근접형 1명, 엄폐물과 베이크된 NavMesh가 있는 방으로 시작한다.
-- 플레이어는 권총, 사격 적은 자동소총, 근접 적은 시각용 근접 무기를 장비하고 시작한다.
+- 플레이어는 권총, 사격 시작 적 2명은 자동소총, 근접 시작 적 1명은 획득·투척 가능한 `MeleeWeapon.asset`을 장비하고 시작한다.
 
 ### 4.2 플레이어의 주요 행동
 
 - `WASD`: 이동
 - 마우스 이동: 조준 및 플레이어 회전
-- 마우스 왼쪽: 발사
+- 마우스 왼쪽: 장비에 따라 총기 발사 또는 즉시 근접 공격
 - 마우스 오른쪽: 현재 무기 투척
 - `Space`: 이동 방향 대시
 - `E`: 공중 무기 가로채기, 바닥 무기 획득 또는 교환
 - `R`: 현재 씬 재시작
 - 임박한 적탄이 있을 때 이동 입력을 놓음: `DEADLINE` 진입 조건
-- `DEADLINE` 중 발사/투척: 최대 2개 행동 준비
+- `DEADLINE` 중 공격/투척: 최대 2개 행동 준비. 근접 공격은 준비 시 방향과 무기 수치를 저장하고 해제 시 판정
 - `DEADLINE` 중 이동: 하드 프리즈 해제 및 준비 행동 진행
 
 ### 4.3 적 또는 장애물과의 상호작용
 
-- 사격 적은 18 거리 안에서 플레이어를 감지하고 NavMesh로 접근/후퇴해 6~9 거리를 유지한다. 6 거리 미만에서는 플레이어를 바라본 채 70% 속도로 후퇴하며, 이동과 병행해 0.65 월드초 조준·자동소총 4발 점사·1.15 월드초 쿨다운을 진행한다.
-- 근접 적은 몸체에서 시작하는 시야선으로 20 거리 안의 플레이어를 감지하고 현재 위치를 계속 추격한다. 1.45 거리 안에서 0.42 월드초 선딜 동안 플레이어를 바라보며 35% 속도로 따라붙은 후 1 피해를 주고, 플레이어가 1.9 밖으로 벗어나거나 장애물에 가려지면 공격을 취소한다.
+- 총기를 장비한 적은 몸체 기준 시야선으로 플레이어를 감지하고 NavMesh로 접근/후퇴해 6~9 거리를 유지한다. 6 거리 미만에서는 플레이어를 바라본 채 70% 속도로 후퇴하며, 이동과 병행해 0.65 월드초 조준·무기별 점사·1.15 월드초 쿨다운을 진행한다.
+- 근접 무기를 장비한 적은 1.45 거리 안에서 0.42 월드초 선딜 동안 플레이어를 바라보며 35% 속도로 따라붙은 후 피해 3을 주고, 플레이어가 1.9 밖으로 벗어나거나 장애물에 가려지면 공격을 취소한다.
+- 빈손 적은 보이는 플레이어가 3 거리 안이면 무기 탐색보다 접근과 주먹 공격을 우선한다. 주먹은 거리 1.2, 선딜 0.35, 후딜 0.6 월드초, 피해 1이다. 그 밖에서는 0.25 월드초마다 반경 8 안에서 완전한 NavMesh 경로가 있는 바닥 무기를 예약한다.
+- 빈손 적은 장전된 총기를 우선하되 총기 경로가 가장 가까운 근접 무기보다 2 이상 길면 근접 무기를 선택한다. 탄약이 없는 총기는 바닥에 내려놓고 다시 판단한다.
 - 벽·엄폐물은 사선, 투사체, 대시, 시야 부채꼴, 공중 드롭의 경로를 막는다.
 - 플레이어 투사체는 적을, 적 투사체는 플레이어를 공격한다. 같은 팩션과 발사 원본은 무시한다.
-- 던진 무기는 적을 죽이지 않고 2 월드초 기절시키며 무장을 해제한다.
+- 던진 무기는 적을 죽이지 않고 2 월드초 기절시키며 현재 장비를 공중으로 드롭한다. 회복한 적은 빈손 전투 또는 재무장 판단을 재개한다.
 
 ### 4.4 보상과 성장
 
-- 확인된 즉시 보상은 사격 적이 떨어뜨린 탄약 8발의 자동소총을 회수하거나 가로채는 것이다.
+- 적이 떨어뜨린 현재 총기 또는 근접 무기를 회수·교환·가로채는 전투 중 무기 순환이 즉시 보상으로 구현되어 있다.
 - 바닥에 있는 권총 8발 픽업도 사용할 수 있다.
 - 점수, 경험치, 레벨업, 영구 성장, 통화, 해금은 **미구현**이다.
 - 따라서 현재 보상 구조는 전투 중 자원 순환에 한정된다.
 
 ### 4.5 실패와 재시작
 
-- 플레이어는 대시 무적 중이 아닌 상태에서 유효 피격을 한 번 받으면 사망한다.
+- 플레이어 최대 체력은 3이다. 적 주먹은 피해 1이므로 세 번 누적 피격 시 사망하고, 총기와 근접 무기는 피해 3으로 기존 즉사를 유지한다.
 - 사망하면 `StageController`가 `PlayerDead`로 바뀌고 플레이어 전투가 비활성화된다.
 - HUD에 `YOU DIED`와 재시작 안내가 표시된다.
 - `R`은 현재 활성 씬을 다시 로드한다.
@@ -213,43 +216,43 @@ flowchart TD
 
 ### 5.4 전투
 
-- **시스템 목적:** 팩션 기반 사격, 투사체 충돌, 무기 투척과 준비 사격을 제공한다.
-- **현재 동작 방식:** `WeaponController`가 탄약과 발사 쿨다운을 관리한다. 투사체는 월드 시간으로 이동하며 SphereCast로 가장 가까운 충돌을 판정한다. 투척 무기는 무기를 즉시 해제하고 충돌 또는 최대 거리에서 픽업으로 변환된다.
-- **주요 클래스:** `WeaponController`, `Projectile`, `ThrownWeapon`, `CombatQuery`, `DamageHit`, `StunHit`
-- **데이터 흐름:** 입력/AI → 무기 컨트롤러 → 투사체 또는 투척 무기 → `IDamageable`/`IStunnable` → 체력/AI/스테이지
+- **시스템 목적:** 팩션 기반 총기·근접 공격, 투사체 충돌, 무기 투척과 `DEADLINE` 준비 공격을 제공한다.
+- **현재 동작 방식:** `WeaponController`가 현재 `WeaponKind`, 탄약과 실제/월드 시간 사용 간격을 관리한다. 총기는 투사체를 만들고 근접 무기는 공통 부채꼴 판정으로 시야가 확보된 가장 가까운 적대 대상 하나를 친다. 투척 무기는 장비를 즉시 해제하고 충돌 또는 최대 거리에서 픽업으로 변환된다.
+- **주요 클래스:** `WeaponController`, `MeleeAttackResolver`, `Projectile`, `ThrownWeapon`, `CombatQuery`, `DamageHit`, `StunHit`
+- **데이터 흐름:** 입력/AI → 무기 컨트롤러 → 투사체·근접 판정 또는 투척 무기 → `IDamageable`/`IStunnable` → 체력/AI/스테이지
 - **다른 시스템과의 의존성:** `WeaponDefinition`, 월드 시간, 프리팹, 팩션, 히트 플래시
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Combat`, `ProjectDeltatime/Assets/_Project/Scripts/Core`
-- **개선이 필요한 부분:** 무기 종류가 1개이고, 재장전·반동·명중 수치·효과음·피격 경직이 없다.
+- **개선이 필요한 부분:** 재장전·반동·명중 수치·효과음·피격 경직과 근접 공격 애니메이션이 없다.
 
 ### 5.5 적 AI
 
-- **시스템 목적:** 공통 경로 탐색/이동 위에서 거리 유지 연사형과 지속 추격 근접형 적을 제공한다.
-- **현재 동작 방식:** `EnemyPerception`이 몸체 기준 시야선과 최근 확인 위치를 관리하고 `EnemyMotor`가 베이크된 NavMesh 경로를 따라 Kinematic Rigidbody를 월드 시간으로 이동한다. `EnemyShooter`는 `Detecting/Aiming/BurstFiring/Cooldown` 공격 단계와 `Stopped/Pursuing/Holding/Retreating` 이동 모드를 병렬로 사용한다. `EnemyChaser`는 `Detecting/Chasing/AttackWindup/Attacking/Cooldown` 상태를 사용하며 선딜 중 저속 추적한다. 공통 `EnemyBehavior`는 `Stunned/Disarmed/Dead`를 우선 처리한다.
-- **주요 클래스:** `EnemyBehavior`, `EnemyPerception`, `EnemyMotor`, `EnemyShooter`, `EnemyChaser`, `EnemyHealth`, `EnemyWeaponDrop`
-- **데이터 흐름:** 플레이어 위치/생존 → 시야선/최근 위치 → NavMesh 경로 → 월드 시간 이동/회전 → 유형별 공격. 피격/기절 → 공통 행동 중단·무장 해제/드롭 → 스테이지 통지
+- **시스템 목적:** 공통 경로 탐색/이동 위에서 현재 장비와 상황에 따른 총기·근접 무기·주먹 전투와 재무장을 제공한다.
+- **현재 동작 방식:** `EnemyPerception`이 몸체 기준 시야선과 최근 확인 위치를 관리하고 `EnemyMotor`가 베이크된 NavMesh 경로를 따라 Kinematic Rigidbody를 월드 시간으로 이동한다. `EnemyCombatant`는 공격 상태와 이동 모드를 분리하고 현재 장비로 공격 방식을 결정한다. 빈손일 때는 근거리 플레이어를 우선 주먹으로 상대하거나 경로 길이와 예약을 사용해 바닥 무기를 찾는다. `EnemyShooter`와 `EnemyChaser`는 시작 장비/속도 구분용 얇은 래퍼다.
+- **주요 클래스:** `EnemyBehavior`, `EnemyCombatant`, `EnemyPerception`, `EnemyMotor`, `EnemyShooter`, `EnemyChaser`, `EnemyHealth`, `EnemyWeaponDrop`
+- **데이터 흐름:** 플레이어 위치/생존 + 현재 장비 + 바닥 픽업 → 시야선/경로 길이/예약 → 월드 시간 이동/회전 → 장비별 공격. 피격/기절 → 공통 행동 중단·현재 무기 드롭 → 회복 후 빈손 판단/재무장 → 스테이지 통지
 - **다른 시스템과의 의존성:** 플레이어, 월드 시간, AI Navigation, 3D 물리, 무기, 시야 부채꼴, 스테이지
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Enemies`
-- **개선이 필요한 부분:** 전술적 엄폐 선택, 협동, 재무장, 근접 무기 획득/드롭, 스폰, 난이도 변화가 없다. 플레이어 시야 밖에서도 AI 추적과 공격이 계속될 수 있으므로 의도 확인이 필요하다.
+- **개선이 필요한 부분:** 전술적 엄폐 선택, 협동, 스폰, 난이도 변화가 없다. 플레이어 시야 밖에서도 AI 추적과 공격이 계속될 수 있으므로 의도 확인이 필요하다. 재무장과 픽업 경쟁은 플레이 테스트 미실행으로 체감·교착 여부가 확인되지 않았다.
 
 ### 5.6 체력 및 피해
 
-- **시스템 목적:** 생존 여부, 사망 이벤트, 대시 무적, 적 기절을 제공한다.
-- **현재 동작 방식:** `IDamageable`은 피해량을 전달하지만 플레이어와 적 모두 남은 HP를 저장하지 않고 첫 유효 피격에 사망한다. 플레이어는 대시 중 피해를 무시한다.
+- **시스템 목적:** 플레이어 누적 체력과 생존/변경/사망 이벤트, 대시 무적, 적 사망·기절을 제공한다.
+- **현재 동작 방식:** 플레이어는 최대 체력 3에서 `DamageHit.Damage`를 차감하고 0에서 사망하며 대시 중 피해를 무시한다. 적은 별도 누적 HP 없이 유효 피해 한 번에 사망한다.
 - **주요 클래스:** `PlayerHealth`, `EnemyHealth`, `IDamageable`, `IStunnable`
 - **데이터 흐름:** 충돌 → `DamageHit`/`StunHit` → 체력 → 사망/기절 이벤트와 시각 변화
 - **다른 시스템과의 의존성:** 스테이지, 적 AI, 무기 드롭, HUD, 대시
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Core/CombatContracts.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs`
-- **개선이 필요한 부분:** 피해량 1 수치는 존재하지만 누적 체력 계산에 사용되지 않는다. HP 도입 여부를 먼저 결정해야 한다.
+- **개선이 필요한 부분:** 플레이어 체력 회복·피격 무적·체력 바 애니메이션은 없고, 적은 여전히 누적 체력을 사용하지 않는다.
 
 ### 5.7 아이템·무기·인벤토리
 
 - **시스템 목적:** 무기 자원 순환과 즉시 장비 교환을 제공한다.
-- **현재 동작 방식:** 바닥 픽업은 무기 정의와 탄약을 보유한다. 획득 시 플레이어의 이전 무기가 있으면 동일 픽업 오브젝트에 이전 무기를 넣어 교환한다. 공중 드롭을 잡을 때는 이전 무기를 플레이어 위치의 새 바닥 픽업으로 생성한다.
+- **현재 동작 방식:** 바닥 픽업은 무기 정의와 탄약, 적 예약 소유자를 보유한다. 플레이어는 예약을 무시하고 획득/교환한다. 빈손 적은 장전된 총기를 우선하되 경로 차이가 2 이상이면 가까운 근접 무기를 선택하고 한 픽업을 예약한다. 공중 드롭은 적이 가로채지 않으며 플레이어가 잡으면 이전 무기를 바닥에 생성한다.
 - **주요 클래스:** `WeaponDefinition`, `WeaponPickup`, `InterceptableWeapon`, `EnemyWeaponDrop`, `WeaponController`
-- **데이터 흐름:** ScriptableObject 정의 + 탄약 → 픽업/공중 드롭 → 무기 컨트롤러 장비 → 발사/투척
+- **데이터 흐름:** ScriptableObject 종류/수치 + 탄약 → 픽업/예약/공중 드롭 → 플레이어 또는 적 무기 컨트롤러 장비 → 사격/근접 공격/투척
 - **다른 시스템과의 의존성:** 적 기절/사망, 플레이어 상호작용, 월드 시간, 프리팹
-- **근거 파일:** `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/Prefabs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat`
-- **개선이 필요한 부분:** 인벤토리 슬롯, 소모품, 드롭 테이블, 무기 다종화는 없다.
+- **근거 파일:** `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Prefabs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat`
+- **개선이 필요한 부분:** 인벤토리 슬롯, 소모품, 드롭 테이블, 재장전은 없다.
 
 ### 5.8 스테이지 및 게임 진행 관리
 
@@ -294,7 +297,7 @@ flowchart TD
 ### 5.12 이벤트
 
 - **시스템 목적:** 핵심 상태 변경을 직접 호출과 C# 이벤트로 전달한다.
-- **현재 동작 방식:** 플레이어 사망은 `PlayerHealth.Died`, `DEADLINE` 해제는 `DeadlineController.Released` 이벤트를 사용한다. 적 사망과 스테이지 등록은 직접 메서드 호출이다.
+- **현재 동작 방식:** 플레이어 체력 변경/사망은 `PlayerHealth.HealthChanged`/`Died`, 장비 변경은 `WeaponController.EquipmentChanged`, `DEADLINE` 해제는 `DeadlineController.Released` 이벤트를 사용한다. 적 사망과 스테이지 등록은 직접 메서드 호출이다.
 - **주요 클래스:** `PlayerHealth`, `DeadlineController`, `StageController`, `PlayerCombat`
 - **데이터 흐름:** 체력/`DEADLINE` → 이벤트 구독자. 적 체력 → 스테이지 직접 통지
 - **다른 시스템과의 의존성:** 전투, 무기 쿨다운, 스테이지
@@ -304,11 +307,11 @@ flowchart TD
 ### 5.13 데이터 관리
 
 - **시스템 목적:** 무기 수치와 씬/프리팹 구성을 에셋으로 직렬화한다.
-- **현재 동작 방식:** 권총 수치는 `WeaponDefinition` ScriptableObject 1개에 저장된다. 나머지 밸런스 값은 각 씬과 프리팹의 컴포넌트 필드에 분산된다.
+- **현재 동작 방식:** 권총·자동소총·근접 무기 수치는 `WeaponDefinition` ScriptableObject에 종류별로 저장된다. 적 행동 수치는 각 씬의 공통 `EnemyCombatant` 필드에 직렬화된다.
 - **주요 클래스:** `WeaponDefinition`, `PrototypeSceneBuilder`
-- **데이터 흐름:** `Pistol.asset` → 무기 컨트롤러/픽업/드롭. 에디터 빌더 상수 → 씬·프리팹·머티리얼 직렬화
+- **데이터 흐름:** `Pistol.asset`/`AutomaticRifle.asset`/`MeleeWeapon.asset` → 플레이어·적 무기 컨트롤러/픽업/드롭. 에디터 빌더 상수 → 씬·프리팹·머티리얼 직렬화
 - **다른 시스템과의 의존성:** 전투 전반, 콘텐츠 생성 도구
-- **근거 파일:** `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`
+- **근거 파일:** `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`
 - **개선이 필요한 부분:** 적/스테이지/시간/플레이어 수치용 데이터 에셋은 없고, 빌더 재실행 시 수동 씬 수정이 덮어써질 수 있다.
 
 ### 5.14 세이브/로드
@@ -398,15 +401,16 @@ flowchart LR
 
 | 에셋 | 타입 | 확인된 데이터 |
 |---|---|---|
-| `Pistol.asset` | `WeaponDefinition` | 이름 Pistol, 탄창 8, 발사 간격 0.24초, 탄속 17, 피해 1, 투사체 반경 0.08 |
-| `AutomaticRifle.asset` | `WeaponDefinition` | 이름 Automatic Rifle, 탄창 30, 발사 간격 0.12초, 탄속 16, 피해 1, 투사체 반경 0.075 |
+| `Pistol.asset` | `WeaponDefinition` | 총기, 탄창 8, 발사 간격 0.24초, 탄속 17, 피해 3, 적 점사 1발, 투사체 반경 0.08 |
+| `AutomaticRifle.asset` | `WeaponDefinition` | 총기, 탄창 30, 발사 간격 0.12초, 탄속 16, 피해 3, 적 점사 4발, 투사체 반경 0.075 |
+| `MeleeWeapon.asset` | `WeaponDefinition` | 근접, 탄약 없음, 피해 3, 거리 1.45, 정면 반각 35도, 사용 간격 0.72초 |
 
 ### 6.6 현재 확인된 콘텐츠
 
 - 전투 방 레이아웃 1종
 - 조명 프로필 2종
 - 적 유형 2종: 이동 연사형, 지속 추격 근접형
-- 무기 데이터 2종: 권총, 자동소총
+- 무기 데이터 3종: 권총, 자동소총, 근접 무기
 - 픽업/투척/공중 드롭 표현
 - 프로토타입 머티리얼 14개, 커스텀 시야 셰이더 3개
 - `VisionAlwaysVisible`, `VisionHiddenArea`, `VisionStencilWriter` 머티리얼과 셰이더는 현재 씬/프리팹에서 직접 참조되지 않는다.
@@ -420,7 +424,7 @@ flowchart LR
 |---|---|---|
 | `W`, `A`, `S`, `D` | 이동 | 구현 완료 |
 | 마우스 이동 | 지면 조준·플레이어 회전 | 구현 완료 |
-| 마우스 왼쪽 | 발사 / `DEADLINE` 중 사격 준비 | 구현 완료 |
+| 마우스 왼쪽 | 장비에 따른 발사/근접 공격 / `DEADLINE` 중 공격 준비 | 구현 완료: 컴파일·씬 연결 확인, 근접 런타임 확인 불가 |
 | 마우스 오른쪽 | 무기 투척 / `DEADLINE` 중 투척 준비 | 구현 완료 |
 | `Space` | 이동 방향 대시 | 구현 완료 |
 | `E` | 공중 가로채기 또는 바닥 획득/교환 | 부분 구현: 바닥 교환은 기존 테스트 확인, 공중 가로채기는 최신 테스트 미검증 |
@@ -436,7 +440,7 @@ flowchart LR
 - 플레이어는 항상 실제 시간 기준 이동 속도를 유지한다.
 - 플레이어 행동량에 따라 적과 투사체의 월드 진행 속도가 변한다.
 - 탄약은 발사로 줄며 자동 재장전은 없다.
-- 무기를 던지면 즉시 비무장 상태가 되고, 바닥 또는 공중 무기를 다시 확보해야 한다.
+- 무기를 던지면 즉시 비무장 상태가 되고, 플레이어는 바닥 또는 공중 무기를 다시 확보해야 한다. 적도 기절에서 회복한 뒤 주먹으로 싸우거나 바닥 무기를 찾아 재무장한다.
 - 적이 모두 사망하면 조작 가능한 전투 대신 리플레이가 반복된다.
 
 ### 7.4 피드백
@@ -454,7 +458,7 @@ flowchart LR
 
 ### 7.5 UI 정보 구조
 
-- 좌측 상단 상태 패널: 적 수, 실제 플레이 시간, 월드 배율 또는 리플레이 시간, 대시 상태, `DEADLINE` 상태, 무기/탄약
+- 좌측 상단 상태 패널: 적 수, 체력, 실제 플레이 시간, 월드 배율 또는 리플레이 시간, 대시 상태, `DEADLINE` 상태, 무기/탄약 또는 근접 표시
 - 화면 중앙: 사망/클리어 메시지 또는 `DEADLINE` 행동 수·해제 안내
 - 화면 상단 중앙: 임박한 `DEADLINE` 위협 시간
 - 화면 하단: 전체 키보드·마우스 조작법
@@ -533,19 +537,21 @@ flowchart TD
 | `WorldTimeActivity` | 이동·조준·행동 펄스 활동량 보관 |
 | `WorldTimeController` | 커스텀 월드 시간 계산과 하드 프리즈 토큰 관리 |
 | `DeadlineController` | 임박한 투사체 탐색, 정지 트리거, 행동 준비/해제 |
-| `WeaponController` | 현재 무기, 탄약, 발사 쿨다운, 발사/투척 생성 |
+| `WeaponController` | 현재 무기 종류/탄약/사용 쿨다운, 장비 변경 이벤트, 사격·즉시/준비 근접 공격·투척 |
+| `MeleeAttackResolver` | 전방 부채꼴과 시야선에서 가장 가까운 적대 대상 하나 판정 |
 | `Projectile` | 활성 투사체 레지스트리, 이동, 충돌, `DEADLINE` 선점 |
 | `ThrownWeapon` | 기절 투척물 이동과 바닥 픽업 변환 |
 | `InterceptableWeapon` | 적 드롭 무기의 포물선, 장애물, 예측, 가로채기 |
-| `EnemyBehavior` | 적 유형 공통 기절·무장 해제·사망 수명주기 |
+| `EnemyBehavior` | 적 유형 공통 기절·장비 해제·재무장·사망 수명주기 |
+| `EnemyCombatant` | 현재 장비에 따른 총기/근접 무기/주먹 상태, 이동 모드, 무기 경로 탐색·예약 |
 | `EnemyPerception` | 플레이어 거리, 시야선, 최근 확인 위치 |
 | `EnemyMotor` | NavMesh 경로 계산, 월드 시간 Rigidbody 이동, 회전, 충돌, 적 간 분리 |
-| `EnemyShooter` | 추적·후퇴·거리 유지·조준·자동소총 점사 상태 머신 |
-| `EnemyChaser` | 플레이어 현재 위치 지속 추격과 근접 선딜·타격·후딜 상태 머신 |
+| `EnemyShooter` | 자동소총 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
+| `EnemyChaser` | 근접 무기 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
 | `StageController` | 적 생존 집합과 스테이지 상태 |
 | `StageReplayController` | 카메라/렌더러/라인/조명 샘플 기록과 프록시 재생 |
 | `VisionCone` | 시야 메시, 가시성 판정, 런타임 시야 조명 |
-| `PrototypeSceneBuilder` | 두 씬, NavMeshData, 프리팹, 머티리얼, 권총/자동소총 데이터 재생성 및 검증 |
+| `PrototypeSceneBuilder` | 두 씬, NavMeshData, 프리팹, 머티리얼, 권총/자동소총/근접 무기 데이터 재생성 및 검증 |
 
 ### 8.3 싱글턴 사용 여부
 
@@ -557,7 +563,9 @@ flowchart TD
 ### 8.4 이벤트 구조
 
 - C# 이벤트:
+  - `PlayerHealth.HealthChanged` → 체력 UI 확장 지점
   - `PlayerHealth.Died` → `StageController`
+  - `WeaponController.EquipmentChanged` → `EnemyCombatant`
   - `DeadlineController.Released` → `PlayerCombat`
 - 직접 호출:
   - `EnemyHealth` → `StageController.NotifyEnemyDied`
@@ -604,7 +612,7 @@ Unity 버전: `6000.1.13f1`
 
 - 월드 객체의 시간 진행에는 `UnityEngine.Time.deltaTime` 대신 `WorldTimeController.WorldDeltaTime`을 사용해야 현재 콘셉트가 유지된다.
 - 플레이어 조작은 의도적으로 `unscaledDeltaTime`을 사용한다. 신규 플레이어 행동이 월드 시간에 종속되어야 하는지는 별도 결정이 필요하다.
-- `PrototypeSceneBuilder`를 재실행하면 두 씬, `StageNavigation.asset`, 핵심 프리팹/머티리얼과 권총/자동소총 수치를 다시 생성 또는 갱신한다. 수동 씬·NavMesh 수정과 빌더 상수의 소유권을 분리해야 한다.
+- `PrototypeSceneBuilder`를 재실행하면 두 씬, `StageNavigation.asset`, 핵심 프리팹/머티리얼과 권총/자동소총/근접 무기 수치를 다시 생성 또는 갱신한다. 수동 씬·NavMesh 수정과 빌더 상수의 소유권을 분리해야 한다.
 - 적의 실제 이동량과 상태 타이머는 `WorldDeltaTime`을 사용해야 하며, NavMesh는 경로만 제공하고 Transform을 자동 이동시키지 않는다.
 - 신규 가시성 장애물은 Layer 8 `VisionObstacle`에 배치해야 시야 메시와 공중 드롭 충돌 예측에 반영된다.
 - 새 런타임 조명은 리플레이에 보여야 한다면 `StageReplayController.RegisterLight`로 등록해야 한다.
@@ -613,8 +621,8 @@ Unity 버전: `6000.1.13f1`
 
 ### 8.9 기술 부채
 
-- 현재 적 이동 기능의 새 스크립트·NavMeshData·자동소총 에셋은 작업 트리에서 미추적 상태다.
-- 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없지만, 커스텀 배치 스모크의 최신 통합 결과는 통과했다.
+- 이번 기능의 `EnemyCombatant`, `MeleeAttackResolver`, `MeleeWeapon.asset`과 메타 파일은 작업 트리에서 미추적 상태이므로 변경 확정 시 함께 추적해야 한다.
+- 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없다. 커스텀 배치 스모크 코드는 컴파일되지만 이번 변경에서는 실행하지 않아 최신 통합 결과는 확인 불가다.
 - `StageReplayController`는 20Hz마다 전체 활성 렌더러를 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다.
 - 리플레이가 시작되면 대부분의 `MonoBehaviour`를 끄며, 현재 반복 리플레이 구조에서는 복구 경로가 없다.
 - 플레이어/적/시간/스테이지 밸런스 수치가 씬 컴포넌트와 코드 기본값에 분산되어 있다.
@@ -644,22 +652,22 @@ Unity 버전: `6000.1.13f1`
 | 권총 탄창 | 8발 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 시작/바닥 픽업 최대 탄약 |
 | 권총 발사 간격 | 0.24초 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 플레이어는 실제 시간, 적은 월드 시간 시계를 전달 |
 | 권총 탄속 | 17 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 월드 시간 기준 |
-| 권총 피해 | 1 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 현재 대상은 1회 피격 사망 |
+| 권총 피해 | 3 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 플레이어 최대 체력과 같아 적 사용 시 즉사 |
 | 투사체 반경 | 0.08 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | SphereCast 반경 |
 | 자동소총 탄창 | 30발 | `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 이동 연사형 시작 탄약 |
 | 자동소총 발사 간격 | 0.12 월드초 | 같은 에셋 | 적 4발 점사 내 발사 간격 |
 | 자동소총 탄속 | 16 | 같은 에셋 | 월드 시간 기준 |
-| 자동소총 피해 | 1 | 같은 에셋 | 현재 플레이어는 1회 피격 사망 |
+| 자동소총 피해 | 3 | 같은 에셋 | 플레이어 최대 체력과 같아 즉사 |
 | 자동소총 투사체 반경 | 0.075 | 같은 에셋 | SphereCast 반경 |
 | 투사체 최대 수명 | 4 월드초 | `ProjectDeltatime/Assets/_Project/Prefabs/Projectile.prefab` | 미충돌 시 제거 |
 | 투척 무기 속도 | 7 | `ProjectDeltatime/Assets/_Project/Prefabs/ThrownWeapon.prefab` | 월드 시간 기준 |
 | 투척 무기 최대 거리 | 6 | 같은 프리팹 | 도달 시 픽업 생성 |
-| 투척 무기 기절 | 2 월드초 | 같은 프리팹 | 회복 후 비무장 유지 |
+| 투척 무기 기절 | 2 월드초 | 같은 프리팹 | 모든 적이 현재 장비를 드롭하고 회복 후 빈손 판단 재개 |
 | 바닥 픽업 반경 | 1.25 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 플레이어 중심 |
 | 공중 가로채기 반경 | 1.15 | 같은 씬의 `PlayerCombat` | 플레이어 중심 |
 | 가로채기 입력 버퍼 | 0.18초 | 같은 씬의 `PlayerCombat` | 실제 시간 |
 | 가로채기 프리즈 | 0.2초 | 같은 씬의 `PlayerCombat` | 실제 시간 하드 프리즈 |
-| 사격 적 드롭 탄약 | 8발 | 같은 씬의 `EnemyWeaponDrop` | 기절 또는 사망 시 1회 |
+| 적 드롭 탄약 | 현재 남은 탄약 | 같은 씬의 `EnemyWeaponDrop` | 현재 장비를 드롭하며 재무장 뒤 다시 드롭 가능 |
 | 공중 드롭 비행 시간 | 0.85 월드초 | `ProjectDeltatime/Assets/_Project/Prefabs/InterceptableWeapon.prefab` | 포물선 진행 |
 | 공중 드롭 수평 거리 | 3 | 같은 프리팹 | 장애물에 막히면 단축 |
 | 공중 드롭 호 높이 | 1.25 | 같은 프리팹 | 포물선 추가 높이 |
@@ -668,22 +676,28 @@ Unity 버전: `6000.1.13f1`
 | `DEADLINE` 최대 충돌 예측 | 0.15 월드초 | 같은 씬의 `DeadlineController` | 이내 적탄만 위협 |
 | 이동 입력 임계값 | 0.05 | 같은 씬의 `DeadlineController` | 이동→정지 판정 |
 | `DEADLINE` 재준비 | 0.35 월드초 | 같은 씬의 `DeadlineController` | 해제 후 |
-| 준비 행동 최대 수 | 2개 | 같은 씬의 `DeadlineController` | 사격/투척 합계 |
+| 준비 행동 최대 수 | 2개 | 같은 씬의 `DeadlineController` | 사격/근접 공격/투척 합계 |
+| 플레이어 최대 체력 | 3 | 같은 씬의 `PlayerHealth` | `CurrentHealth`가 피해량만큼 감소 |
 | 사격 적 탐지 거리 | 18 | 같은 씬의 `EnemyPerception` | 시야선 필요 |
 | 사격 적 이동 속도 | 3.4 | 같은 씬의 `EnemyMotor` | `WorldDeltaTime` 기준 |
-| 사격 적 선호 거리 | 6~9 | 같은 씬의 `EnemyShooter` | 미만 후퇴, 초과 추적 |
-| 사격 적 후퇴 속도 배율 | 70% | 같은 씬의 `EnemyShooter` | 플레이어를 바라보며 조준·점사·쿨다운과 병행 |
-| 사격 적 조준 시간 | 0.65 월드초 | 같은 씬의 `EnemyShooter` | 정면 오차 허용 후 감소 |
-| 사격 적 점사 | 4발 | 같은 씬의 `EnemyShooter` | 자동소총 발사 간격 사용 |
-| 사격 적 쿨다운 | 1.15 월드초 | 같은 씬의 `EnemyShooter` | 점사 후 |
+| 총기 장비 적 선호 거리 | 6~9 | 같은 씬의 `EnemyCombatant` | 시작 유형과 무관하게 미만 후퇴, 초과 추적 |
+| 총기 장비 적 후퇴 속도 배율 | 70% | 같은 씬의 `EnemyCombatant` | 플레이어를 바라보며 조준·점사·쿨다운과 병행 |
+| 총기 장비 적 조준 시간 | 0.65 월드초 | 같은 씬의 `EnemyCombatant` | 정면 오차 허용 후 감소 |
+| 자동소총 적 점사 | 4발 | `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 권총은 적 사용 시 1발 |
+| 총기 장비 적 쿨다운 | 1.15 월드초 | 같은 씬의 `EnemyCombatant` | 점사 후 |
 | 사격 적 회전 속도 | 220도/월드초 | 같은 씬의 `EnemyMotor` | 이동과 목표 회전 |
-| 사격 적 정면 허용 오차 | 6도 | 같은 씬의 `EnemyShooter` | 경고선/조준 진행 조건 |
+| 총기 장비 적 정면 허용 오차 | 6도 | 같은 씬의 `EnemyCombatant` | 경고선/조준 진행 조건 |
 | 근접 적 탐지 거리 | 20 | 같은 씬의 `EnemyPerception` | 시야선 또는 최근 확인 위치 추격 |
 | 근접 적 이동 속도 | 4.8 | 같은 씬의 `EnemyMotor` | 플레이어 현재 위치를 계속 갱신 |
-| 근접 공격 거리/취소 거리 | 1.45 / 1.9 | 같은 씬의 `EnemyChaser` | 범위 이탈 시 다시 추격 |
-| 근접 공격 선딜/후딜 | 0.42 / 0.72 월드초 | 같은 씬의 `EnemyChaser` | 선딜 중 목표 회전과 저속 추적 |
-| 근접 선딜 이동 속도 배율 | 35% | 같은 씬의 `EnemyChaser` | 충돌 안전 이동으로 플레이어를 계속 추적 |
-| 근접 공격 피해 | 1 | 같은 씬의 `EnemyChaser` | 현재 플레이어는 1회 피격 사망 |
+| 근접 무기 공격 거리/취소 거리 | 1.45 / 1.9 | `MeleeWeapon.asset`와 같은 씬의 `EnemyCombatant` | 범위 이탈 시 다시 추적 |
+| 근접 무기 선딜/후딜 | 0.42 / 0.72 월드초 | 같은 씬의 `EnemyCombatant`, `MeleeWeapon.asset` | 선딜 중 목표 회전과 저속 추적 |
+| 근접 선딜 이동 속도 배율 | 35% | 같은 씬의 `EnemyCombatant` | 충돌 안전 이동으로 플레이어를 계속 추적 |
+| 근접 무기 공격 피해 | 3 | `MeleeWeapon.asset` | 플레이어 최대 체력과 같아 즉사 |
+| 주먹 우선 판단 거리 | 3 | 같은 씬의 `EnemyCombatant` | 보이는 플레이어가 이 거리 안이면 무기 탐색 중단 |
+| 주먹 범위/선딜/후딜 | 1.2 / 0.35 / 0.6 월드초 | 같은 씬의 `EnemyCombatant` | 빈손 공격 |
+| 주먹 피해 | 1 | 같은 씬의 `EnemyCombatant` | 세 번 피격 시 플레이어 사망 |
+| 적 무기 탐색 반경/주기 | 8 / 0.25 월드초 | 같은 씬의 `EnemyCombatant` | 완전한 NavMesh 경로 후보만 선택 |
+| 총기 경로 허용 차이 | 2 | 같은 씬의 `EnemyCombatant` | 총기 경로가 근접 무기보다 2 이상 길면 근접 무기 선택 |
 | 근접 적 회전 속도 | 260도/월드초 | 같은 씬의 `EnemyMotor` | 추격과 목표 회전 |
 | 시야각 | 60도 | 같은 씬의 `VisionCone` | 전체 각도 |
 | 시야 거리 | 12.5 | 같은 씬의 `VisionCone` | 장애물 전 최대 |
@@ -701,14 +715,14 @@ Unity 버전: `6000.1.13f1`
 
 | 과제 | 현재 상태 | 필요한 작업 | 관련 파일 | 우선순위 | 완료 조건 |
 |---|---|---|---|---|---|
-| 최신 작업 트리 통합 검증 | 2026-07-31 적 이동/추격/NavMesh 검사를 포함한 배치 스모크 통과 | 후속 기능 변경마다 배치 스모크 재실행 및 결과 기록 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/EnemyMovementSmoke.log` | P0 | 현재 커밋 후보 파일 기준 스모크 테스트가 종료 코드 0으로 통과하고 변경 이력에 결과 기록 |
-| 미추적 핵심 에셋 정리 | 새 씬·스크립트·프리팹이 미추적이며 기존 씬은 삭제 상태 | 의도된 변경 범위를 검토하고 메타 포함 추적 여부 결정 | `ProjectDeltatime/Assets/_Project/Scenes`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/InterceptableWeapon.prefab` | P0 | `git status`에서 의도치 않은 삭제/미추적 핵심 파일이 없고 씬 참조 GUID가 정상 |
+| 최신 작업 트리 통합 검증 | 2026-08-01 Unity 컴파일과 씬/에셋 정적 검증 통과, 사용자 요청으로 플레이·스모크 미실행 | 무기 드롭·재무장·주먹·교차 무기·플레이어 근접/`DEADLINE` 시나리오를 후속 플레이 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/EnemyRearmBuild.log`, `ProjectDeltatime/EnemyRearmFinalCompile.log` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
+| 미추적 핵심 에셋 정리 | 공통 전투/근접 판정 스크립트와 근접 무기 에셋·메타가 미추적 상태 | 변경 확정 시 코드/에셋과 메타를 함께 추적하고 GUID 참조 재확인 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | P0 | `git status`에서 의도치 않은 누락이 없고 씬/에셋 참조 GUID가 정상 |
 | `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | 위협 감지, 정지 발동, 2개 제한, 해제, 쿨다운, 사망/대시 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `Projectile.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
 | 공중 가로채기 자동 테스트 | 코드·프리팹·씬은 존재, 최신 플레이 결과 없음 | 입력 버퍼, 가장 가까운 무기, 교환 드롭, 장애물 착지, 프리즈 검증 | `InterceptableWeapon.cs`, `EnemyWeaponDrop.cs`, `PlayerCombat.cs` | P1 | 가로채기와 착지 흐름이 반복 가능한 테스트로 통과 |
 | 스테이지 전환/종료 흐름 | 현재 리플레이 무한 반복과 현재 씬 재시작만 가능 | `Stage1 → Stage2`, 결과 화면, 리플레이 스킵/다음 단계 정책 결정 및 구현 | `StageController.cs`, `StageReplayController.cs`, `EditorBuildSettings.asset` | P1 | 클리어 후 사용자가 정의된 다음 상태로 이동 가능 |
 | Stage1/Stage2 역할 차별화 | 조명 외 동일 콘텐츠 | 학습/도전 역할 확정, 적·배치·규칙·목표 차별화 또는 단일 씬+프로필화 | 두 씬, `PrototypeSceneBuilder.cs` | P1 | 두 씬의 존재 이유가 기획과 데이터에서 명확하거나 중복이 제거됨 |
 | 핵심 규칙 온보딩 | 하단 조작 텍스트 외 튜토리얼 없음 | 시간 규칙, `DEADLINE`, 투척/가로채기를 단계적으로 설명 | `GameHud.cs`, 신규 튜토리얼 시스템 | P1 | 신규 플레이어가 외부 설명 없이 핵심 루프를 수행 가능 |
-| 체력/피해 모델 확정 | 1회 피격 사망, 피해 수치 미사용 | 원힛 규칙 유지 여부 또는 HP/방어/피드백 설계 | `CombatContracts.cs`, `PlayerHealth.cs`, `EnemyHealth.cs`, `Pistol.asset` | P1 | 피해 수치와 사망 규칙이 일관되고 HUD/테스트에 반영 |
+| 체력 피드백 확장 | 플레이어 HP 3과 숫자 HUD, 적은 원힛 사망 | 피격 무적·체력 회복·시각/음향 피드백 및 적 HP 정책 설계 | `CombatContracts.cs`, `PlayerHealth.cs`, `EnemyHealth.cs`, `GameHud.cs` | P1 | 피해 종류와 누적 체력이 플레이·HUD·테스트에서 일관되게 확인 |
 | 제품용 UI | IMGUI 디버그 HUD | Canvas/UI Toolkit 전환, 반응형 배치, 상태 우선순위, 접근성 | `GameHud.cs` | P2 | 목표 해상도에서 겹침 없이 모든 상태와 입력 장치가 표시 |
 | 사운드 | 전면 미구현 | 사격·피격·대시·프리즈·클리어 이벤트와 믹서/피치 정책 구현 | `Assets/_Project/Audio`, 전투/시간/리플레이 코드 | P2 | 핵심 행동에 오디오 피드백이 있고 시간/리플레이 정책 검증 |
 | 리플레이 성능·수명 관리 | 전체 렌더러 검색, 무제한 기록 | 프로파일링, 기록 상한/링 버퍼, 명시 등록, 복구/종료 경로 설계 | `StageReplayController.cs` | P2 | 목표 플레이 시간과 기기에서 메모리/프레임 예산 충족 |
@@ -729,9 +743,11 @@ Unity 버전: `6000.1.13f1`
 | NavMesh는 경로만 담당 | AI Navigation의 베이크된 경로를 사용하되 적 Transform 자동 이동은 사용하지 않고 `EnemyMotor`가 Kinematic Rigidbody를 `WorldDeltaTime`으로 이동 | `EnemyMotor.cs`, `StageNavigation.asset` |
 | 적 행동 수명주기 공통화 | 사격형과 근접형이 `EnemyBehavior`의 기절·무장 해제·사망 상태를 공유하고 `EnemyHealth`는 구체 적 유형에 의존하지 않음 | `EnemyBehavior.cs`, `EnemyHealth.cs` |
 | 직접 참조 기반 조립 | 싱글턴 없이 씬 직렬화 참조와 `Configure`로 시스템 연결 | 씬과 빌더 |
-| 무기 데이터 ScriptableObject화 | 권총과 자동소총 수치는 `WeaponDefinition` 에셋에 저장 | `WeaponDefinition.cs`, `Pistol.asset`, `AutomaticRifle.asset` |
+| 무기 데이터 ScriptableObject화 | 권총·자동소총·근접 무기의 종류와 공격 수치는 `WeaponDefinition` 에셋에 저장 | `WeaponDefinition.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `MeleeWeapon.asset` |
 | 팩션·인터페이스 기반 피해 | `CombatFaction`, `IDamageable`, `IStunnable`로 전투 대상 분리 | `CombatContracts.cs` |
-| 적 기절은 무장 해제 | 기절 후 회복해도 `Disarmed` 유지. 사격형만 공중 자동소총 드롭을 생성하며 근접 무기 드롭은 없음 | `EnemyHealth.cs`, `EnemyBehavior.cs`, `EnemyShooter.cs`, `EnemyChaser.cs` |
+| 적 기절은 현재 장비 드롭 | 모든 적이 기절하면 현재 무기와 남은 탄약을 공중 드롭하고, 회복 뒤 빈손 전투/재무장 판단을 재개 | `EnemyHealth.cs`, `EnemyBehavior.cs`, `EnemyCombatant.cs`, `EnemyWeaponDrop.cs` |
+| 적 공격 방식은 현재 장비가 결정 | 시작 유형은 이동 속도와 시작 장비만 정하며 총기/근접 무기/빈손 공격은 공통 전투 컴포넌트가 선택 | `EnemyCombatant.cs`, `EnemyShooter.cs`, `EnemyChaser.cs` |
+| 플레이어 체력 3·무기 즉사 유지 | 주먹 피해는 1, 총기와 근접 무기 피해는 3으로 설정해 주먹 세 번과 무기 한 번의 사망 규칙을 사용 | `PlayerHealth.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `MeleeWeapon.asset` |
 | `DEADLINE`은 토큰 하드 프리즈 | 임박한 적탄을 한 번 선점하고 최대 2개 행동을 준비한 뒤 이동으로 해제 | `DeadlineController.cs`, `Projectile.cs` |
 | 클리어 보상은 리플레이 | 적 0명 시 전투를 끄고 시각 리플레이를 반복 | `StageController.cs`, `StageReplayController.cs` |
 | 제한 시야와 조명 결합 | 동적 시야 메시, 적 렌더러 토글, 런타임 스폿/근거리 조명 사용 | `VisionCone.cs` |
@@ -748,21 +764,22 @@ Unity 버전: `6000.1.13f1`
 6. `DEADLINE`의 최대 준비 행동 2개와 재준비 0.35 월드초는 확정 수치인가?
 7. `DEADLINE` 발동을 “이동 중 정지”로 제한한 것이 의도인가? 처음부터 정지한 플레이어는 발동하지 않는다.
 8. 플레이어 시야 밖의 적이 탐지·조준·발사할 수 있는 현재 동작이 의도인가?
-9. 플레이어와 적은 계속 원힛 사망이어야 하는가, 아니면 실제 HP/방어 시스템이 필요한가?
-10. 적이 기절에서 회복한 뒤 영구 비무장으로 남는 것이 의도인가?
+9. 플레이어 HP 3과 “주먹 3회/무기 1회” 규칙에 피격 무적이나 회복 수단이 필요한가?
+10. 빈손 적의 3 거리 주먹 우선과 총기 경로 차이 2의 무기 선택 가중치는 확정 수치인가?
 11. 공중 가로채기 시 기존 무기를 플레이어 위치에 즉시 떨어뜨리는 교환 규칙이 확정인가?
 12. 무기 종류, 재장전, 탄약 공급, 드롭 확률은 어떻게 확장할 예정인가?
 13. 점수, 등급, 성장, 보상, 저장, 퀘스트가 제품 범위에 포함되는가?
 14. 목표 플랫폼과 지원 입력 장치는 무엇인가?
 15. 사운드가 월드 시간에 맞춰 느려져야 하는지, 플레이어 행동음은 실제 시간으로 유지할지 정책이 필요한가?
 16. `PrototypeSceneBuilder` 재생성을 콘텐츠 제작의 공식 워크플로로 유지할 것인가?
-17. 현재 `feature/WeaponPickup`의 미커밋·미추적 변경이 모두 의도된 완료 후보인가?
+17. 현재 `feature/EnemyAI`의 공통 적 전투·근접 무기 미커밋/미추적 변경을 어떤 단위로 확정할 것인가?
 18. CI와 자동 테스트의 필수 통과 기준은 무엇인가?
 
 ## 13. 변경 이력
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-01 | 1.2.0 | 현재 장비 기반 공통 적 전투, 모든 적의 현재 무기 드롭·재무장, 빈손 주먹, 플레이어 HP 3·근접 무기와 `DEADLINE` 준비 공격, 새 무기 데이터와 검증 한계 반영 | 적 AI, 무기 탐색/예약, 근접 전투, 체력/HUD, 씬/밸런스 |
 | 2026-07-31 | 1.1.1 | 밀착 시 근접 공격 시야 판정 수정, 선딜 중 35% 추적, 라이플 적의 공격/이동 상태 분리와 70% 후퇴 사격 반영 | 근접 공격, 후퇴 사격, 적 시야, 씬/밸런스 |
 | 2026-07-31 | 1.1.0 | NavMesh 기반 적 이동, 거리 유지 자동소총 점사형 2명, 플레이어 지속 추격 근접형 1명, 공통 적 행동 수명주기와 최신 배치 스모크 결과 반영 | 적 이동, AI Navigation, 연사형, 근접 추격형, 기절/무장 해제, 씬/밸런스 |
 | 2026-07-30 | 1.0.0 | 프로젝트 전체 구조, 코드, 씬, 프리팹, ScriptableObject, 입력, 설정, 패키지, 테스트 로그, Git 상태를 기준선으로 문서화 | 전체 프로젝트, 월드 시간, `DEADLINE`, 전투, 무기 가로채기, 적 AI, 시야, 리플레이, 스테이지 |

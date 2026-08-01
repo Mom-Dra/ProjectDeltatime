@@ -168,6 +168,7 @@ MonoBehaviour:
   trail: {fileID: 4397813043772980725}
   predictionLine: {fileID: 4327019082164446656}
   landingMarkerRenderer: {fileID: 5975057738466377883}
+  bodyRenderer: {fileID: 7313035595787475054}
   maximumTrailLength: 1.2
   catchColor: {r: 1, g: 0.72, b: 0.08, a: 1}
 --- !u!1 &8955663581549352234
