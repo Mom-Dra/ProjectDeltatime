@@ -1,5 +1,6 @@
 using Deltatime.Replay;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Deltatime.Vision
 {
@@ -22,9 +23,10 @@ namespace Deltatime.Vision
         [SerializeField, Min(0f)] private float visionLightHeight = 0.7f;
         [SerializeField, Min(0f)] private float visionLightDownwardBias = 0.22f;
         [SerializeField, Range(0.1f, 1f)] private float innerSpotRatio = 0.68f;
-        [SerializeField, Min(0f)] private float nearLightIntensity = 1.4f;
-        [SerializeField, Min(0.1f)] private float nearLightRange = 3.25f;
-        [SerializeField, Min(0f)] private float nearLightHeight = 0.35f;
+        [SerializeField, Min(0f)] private float nearLightIntensity = 4f;
+        [FormerlySerializedAs("nearLightRange")]
+        [SerializeField, Min(0.1f)] private float nearLightGroundRadius = 4f;
+        [SerializeField, Min(0f)] private float nearLightHeight = 1f;
 
         private Mesh coneMesh;
         private Vector3[] vertices;
@@ -89,17 +91,16 @@ namespace Deltatime.Vision
             Vector3 offset = point - transform.position;
             offset.y = 0f;
             float distance = offset.magnitude;
-            if (distance > viewDistance)
-            {
-                return false;
-            }
-
             if (distance <= 0.0001f)
             {
                 return true;
             }
 
-            if (Vector3.Angle(transform.forward, offset) > viewAngle * 0.5f)
+            bool isWithinNearLight = distance <= nearLightGroundRadius;
+            bool isWithinVisionCone =
+                distance <= viewDistance &&
+                Vector3.Angle(transform.forward, offset) <= viewAngle * 0.5f;
+            if (!isWithinNearLight && !isWithinVisionCone)
             {
                 return false;
             }
@@ -205,9 +206,13 @@ namespace Deltatime.Vision
             nearLight.type = LightType.Point;
             nearLight.color = visionLightColor;
             nearLight.intensity = nearLightIntensity;
-            nearLight.range = nearLightRange;
-            nearLight.shadows = LightShadows.None;
-            nearLight.renderMode = LightRenderMode.Auto;
+            nearLight.range = CalculateNearLightRange();
+            nearLight.shadows = LightShadows.Soft;
+            nearLight.shadowStrength = 0.85f;
+            nearLight.shadowBias = 0.035f;
+            nearLight.shadowNormalBias = 0.25f;
+            nearLight.shadowNearPlane = 0.1f;
+            nearLight.renderMode = LightRenderMode.ForcePixel;
         }
 
         private void UpdateDarkVisionLights()
@@ -238,7 +243,23 @@ namespace Deltatime.Vision
                 (Vector3.up * nearLightHeight);
             nearLight.color = visionLightColor;
             nearLight.intensity = nearLightIntensity;
-            nearLight.range = nearLightRange;
+            nearLight.range = CalculateNearLightRange();
+        }
+
+        private float CalculateNearLightRange()
+        {
+            if (lightTrackingTarget == null)
+            {
+                return nearLightGroundRadius;
+            }
+
+            float lightHeightFromGround = Mathf.Abs(
+                lightTrackingTarget.position.y +
+                nearLightHeight -
+                transform.position.y);
+            return Mathf.Sqrt(
+                (nearLightGroundRadius * nearLightGroundRadius) +
+                (lightHeightFromGround * lightHeightFromGround));
         }
 
         private void OnValidate()
@@ -250,7 +271,7 @@ namespace Deltatime.Vision
             visionLightDownwardBias = Mathf.Max(0f, visionLightDownwardBias);
             innerSpotRatio = Mathf.Clamp(innerSpotRatio, 0.1f, 1f);
             nearLightIntensity = Mathf.Max(0f, nearLightIntensity);
-            nearLightRange = Mathf.Max(0.1f, nearLightRange);
+            nearLightGroundRadius = Mathf.Max(0.1f, nearLightGroundRadius);
             nearLightHeight = Mathf.Max(0f, nearLightHeight);
             if (Application.isPlaying)
             {

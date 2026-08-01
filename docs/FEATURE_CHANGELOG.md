@@ -21,6 +21,26 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-01 - 원형 근거리 적 가시성 확장
+
+- 변경 유형: 적 렌더링 판정 개선, 문서 갱신
+- 변경 내용: **구현 완료**. `VisionCone.ContainsWorldPoint(Vector3)`를 기존 부채꼴 단독 판정에서 원형 근거리 또는 부채꼴 시야의 합집합 판정으로 확장했다. 대상이 `nearLightGroundRadius` 안에 있으면 방향과 관계없이 시야 후보가 되고, 원형 밖에서는 기존 거리·각도 조건을 사용한다. 두 경우 모두 기존 `VisionObstacle` Raycast를 통과해야 최종 가시 상태가 된다. `EnemyCombatant`의 몸체·장착 무기·경고선 토글 경로는 변경하지 않아 확장된 판정이 기존 렌더링 규칙에 그대로 적용된다.
+- 영향을 받은 시스템: 플레이어 시야 판정, 적 몸체·장착 무기 렌더링, 공격 경고선, 벽·엄폐물 차폐
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.2.2로 갱신하고 핵심 콘셉트, 구현 현황, 카메라·시야 동작, 기술 결정과 변경 이력에 부채꼴·원형 시야 합집합 기반 적 가시성을 반영했다.
+- 테스트 결과: **정적 검증 통과**. 원형 반경과 부채꼴 조건이 논리합으로 결합된 뒤 공통 장애물 Raycast를 사용하는 것, `EnemyCombatant`가 `ContainsWorldPoint` 결과로 몸체·장착 무기를 토글하고 비가시 상태에서 경고선을 숨기는 기존 경로가 유지된 것을 확인했다. Stage1/Stage2의 반경 4·밝기 4·높이 1과 손전등 60도·거리 12.5·밝기 7.5도 변경되지 않았다. 사용자 요청에 따라 Unity 배치 모드 씬 검증과 플레이 모드 스모크 테스트는 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 플레이에서 뒤·옆의 반경 4 적 표시, 반경 경계의 깜빡임, 벽·엄폐물 뒤 차폐와 이동·회전 중 갱신 결과는 런타임 테스트를 생략해 확인하지 않았다.
+
+## 2026-08-01 - 플레이어 주변 원형 조명 강화
+
+- 변경 유형: 시야 조명 개선, 씬 직렬화·문서 갱신
+- 변경 내용: **구현 완료**. `VisionCone`의 기존 근거리 조명을 플레이어 기준 높이 1에 배치되는 Point Light로 유지하면서, 지면 반경 4가 되도록 높이를 포함한 실제 `Light.range`를 계산하게 변경했다. 밝기는 4, 렌더 모드는 `ForcePixel`, 그림자는 Soft·강도 0.85로 설정해 거리 감쇠 경계와 `VisionObstacle` 벽·엄폐물의 실시간 그림자 차폐를 사용한다. 기존 `nearLightRange`는 `nearLightGroundRadius`로 이름을 바꾸고 `FormerlySerializedAs`를 적용했으며, Stage1과 Stage2 모두 반경 4·밝기 4·높이 1을 직렬화했다. 60도·거리 12.5·밝기 7.5의 부채꼴 손전등과 스테이지별 맵 보조광 프로필은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 시야 조명, `VisionObstacle` 벽·엄폐물 차폐, Stage1/Stage2 조명 프로필, 리플레이 조명
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.2.1로 갱신하고 핵심 콘셉트, 구현 현황, 카메라·시야 동작, 실제 밸런스 수치, 기술 결정과 변경 이력에 양 스테이지 공통 원형광을 반영했다.
+- 테스트 결과: **정적 검증 통과**. 코드 기본값과 Stage1/Stage2의 `nearLightIntensity: 4`, `nearLightGroundRadius: 4`, `nearLightHeight: 1`이 일치하고, 두 씬의 손전등 60도·거리 12.5·밝기 7.5 및 Stage1/Stage2 맵 보조광 프로필이 유지되는 것을 확인했다. 현재 선택된 Ultra 품질의 픽셀 조명·실시간 그림자 지원과 리플레이 프록시가 Light의 범위·그림자·렌더 모드를 복제하는 경로도 정적으로 확인했다. 사용자 요청에 따라 Unity 배치 모드 씬 검증과 플레이 모드 스모크 테스트는 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 플레이에서 방향과 무관한 원형 밝기, 벽 반대편 차폐, 손전등과의 밝기 대비, 이동·회전 추적, 리플레이의 위치·밝기·그림자 재현은 런타임 테스트를 생략해 확인하지 않았다. 그림자가 비활성화된 Low 이하 품질에서는 벽 차폐가 보장되지 않는다.
+
 ## 2026-08-01 - 적 무기 드롭·재무장·주먹 공격 확장
 
 - 변경 유형: 기능 추가, 적 전투 AI 통합, 플레이어 전투/체력 확장, 무기 데이터·씬·프리팹 갱신
