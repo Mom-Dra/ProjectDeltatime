@@ -12,6 +12,7 @@ namespace Deltatime.Player
     public sealed class DeadlineController : MonoBehaviour
     {
         [SerializeField] private PlayerInputReader input;
+        [SerializeField] private PlayerMovement movement;
         [SerializeField] private PlayerHealth health;
         [SerializeField] private PlayerCombat combat;
         [SerializeField] private WorldTimeController worldTime;
@@ -31,7 +32,7 @@ namespace Deltatime.Player
         private float rejectedFeedbackRemaining;
         private int hardFreezeToken;
         private int stagedActionCount;
-        private bool wasMoving;
+        private bool wasEligibleMovement;
 
         public event Action Released;
 
@@ -62,7 +63,8 @@ namespace Deltatime.Player
 
         private void Start()
         {
-            wasMoving = IsMovementInputActive();
+            wasEligibleMovement =
+                IsMovementInputActive() && IsDeadlineMovementEligible();
         }
 
         private void Update()
@@ -72,38 +74,50 @@ namespace Deltatime.Player
                 0f,
                 rejectedFeedbackRemaining - UnityEngine.Time.unscaledDeltaTime);
 
-            bool isMoving = IsMovementInputActive();
+            bool isMovementInputActive = IsMovementInputActive();
+            bool isEligibleMovement =
+                isMovementInputActive && IsDeadlineMovementEligible();
             if (health == null ||
                 !health.IsAlive ||
                 health.IsInvulnerable ||
+                movement == null ||
                 combat == null ||
                 !combat.CombatEnabled)
             {
                 AbortDeadline();
-                wasMoving = isMoving;
+                wasEligibleMovement = false;
                 return;
             }
 
             if (IsActive)
             {
-                if (isMoving)
+                if (isMovementInputActive)
                 {
                     ReleaseDeadline();
                 }
 
-                wasMoving = isMoving;
+                wasEligibleMovement = false;
                 return;
             }
 
             if (worldTime.IsHardFrozen || !IsReady)
             {
                 ClearThreat();
-                wasMoving = isMoving;
+                wasEligibleMovement = isEligibleMovement;
                 return;
             }
 
-            FindImminentThreat();
-            bool stoppedThisFrame = wasMoving && !isMoving;
+            bool stoppedThisFrame =
+                wasEligibleMovement && !isMovementInputActive;
+            if (isEligibleMovement || stoppedThisFrame)
+            {
+                FindImminentThreat();
+            }
+            else
+            {
+                ClearThreat();
+            }
+
             if (stoppedThisFrame &&
                 currentThreat != null &&
                 currentThreat.TryClaimDeadline())
@@ -111,7 +125,7 @@ namespace Deltatime.Player
                 ActivateDeadline();
             }
 
-            wasMoving = isMoving;
+            wasEligibleMovement = isEligibleMovement;
         }
 
         public bool RegisterStagedAction()
@@ -135,11 +149,13 @@ namespace Deltatime.Player
 
         public void Configure(
             PlayerInputReader inputReader,
+            PlayerMovement playerMovement,
             PlayerHealth playerHealth,
             PlayerCombat playerCombat,
             WorldTimeController timeSource)
         {
             input = inputReader;
+            movement = playerMovement;
             health = playerHealth;
             combat = playerCombat;
             worldTime = timeSource;
@@ -268,6 +284,11 @@ namespace Deltatime.Player
                    movementThreshold * movementThreshold;
         }
 
+        private bool IsDeadlineMovementEligible()
+        {
+            return movement != null && movement.IsPhysicallyMoving;
+        }
+
         private void OnDisable()
         {
             AbortDeadline();
@@ -282,6 +303,7 @@ namespace Deltatime.Player
         private void ValidateConfiguration()
         {
             if (input == null ||
+                movement == null ||
                 health == null ||
                 combat == null ||
                 worldTime == null)

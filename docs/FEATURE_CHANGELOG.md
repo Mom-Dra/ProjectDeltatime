@@ -21,6 +21,36 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-02 - ViewCone 리플레이 실시간 재계산 전환
+
+- 변경 유형: 리플레이 메모리 최적화, ViewCone 재현 방식 변경, 테스트·문서 갱신
+- 변경 내용: **구현 완료**. `StageReplayController.VisualTrack`에서 ViewCone의 `DynamicMeshVertices`·정점 수·`ArrayPool<Vector3>` 기반 샘플 저장과 보간 적용을 제거했다. 대신 `VisionCone.RebuildReplayMesh(Mesh, Vector3, Quaternion)`가 기존 96방향 `VisionObstacle` Raycast 수식을 재사용해 기록된 보간 위치·회전 기준으로 프록시 메시의 정점·Bounds·Normals를 매 재생 `LateUpdate`에 갱신한다. 프록시 메시의 삼각형 토폴로지는 최초 복제 시 유지하고 `MarkDynamic`으로 갱신한다. Full View에서는 ViewCone이 숨겨진 기존 경로에서 즉시 반환하므로 Raycast·메시 계산이 발생하지 않으며, `V`로 암흑 시야를 복원하면 현재 재생 시점의 메시를 즉시 재계산한다. 20Hz 포즈 기록, 동적 조명, 반복 재생, `R` 재시작은 유지한다.
+- 영향을 받은 시스템: 리플레이 샘플 메모리, ViewCone 메시/Physics Raycast, 암흑·전체 시야 토글, 리플레이 진단값, 커스텀 스모크 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.2.5로 갱신하고 리플레이 기록·재생 흐름, 시야 재현 방식, 성능·동적 장애물 한계, 통합 검증 과제, 의사결정과 변경 이력에 반영했다.
+- 테스트 결과: **Unity 컴파일 및 정적 검증 통과**. Unity 6000.1.13f1 배치 모드 스크립트 컴파일이 `Tundra build success`와 종료 코드 0으로 완료됐으며 로그는 `ProjectDeltatime/ReplayVisionRecomputeCompile.log`다. `StageReplayController.cs`에 `DynamicMesh`·`ArrayPool`·정점 캡처 버퍼 참조가 남아 있지 않은 것, `VisionCone.RebuildReplayMesh`가 프록시 메시와 기록된 보간 포즈를 받는 것, Full View의 ViewCone 조기 숨김 경로, 갱신된 `TrackedReplayVisionConeCount` 스모크 검사 코드를 정적으로 확인했다. 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 리플레이에서 벽·엄폐물에 따른 ViewCone 경계가 플레이 결과와 일치하는지, 97회 Raycast와 Bounds/Normals 재계산의 프레임 비용, `V` 전환 직후의 메시 복원, 반복 재생·`R` 회귀는 수동 플레이 확인이 필요하다. 현재 Stage1·Stage2의 `VisionObstacle`은 정적 벽·엄폐물이라는 전제이며, 향후 이동·생성·파괴되는 장애물이 같은 레이어에 추가되면 과거 시야와 달라질 수 있어 별도 상태 기록 또는 정책 결정이 필요하다.
+
+## 2026-08-01 - 리플레이 ViewCone 재현 및 전체 시야 토글
+
+- 변경 유형: 리플레이 버그 수정, 기능 추가, 입력·HUD·씬 직렬화·문서 갱신
+- 변경 내용: **구현 완료**. `StageReplayController`가 20Hz 캡처 시 `VisionCone`의 고정 삼각형 토폴로지는 프록시 생성 때 한 번만 복제하고, 동적으로 바뀌는 정점은 재사용 버퍼와 `ArrayPool<Vector3>` 대여 배열로 변경 샘플에 저장해 두 시점 사이를 보간한다. 리플레이는 기존 암흑 시야로 시작하고 `V`를 누르면 `IsOmniscientViewEnabled`를 전환해 ViewCone과 녹화된 Spot/Near Light 프록시를 숨긴다. 전체 시야는 Fog를 끄고 지정된 Trilight 환경광·반사 강도·카메라 배경과 그림자 없는 Directional Fill Light를 적용하며, 다시 `V`를 누르면 저장한 `RenderSettings`와 현재 재생 시점의 카메라·ViewCone·동적 조명을 즉시 복원한다. 적 몸체와 현재 장착 무기는 `EnemyCombatant.TryGetReplayVisibility`가 제공하는 논리 표시 상태를 실제 Renderer 가시성과 별도로 녹화해 전체 시야에서 시야 밖 생존 적을 표시하고, 사망·파괴·무장 해제 시점은 유지한다. 경고선과 일반 이펙트는 강제 표시하지 않는다. 반복 재생 중 선택 상태는 유지되고 `R` 씬 재시작 시 기본 암흑 시야로 초기화된다.
+- 영향을 받은 시스템: 20Hz 시각 리플레이, ViewCone 동적 메시, 플레이어 Spot/Near Light, 전역 Fog·Ambient·Reflection, 카메라 배경, 적 몸체·장착 무기 가시성, Input System, 스테이지 상태 전달, HUD, Stage1/Stage2 직렬화, 에디터 빌더·스모크 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.2.4로 갱신하고 구현 현황, 리플레이·시야·HUD 동작, `V` 조작, 전체 시야 조명 수치, 확장 주의점·기술 부채·통합 검증 과제·의사결정·변경 이력에 반영했다.
+- 테스트 결과: **Unity 컴파일 및 정적 검증 통과**. Unity 6000.1.13f1 배치 모드 스크립트 컴파일이 `Tundra build success`와 종료 코드 0으로 완료되었으며 로그는 `ProjectDeltatime/ReplayVisionCompile2.log`다. `PlayerControls.inputactions`의 `ReplayVisionToggle`/`<Keyboard>/v`와 생성 래퍼, `PlayerInputReader`·`StageController` 전달 경로, HUD 문자열, 두 씬의 `captureRate: 20`과 전체 시야 직렬화 값, 빌더의 동일 설정 경로를 정적으로 확인했다. 씬 빌더는 기존 씬을 재생성하지 않았다. 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 리플레이에서 벽·엄폐물에 따라 변한 ViewCone 경계가 잘림 없이 이어지는지, `V` 전환 순간 Fog·조명·배경과 시야 밖 적/장착 무기가 올바르게 표시되는지, 해제 시 같은 재생 시점이 복구되는지, 사망·무장 해제 타이밍과 반복·`R` 회귀의 시각 품질은 수동 플레이 확인이 필요하다. 기록 길이 상한, 매 틱 전체 Renderer 검색, 일반 색상·라인 샘플 배열 할당은 **부분 구현**인 성능 최적화 과제로 남는다.
+
+## 2026-08-01 - 데드라인 실제 이동 판정 수정
+
+- 변경 유형: 버그 수정, 데드라인 발동 조건 개선, 씬 직렬화·문서 갱신
+- 변경 내용: **구현 완료**. `PlayerMovement`가 일반 이동 입력을 적용한 마지막 물리 스텝의 Rigidbody 시작·종료 위치를 비교해 입력 방향으로 0.001m 이상 이동했을 때만 `IsPhysicallyMoving`을 공개하도록 했다. `DeadlineController`는 이 실제 이동 자격이 있던 플레이어가 이동 입력을 놓은 경우에만 위협 탄환을 검사·선점한다. 벽을 정면으로 계속 밀어 실제 변위가 없으면 탄환 강조와 `RELEASE TO DEADLINE` 안내를 지우고 입력 해제에도 발동하지 않는다. 벽을 따라 실제로 미끄러지는 이동은 인정하며, 이미 발동한 데드라인을 이동 입력으로 해제하는 기존 규칙은 유지한다.
+- 영향을 받은 시스템: 플레이어 Rigidbody 이동 표본, `DEADLINE` 진입·해제, 위협 탄환 강조, HUD 안내, Stage1/Stage2 직렬화·검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.2.3으로 갱신하고 월드 시간 및 `DEADLINE`의 현재 동작, 실제 이동 최소 변위 0.001m, 실제 이동 기반 진입 결정을 반영했다. 기존 “이동 중 정지” 의도 질문은 실제 물리 이동 후 입력 해제로 확정되어 확인 필요 목록에서 제거했다.
+- 테스트 결과: **Unity 컴파일 및 정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 `Tundra build success`, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 생성 성공과 `ValidateSavedPrototypeRoom`의 두 저장 씬 검증 통과를 확인했다. 두 씬에 `minimumPhysicalDisplacement: 0.001`과 `DeadlineController.movement`의 유효한 `PlayerMovement` 참조가 직렬화된 것을 확인했다. 기존 `FindObjectOfType` 사용 중단 경고와 빌더의 머티리얼 렌더 큐·NavMeshData 이름 경고는 남아 있으나 컴파일 오류는 없다. 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**했다.
+- 남은 작업: **확인 불가**. 열린 공간 이동 후 정상 발동, 벽 정면 밀기 후 미발동·안내 제거, 벽을 따른 대각선 이동 인정, 발동 후 벽 방향 입력을 통한 해제, 대시·캐치·사망·리플레이 회귀는 사용자 플레이 확인이 필요하다.
+
 ## 2026-08-01 - 원형 근거리 적 가시성 확장
 
 - 변경 유형: 적 렌더링 판정 개선, 문서 갱신

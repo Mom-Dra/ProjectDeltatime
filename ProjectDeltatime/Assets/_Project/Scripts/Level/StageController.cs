@@ -54,6 +54,15 @@ namespace Deltatime.Level
             {
                 RestartStage();
             }
+
+            if (CurrentState == StageState.Replaying &&
+                input != null &&
+                input.ReplayVisionTogglePressed &&
+                replay != null)
+            {
+                replay.SetOmniscientView(
+                    !replay.IsOmniscientViewEnabled);
+            }
         }
 
         public void RegisterEnemy(EnemyHealth enemy)

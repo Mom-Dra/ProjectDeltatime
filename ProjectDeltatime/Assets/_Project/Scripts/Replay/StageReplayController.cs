@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using Deltatime.Enemies;
 using Deltatime.InputSystem;
 using Deltatime.Level;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
+using Deltatime.Vision;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -21,6 +23,25 @@ namespace Deltatime.Replay
         [SerializeField, Min(0f)] private float endHoldDuration = 0.65f;
         [SerializeField] private bool loop = true;
 
+        [Header("Omniscient Replay View")]
+        [SerializeField] private Color omniscientAmbientSkyColor =
+            new Color(0.30f, 0.34f, 0.40f, 1f);
+        [SerializeField] private Color omniscientAmbientEquatorColor =
+            new Color(0.22f, 0.25f, 0.30f, 1f);
+        [SerializeField] private Color omniscientAmbientGroundColor =
+            new Color(0.12f, 0.14f, 0.17f, 1f);
+        [SerializeField, Min(0f)] private float omniscientAmbientIntensity = 1f;
+        [SerializeField, Min(0f)] private float omniscientReflectionIntensity =
+            0.35f;
+        [SerializeField] private Color omniscientBackgroundColor =
+            new Color(0.025f, 0.04f, 0.065f, 1f);
+        [SerializeField] private Color omniscientFillLightColor =
+            new Color(0.78f, 0.86f, 1f, 1f);
+        [SerializeField, Min(0f)] private float omniscientFillLightIntensity =
+            0.65f;
+        [SerializeField] private Vector3 omniscientFillLightRotation =
+            new Vector3(50f, -30f, 0f);
+
         private readonly List<CameraSample> cameraSamples =
             new List<CameraSample>(2048);
         private readonly Dictionary<int, VisualTrack> tracksByInstanceId =
@@ -34,6 +55,9 @@ namespace Deltatime.Replay
             new List<MonoBehaviour>();
 
         private Transform replayRoot;
+        private Light omniscientFillLight;
+        private ReplayLightingSnapshot replayLightingSnapshot;
+        private bool hasReplayLightingSnapshot;
         private bool replayRequested;
         private float firstRecordedTime;
         private float lastRecordedTime;
@@ -42,8 +66,61 @@ namespace Deltatime.Replay
         private float captureAccumulator;
 
         public bool IsReplaying { get; private set; }
+        public bool IsOmniscientViewEnabled { get; private set; }
         public float CaptureRate => captureRate;
         public int CapturedFrameCount => cameraSamples.Count;
+        public int TrackedReplayVisionConeCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < tracks.Count; i++)
+                {
+                    if (tracks[i].IsVisionCone)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+        public bool IsReplayVisionConeVisible
+        {
+            get
+            {
+                for (int i = 0; i < tracks.Count; i++)
+                {
+                    if (tracks[i].IsVisionCone && tracks[i].IsProxyActive)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+        public int ActiveOmniscientEnemyVisualCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < tracks.Count; i++)
+                {
+                    if (tracks[i].SupportsOmniscientVisibility &&
+                        tracks[i].IsProxyActive)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+        public bool IsOmniscientFillLightActive =>
+            omniscientFillLight != null &&
+            omniscientFillLight.enabled &&
+            omniscientFillLight.gameObject.activeInHierarchy;
         public int TrackedLightCount => lightTracks.Count;
         public int ActiveReplayLightCount
         {
@@ -106,7 +183,26 @@ namespace Deltatime.Replay
             GameObject root = new GameObject("Replay Visuals");
             replayRoot = root.transform;
             replayRoot.SetParent(transform, false);
+            EnsureOmniscientFillLight();
             replayRoot.gameObject.SetActive(false);
+        }
+
+        private void EnsureOmniscientFillLight()
+        {
+            if (omniscientFillLight != null)
+            {
+                return;
+            }
+
+            GameObject lightObject = new GameObject("Replay Omniscient Fill Light");
+            lightObject.transform.SetParent(replayRoot, false);
+            omniscientFillLight = lightObject.AddComponent<Light>();
+            omniscientFillLight.type = LightType.Directional;
+            omniscientFillLight.shadows = LightShadows.None;
+            omniscientFillLight.renderMode = LightRenderMode.Auto;
+            omniscientFillLight.cullingMask = ~0;
+            omniscientFillLight.enabled = false;
+            ApplyOmniscientFillLightSettings();
         }
 
         private void Start()
@@ -165,6 +261,28 @@ namespace Deltatime.Replay
             return true;
         }
 
+        public bool SetOmniscientView(bool enabledState)
+        {
+            if (!IsReplaying || IsOmniscientViewEnabled == enabledState)
+            {
+                return false;
+            }
+
+            IsOmniscientViewEnabled = enabledState;
+            if (enabledState)
+            {
+                SaveReplayLightingState();
+                ApplyOmniscientLighting();
+            }
+            else
+            {
+                RestoreReplayLightingState();
+            }
+
+            ApplyReplay(playbackTime);
+            return true;
+        }
+
         public bool RegisterLight(Light source)
         {
             if (source == null)
@@ -191,6 +309,17 @@ namespace Deltatime.Replay
         {
             captureRate = Mathf.Max(1f, captureRate);
             endHoldDuration = Mathf.Max(0f, endHoldDuration);
+            omniscientAmbientIntensity =
+                Mathf.Max(0f, omniscientAmbientIntensity);
+            omniscientReflectionIntensity =
+                Mathf.Max(0f, omniscientReflectionIntensity);
+            omniscientFillLightIntensity =
+                Mathf.Max(0f, omniscientFillLightIntensity);
+
+            if (omniscientFillLight != null)
+            {
+                ApplyOmniscientFillLightSettings();
+            }
         }
 
         private void CaptureFrame()
@@ -273,6 +402,7 @@ namespace Deltatime.Replay
                 return;
             }
 
+            SaveReplayLightingState();
             DisableLiveSimulation();
 
             for (int i = 0; i < tracks.Count; i++)
@@ -287,6 +417,8 @@ namespace Deltatime.Replay
 
             replayRoot.gameObject.SetActive(true);
             IsReplaying = true;
+            IsOmniscientViewEnabled = false;
+            omniscientFillLight.enabled = false;
             playbackTime = firstRecordedTime;
             holdRemaining = 0f;
             ApplyReplay(playbackTime);
@@ -355,12 +487,24 @@ namespace Deltatime.Replay
             ApplyCamera(timestamp);
             for (int i = 0; i < tracks.Count; i++)
             {
-                tracks[i].Apply(timestamp);
+                tracks[i].Apply(timestamp, IsOmniscientViewEnabled);
             }
 
-            for (int i = 0; i < lightTracks.Count; i++)
+            if (IsOmniscientViewEnabled)
             {
-                lightTracks[i].Apply(timestamp);
+                for (int i = 0; i < lightTracks.Count; i++)
+                {
+                    lightTracks[i].HideProxy();
+                }
+
+                ApplyOmniscientLighting();
+            }
+            else
+            {
+                for (int i = 0; i < lightTracks.Count; i++)
+                {
+                    lightTracks[i].Apply(timestamp);
+                }
             }
         }
 
@@ -426,6 +570,65 @@ namespace Deltatime.Replay
             gameplayCamera.fieldOfView = sample.FieldOfView;
         }
 
+        private void SaveReplayLightingState()
+        {
+            if (hasReplayLightingSnapshot)
+            {
+                return;
+            }
+
+            replayLightingSnapshot =
+                ReplayLightingSnapshot.Capture(gameplayCamera);
+            hasReplayLightingSnapshot = true;
+        }
+
+        private void ApplyOmniscientLighting()
+        {
+            EnsureOmniscientFillLight();
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = omniscientAmbientSkyColor;
+            RenderSettings.ambientEquatorColor = omniscientAmbientEquatorColor;
+            RenderSettings.ambientGroundColor = omniscientAmbientGroundColor;
+            RenderSettings.ambientIntensity = omniscientAmbientIntensity;
+            RenderSettings.reflectionIntensity =
+                omniscientReflectionIntensity;
+            RenderSettings.fog = false;
+
+            ApplyOmniscientFillLightSettings();
+            omniscientFillLight.enabled = true;
+            if (gameplayCamera != null)
+            {
+                gameplayCamera.backgroundColor = omniscientBackgroundColor;
+            }
+        }
+
+        private void ApplyOmniscientFillLightSettings()
+        {
+            if (omniscientFillLight == null)
+            {
+                return;
+            }
+
+            omniscientFillLight.color = omniscientFillLightColor;
+            omniscientFillLight.intensity = omniscientFillLightIntensity;
+            omniscientFillLight.transform.rotation =
+                Quaternion.Euler(omniscientFillLightRotation);
+        }
+
+        private void RestoreReplayLightingState()
+        {
+            if (hasReplayLightingSnapshot)
+            {
+                replayLightingSnapshot.Restore(gameplayCamera);
+                hasReplayLightingSnapshot = false;
+            }
+
+            if (omniscientFillLight != null)
+            {
+                omniscientFillLight.enabled = false;
+            }
+        }
+
         private VisualTrack CreateTrack(Renderer source)
         {
             Renderer proxy = CreateProxyRenderer(source);
@@ -436,7 +639,14 @@ namespace Deltatime.Replay
 
             proxy.transform.SetParent(replayRoot, false);
             proxy.gameObject.name = $"Replay - {source.gameObject.name}";
-            return new VisualTrack(source, proxy);
+            VisionCone visionCone = source.GetComponent<VisionCone>();
+            EnemyCombatant enemy =
+                source.GetComponentInParent<EnemyCombatant>(true);
+            return new VisualTrack(
+                source,
+                proxy,
+                visionCone,
+                enemy);
         }
 
         private static Light CreateProxyLight(
@@ -557,11 +767,81 @@ namespace Deltatime.Replay
             return clones;
         }
 
+        private void OnDisable()
+        {
+            RestoreReplayLightingState();
+            IsOmniscientViewEnabled = false;
+        }
+
         private void OnDestroy()
         {
+            RestoreReplayLightingState();
             for (int i = 0; i < tracks.Count; i++)
             {
                 tracks[i].Dispose();
+            }
+        }
+
+        private readonly struct ReplayLightingSnapshot
+        {
+            private readonly AmbientMode ambientMode;
+            private readonly Color ambientSkyColor;
+            private readonly Color ambientEquatorColor;
+            private readonly Color ambientGroundColor;
+            private readonly float ambientIntensity;
+            private readonly float reflectionIntensity;
+            private readonly bool fog;
+            private readonly FogMode fogMode;
+            private readonly Color fogColor;
+            private readonly float fogDensity;
+            private readonly float fogStartDistance;
+            private readonly float fogEndDistance;
+            private readonly bool hasCamera;
+            private readonly Color cameraBackgroundColor;
+
+            private ReplayLightingSnapshot(Camera camera)
+            {
+                ambientMode = RenderSettings.ambientMode;
+                ambientSkyColor = RenderSettings.ambientSkyColor;
+                ambientEquatorColor = RenderSettings.ambientEquatorColor;
+                ambientGroundColor = RenderSettings.ambientGroundColor;
+                ambientIntensity = RenderSettings.ambientIntensity;
+                reflectionIntensity = RenderSettings.reflectionIntensity;
+                fog = RenderSettings.fog;
+                fogMode = RenderSettings.fogMode;
+                fogColor = RenderSettings.fogColor;
+                fogDensity = RenderSettings.fogDensity;
+                fogStartDistance = RenderSettings.fogStartDistance;
+                fogEndDistance = RenderSettings.fogEndDistance;
+                hasCamera = camera != null;
+                cameraBackgroundColor =
+                    hasCamera ? camera.backgroundColor : Color.black;
+            }
+
+            public static ReplayLightingSnapshot Capture(Camera camera)
+            {
+                return new ReplayLightingSnapshot(camera);
+            }
+
+            public void Restore(Camera camera)
+            {
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientSkyColor = ambientSkyColor;
+                RenderSettings.ambientEquatorColor = ambientEquatorColor;
+                RenderSettings.ambientGroundColor = ambientGroundColor;
+                RenderSettings.ambientIntensity = ambientIntensity;
+                RenderSettings.reflectionIntensity = reflectionIntensity;
+                RenderSettings.fog = fog;
+                RenderSettings.fogMode = fogMode;
+                RenderSettings.fogColor = fogColor;
+                RenderSettings.fogDensity = fogDensity;
+                RenderSettings.fogStartDistance = fogStartDistance;
+                RenderSettings.fogEndDistance = fogEndDistance;
+
+                if (hasCamera && camera != null)
+                {
+                    camera.backgroundColor = cameraBackgroundColor;
+                }
             }
         }
 
@@ -737,6 +1017,14 @@ namespace Deltatime.Replay
                 }
             }
 
+            public void HideProxy()
+            {
+                if (proxy != null)
+                {
+                    proxy.enabled = false;
+                }
+            }
+
             public void Apply(float timestamp)
             {
                 if (proxy == null ||
@@ -847,6 +1135,11 @@ namespace Deltatime.Replay
             private readonly Renderer proxy;
             private readonly LineRenderer sourceLine;
             private readonly LineRenderer proxyLine;
+            private readonly Mesh proxyMesh;
+            private readonly VisionCone visionCone;
+            private readonly bool isVisionCone;
+            private readonly EnemyCombatant replayVisibilityOwner;
+            private readonly bool supportsOmniscientVisibility;
             private readonly List<VisualSample> samples =
                 new List<VisualSample>(512);
             private readonly List<Material> sourceMaterials =
@@ -857,23 +1150,61 @@ namespace Deltatime.Replay
             private Vector3[] linePositionBuffer;
 
             public int InstanceId { get; }
-
-            public VisualTrack(Renderer sourceRenderer, Renderer proxyRenderer)
+            public bool IsVisionCone => isVisionCone;
+            public bool SupportsOmniscientVisibility =>
+                supportsOmniscientVisibility;
+            public bool IsProxyActive =>
+                proxy != null &&
+                proxy.enabled &&
+                proxy.gameObject.activeInHierarchy;
+            public VisualTrack(
+                Renderer sourceRenderer,
+                Renderer proxyRenderer,
+                VisionCone sourceVisionCone,
+                EnemyCombatant enemy)
             {
                 source = sourceRenderer;
                 proxy = proxyRenderer;
                 sourceLine = sourceRenderer as LineRenderer;
                 proxyLine = proxyRenderer as LineRenderer;
+                visionCone = sourceVisionCone;
+                isVisionCone = sourceVisionCone != null;
+                MeshFilter proxyFilter = isVisionCone
+                    ? proxyRenderer.GetComponent<MeshFilter>()
+                    : null;
+                proxyMesh = proxyFilter != null
+                    ? proxyFilter.sharedMesh
+                    : null;
+                if (proxyMesh != null)
+                {
+                    proxyMesh.MarkDynamic();
+                }
+                replayVisibilityOwner = enemy;
+                supportsOmniscientVisibility =
+                    enemy != null &&
+                    enemy.TryGetReplayVisibility(sourceRenderer, out _);
                 InstanceId = sourceRenderer.GetInstanceID();
                 proxy.enabled = false;
             }
 
             public void Capture(float timestamp)
             {
-                bool visible = source != null &&
-                               source.enabled &&
-                               source.gameObject.activeInHierarchy;
-                if (!visible)
+                bool active = source != null &&
+                              source.gameObject.activeInHierarchy;
+                bool visible = active && source.enabled;
+                bool omniscientVisible = visible;
+                if (supportsOmniscientVisibility)
+                {
+                    omniscientVisible =
+                        active &&
+                        replayVisibilityOwner != null &&
+                        replayVisibilityOwner.TryGetReplayVisibility(
+                            source,
+                            out bool logicalVisibility) &&
+                        logicalVisibility;
+                }
+
+                if (!visible && !omniscientVisible)
                 {
                     CaptureHidden(timestamp);
                     return;
@@ -902,7 +1233,8 @@ namespace Deltatime.Replay
                 Vector3 scale = source.transform.lossyScale;
                 if (samples.Count > 0 &&
                     samples[samples.Count - 1].Matches(
-                        true,
+                        visible,
+                        omniscientVisible,
                         position,
                         rotation,
                         scale,
@@ -916,7 +1248,8 @@ namespace Deltatime.Replay
 
                 samples.Add(new VisualSample(
                     timestamp,
-                    true,
+                    visible,
+                    omniscientVisible,
                     position,
                     rotation,
                     scale,
@@ -930,7 +1263,8 @@ namespace Deltatime.Replay
 
             public void CaptureHidden(float timestamp)
             {
-                if (samples.Count == 0 || !samples[samples.Count - 1].Visible)
+                if (samples.Count == 0 ||
+                    !samples[samples.Count - 1].HasAnyVisibility)
                 {
                     return;
                 }
@@ -946,9 +1280,11 @@ namespace Deltatime.Replay
                 }
             }
 
-            public void Apply(float timestamp)
+            public void Apply(float timestamp, bool omniscientView)
             {
-                if (samples.Count == 0 || timestamp < samples[0].Time)
+                if ((isVisionCone && omniscientView) ||
+                    samples.Count == 0 ||
+                    timestamp < samples[0].Time)
                 {
                     proxy.enabled = false;
                     return;
@@ -958,13 +1294,14 @@ namespace Deltatime.Replay
                 int previousIndex = Mathf.Max(0, nextIndex - 1);
                 VisualSample previous = samples[previousIndex];
 
-                if (!previous.Visible)
+                if (!previous.IsVisible(omniscientView))
                 {
                     proxy.enabled = false;
                     return;
                 }
 
-                if (nextIndex >= samples.Count || !samples[nextIndex].Visible)
+                if (nextIndex >= samples.Count ||
+                    !samples[nextIndex].IsVisible(omniscientView))
                 {
                     ApplySample(previous);
                     return;
@@ -1006,6 +1343,7 @@ namespace Deltatime.Replay
                 proxy.transform.localScale = sample.Scale;
                 ApplyMaterialColors(sample.MaterialColors);
                 ApplyLine(sample.LinePositions, sample.StartColor, sample.EndColor);
+                RebuildReplayVisionCone(sample.Position, sample.Rotation);
             }
 
             private void ApplyInterpolated(
@@ -1024,6 +1362,24 @@ namespace Deltatime.Replay
                     next.MaterialColors,
                     blend);
                 ApplyInterpolatedLine(previous, next, blend);
+                RebuildReplayVisionCone(
+                    Vector3.Lerp(previous.Position, next.Position, blend),
+                    Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
+            }
+
+            private void RebuildReplayVisionCone(
+                Vector3 worldPosition,
+                Quaternion worldRotation)
+            {
+                if (!isVisionCone || visionCone == null || proxyMesh == null)
+                {
+                    return;
+                }
+
+                visionCone.RebuildReplayMesh(
+                    proxyMesh,
+                    worldPosition,
+                    worldRotation);
             }
 
             private void ApplyLine(
@@ -1199,6 +1555,8 @@ namespace Deltatime.Replay
         {
             public float Time { get; }
             public bool Visible { get; }
+            public bool OmniscientVisible { get; }
+            public bool HasAnyVisibility => Visible || OmniscientVisible;
             public Vector3 Position { get; }
             public Quaternion Rotation { get; }
             public Vector3 Scale { get; }
@@ -1210,6 +1568,7 @@ namespace Deltatime.Replay
             public VisualSample(
                 float time,
                 bool visible,
+                bool omniscientVisible,
                 Vector3 position,
                 Quaternion rotation,
                 Vector3 scale,
@@ -1220,6 +1579,7 @@ namespace Deltatime.Replay
             {
                 Time = time;
                 Visible = visible;
+                OmniscientVisible = omniscientVisible;
                 Position = position;
                 Rotation = rotation;
                 Scale = scale;
@@ -1234,6 +1594,7 @@ namespace Deltatime.Replay
                 return new VisualSample(
                     time,
                     false,
+                    false,
                     Vector3.zero,
                     Quaternion.identity,
                     Vector3.one,
@@ -1243,8 +1604,14 @@ namespace Deltatime.Replay
                     Color.white);
             }
 
+            public bool IsVisible(bool omniscientView)
+            {
+                return omniscientView ? OmniscientVisible : Visible;
+            }
+
             public bool Matches(
                 bool visible,
+                bool omniscientVisible,
                 Vector3 position,
                 Quaternion rotation,
                 Vector3 scale,
@@ -1254,6 +1621,7 @@ namespace Deltatime.Replay
                 Color endColor)
             {
                 if (Visible != visible ||
+                    OmniscientVisible != omniscientVisible ||
                     !Approximately(Position, position) ||
                     Quaternion.Dot(Rotation, rotation) < 0.999999f ||
                     !Approximately(Scale, scale) ||

@@ -30,6 +30,7 @@ namespace Deltatime.Vision
 
         private Mesh coneMesh;
         private Vector3[] vertices;
+        private Vector3[] replayVertices;
         private int[] triangles;
         private Transform lightTrackingTarget;
         private GameObject spotLightObject;
@@ -114,6 +115,37 @@ namespace Deltatime.Vision
                 QueryTriggerInteraction.Ignore);
         }
 
+        public bool RebuildReplayMesh(
+            Mesh targetMesh,
+            Vector3 worldPosition,
+            Quaternion worldRotation)
+        {
+            if (targetMesh == null || occluderMask.value == 0)
+            {
+                return false;
+            }
+
+            int vertexCount = segments + 2;
+            if (replayVertices == null || replayVertices.Length != vertexCount)
+            {
+                replayVertices = new Vector3[vertexCount];
+            }
+
+            if (targetMesh.vertexCount != vertexCount)
+            {
+                return false;
+            }
+
+            PopulateVisibilityVertices(
+                replayVertices,
+                worldPosition,
+                worldRotation);
+            targetMesh.SetVertices(replayVertices);
+            targetMesh.RecalculateBounds();
+            targetMesh.RecalculateNormals();
+            return true;
+        }
+
         private void AllocateGeometry()
         {
             vertices = new Vector3[segments + 2];
@@ -125,6 +157,13 @@ namespace Deltatime.Vision
                 triangles[triangleIndex] = 0;
                 triangles[triangleIndex + 1] = i + 1;
                 triangles[triangleIndex + 2] = i + 2;
+            }
+
+            if (coneMesh != null)
+            {
+                coneMesh.Clear();
+                coneMesh.vertices = vertices;
+                coneMesh.triangles = triangles;
             }
         }
 
@@ -140,16 +179,33 @@ namespace Deltatime.Vision
                 AllocateGeometry();
             }
 
-            vertices[0] = new Vector3(0f, surfaceOffset, 0f);
-            Vector3 rayOrigin = transform.position + (Vector3.up * rayHeight);
+            PopulateVisibilityVertices(
+                vertices,
+                transform.position,
+                transform.rotation);
+            coneMesh.vertices = vertices;
+            coneMesh.RecalculateBounds();
+            coneMesh.RecalculateNormals();
+        }
+
+        private void PopulateVisibilityVertices(
+            Vector3[] targetVertices,
+            Vector3 worldPosition,
+            Quaternion worldRotation)
+        {
+            targetVertices[0] = new Vector3(0f, surfaceOffset, 0f);
+            Vector3 rayOrigin = worldPosition + (Vector3.up * rayHeight);
             float halfAngle = viewAngle * 0.5f;
 
             for (int i = 0; i <= segments; i++)
             {
-                float angle = Mathf.Lerp(-halfAngle, halfAngle, i / (float)segments);
+                float angle = Mathf.Lerp(
+                    -halfAngle,
+                    halfAngle,
+                    i / (float)segments);
                 Vector3 localDirection =
                     Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-                Vector3 worldDirection = transform.TransformDirection(localDirection);
+                Vector3 worldDirection = worldRotation * localDirection;
                 float visibleDistance = viewDistance;
 
                 if (Physics.Raycast(
@@ -163,16 +219,10 @@ namespace Deltatime.Vision
                     visibleDistance = hit.distance;
                 }
 
-                vertices[i + 1] =
+                targetVertices[i + 1] =
                     (localDirection * visibleDistance) +
                     (Vector3.up * surfaceOffset);
             }
-
-            coneMesh.Clear();
-            coneMesh.vertices = vertices;
-            coneMesh.triangles = triangles;
-            coneMesh.RecalculateBounds();
-            coneMesh.RecalculateNormals();
         }
 
         private void CreateDarkVisionLights()

@@ -230,6 +230,26 @@ namespace Deltatime.Enemies
             weaponPickupLayers = pickupLayers;
         }
 
+        public bool TryGetReplayVisibility(
+            Renderer targetRenderer,
+            out bool visible)
+        {
+            if (targetRenderer == bodyRenderer)
+            {
+                visible = !IsDead;
+                return true;
+            }
+
+            if (targetRenderer == weaponRenderer)
+            {
+                visible = !IsDead && weapon != null && weapon.HasWeapon;
+                return true;
+            }
+
+            visible = false;
+            return false;
+        }
+
         protected override void OnStunned()
         {
             ReleaseWeaponTarget();

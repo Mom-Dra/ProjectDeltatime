@@ -64,8 +64,11 @@ namespace Deltatime.UI
                     ? $"{deadline.CooldownRemaining:0.00}w"
                     : "READY";
 
+            string replayView = replay.IsOmniscientViewEnabled
+                ? "FULL"
+                : "DARK";
             string timeStatus = replay.IsReplaying
-                ? $"STAGE CLEAR  •  REPLAY 1.00x\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s"
+                ? $"STAGE CLEAR  •  REPLAY 1.00x\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\nVIEW  {replayView}"
                 : $"REAL TIME  {stage.RealPlayTime:0.0}s\nWORLD  {worldTime.CurrentTimeScale:0.00}x";
             string status =
                 $"ENEMIES  {stage.RemainingEnemyCount}\n" +
@@ -122,9 +125,10 @@ namespace Deltatime.UI
 
             DrawDeadlineFeedback();
 
-            const string controls =
-                "WASD Move  |  Mouse Aim  |  LMB Attack  |  RMB Throw\n" +
-                "Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
+            string controls = replay.IsReplaying
+                ? "V Toggle Full View  |  R Restart"
+                : "WASD Move  |  Mouse Aim  |  LMB Attack  |  RMB Throw\n" +
+                  "Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),
                 controls,

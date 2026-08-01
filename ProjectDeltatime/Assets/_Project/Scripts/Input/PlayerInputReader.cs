@@ -17,6 +17,7 @@ namespace Deltatime.InputSystem
         public bool DashPressed { get; private set; }
         public bool InteractPressed { get; private set; }
         public bool RestartPressed { get; private set; }
+        public bool ReplayVisionTogglePressed { get; private set; }
 
         private void Awake()
         {
@@ -45,6 +46,8 @@ namespace Deltatime.InputSystem
             DashPressed = gameplay.Dash.WasPressedThisFrame();
             InteractPressed = gameplay.Interact.WasPressedThisFrame();
             RestartPressed = gameplay.Restart.WasPressedThisFrame();
+            ReplayVisionTogglePressed =
+                gameplay.ReplayVisionToggle.WasPressedThisFrame();
 
             worldTimeActivity.SetMovement(Move.magnitude);
         }
@@ -75,6 +78,7 @@ namespace Deltatime.InputSystem
             DashPressed = false;
             InteractPressed = false;
             RestartPressed = false;
+            ReplayVisionTogglePressed = false;
 
             if (worldTimeActivity != null)
             {

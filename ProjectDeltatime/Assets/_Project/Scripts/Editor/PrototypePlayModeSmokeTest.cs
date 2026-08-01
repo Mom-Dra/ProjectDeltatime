@@ -565,6 +565,40 @@ namespace Deltatime.EditorTools
                 replay != null && replay.ActiveReplayLightCount == 2,
                 "Replay did not activate both dark-vision proxy lights.");
             Require(
+                replay != null &&
+                !replay.IsOmniscientViewEnabled &&
+                replay.IsReplayVisionConeVisible,
+                "Replay did not start in dark-vision mode with its view cone visible.");
+
+            if (replay != null)
+            {
+                Require(
+                    replay.SetOmniscientView(true),
+                    "Replay rejected the omniscient-view toggle.");
+                Require(
+                    replay.IsOmniscientViewEnabled &&
+                    replay.ActiveReplayLightCount == 0 &&
+                    !replay.IsReplayVisionConeVisible &&
+                    replay.IsOmniscientFillLightActive,
+                    "Omniscient replay did not replace dark vision with full-map lighting.");
+                Require(
+                    replay.ActiveOmniscientEnemyVisualCount >= 3,
+                    "Omniscient replay did not reveal every enemy body.");
+                Require(
+                    !RenderSettings.fog,
+                    "Omniscient replay left scene fog enabled.");
+
+                Require(
+                    replay.SetOmniscientView(false),
+                    "Replay rejected the dark-vision restore toggle.");
+                Require(
+                    !replay.IsOmniscientViewEnabled &&
+                    replay.ActiveReplayLightCount == 2 &&
+                    replay.IsReplayVisionConeVisible &&
+                    !replay.IsOmniscientFillLightActive,
+                    "Replay did not restore its recorded dark-vision state.");
+            }
+            Require(
                 IsSceneLightEnabled("Directional Key Light") &&
                 IsSceneLightEnabled("Blue Bay Light") &&
                 IsSceneLightEnabled("Red Alert Light"),
@@ -615,6 +649,9 @@ namespace Deltatime.EditorTools
             Require(
                 replay != null && replay.TrackedLightCount == 2,
                 "Stage replay did not register both dark-vision lights.");
+            Require(
+                replay != null && replay.TrackedReplayVisionConeCount == 1,
+                "Stage replay did not register the replay vision-cone track.");
             Require(
                 shooters.Length == 2,
                 $"Expected 2 ranged enemies, found {shooters.Length}.");

@@ -151,6 +151,7 @@ namespace Deltatime.EditorTools
             StageReplayController replay =
                 systems.AddComponent<StageReplayController>();
             replay.Configure(worldTime, gameplayCamera);
+            ConfigureReplayOmniscientView(replay);
 
             CreateFloorAndWalls(
                 floorMaterial,
@@ -421,6 +422,30 @@ namespace Deltatime.EditorTools
             return keyLight;
         }
 
+        private static void ConfigureReplayOmniscientView(
+            StageReplayController replay)
+        {
+            SerializedObject settings = new SerializedObject(replay);
+            settings.FindProperty("omniscientAmbientSkyColor").colorValue =
+                new Color(0.30f, 0.34f, 0.40f, 1f);
+            settings.FindProperty("omniscientAmbientEquatorColor").colorValue =
+                new Color(0.22f, 0.25f, 0.30f, 1f);
+            settings.FindProperty("omniscientAmbientGroundColor").colorValue =
+                new Color(0.12f, 0.14f, 0.17f, 1f);
+            settings.FindProperty("omniscientAmbientIntensity").floatValue = 1f;
+            settings.FindProperty("omniscientReflectionIntensity").floatValue =
+                0.35f;
+            settings.FindProperty("omniscientBackgroundColor").colorValue =
+                new Color(0.025f, 0.04f, 0.065f, 1f);
+            settings.FindProperty("omniscientFillLightColor").colorValue =
+                new Color(0.78f, 0.86f, 1f, 1f);
+            settings.FindProperty("omniscientFillLightIntensity").floatValue =
+                0.65f;
+            settings.FindProperty("omniscientFillLightRotation").vector3Value =
+                new Vector3(50f, -30f, 0f);
+            settings.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void ApplyStageLightingProfile(
             WorldTimeVisualFeedback visualFeedback,
             Light keyLight,
@@ -590,7 +615,7 @@ namespace Deltatime.EditorTools
                 worldTime,
                 activity,
                 deadline);
-            deadline.Configure(input, health, combat, worldTime);
+            deadline.Configure(input, movement, health, combat, worldTime);
 
             GameObject visionObject = new GameObject("Vision Cone");
             visionObject.transform.SetParent(root.transform, false);
@@ -1486,6 +1511,7 @@ namespace Deltatime.EditorTools
         {
             int playerCount = CountComponentsInScene<PlayerHealth>(scene);
             int inputCount = CountComponentsInScene<PlayerInputReader>(scene);
+            int movementCount = CountComponentsInScene<PlayerMovement>(scene);
             int deadlineCount = CountComponentsInScene<DeadlineController>(scene);
             int enemyCount = CountComponentsInScene<EnemyHealth>(scene);
             int rangedEnemyCount =
@@ -1516,6 +1542,7 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
             if (playerCount != 1 ||
                 inputCount != 1 ||
+                movementCount != 1 ||
                 deadlineCount != 1 ||
                 enemyCount != 3 ||
                 rangedEnemyCount != 2 ||
@@ -1539,7 +1566,8 @@ namespace Deltatime.EditorTools
             {
                 throw new InvalidOperationException(
                     "3D stage validation failed: " +
-                    $"players={playerCount}, inputs={inputCount}, deadlines={deadlineCount}, enemies={enemyCount}, " +
+                    $"players={playerCount}, inputs={inputCount}, movements={movementCount}, " +
+                    $"deadlines={deadlineCount}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
                     $"perception={perceptionCount}, combatants={combatantCount}, " +
                     $"weapons={weaponControllerCount}, enemyDrops={enemyWeaponDropCount}, " +

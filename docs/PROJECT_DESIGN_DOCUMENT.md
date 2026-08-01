@@ -6,8 +6,8 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-01 (KST) |
-| 문서 버전 | 1.2.2 |
+| 마지막 분석일 | 2026-08-02 (KST) |
+| 문서 버전 | 1.2.5 |
 | 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 현재 장비에 따라 총기·근접 무기·주먹을 사용하는 공통 적 전투 AI, 적 무기 드롭·재무장, 플레이어 HP 3과 근접 무기 사용, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
 
 ### 1.1 분석 기준과 범위
@@ -26,6 +26,9 @@
 - 커스텀 스모크 테스트는 `Stage2`를 열고 초기 플레이어/적/카메라/월드 시간, NavMeshData, 적 이동 누적 거리와 경로 획득, 근접형 추격 상태, 투척 무기 6 거리, 두 적 유형의 기절·무장 해제, 사격 적 무기 드롭, 적 전멸 후 리플레이와 시야 조명 프록시를 검사한다.
 - 현재 테스트 코드에는 `DEADLINE` 발동/행동 준비와 플레이어의 공중 무기 가로채기를 직접 검증하는 어설션이 없다.
 - 이번 적 무기 드롭·재무장·주먹 공격 및 플레이어 근접 전투 코드는 위 스모크 테스트보다 최신이다. Unity 6000.1.13f1 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 씬·에셋 정적 검증은 통과했지만, 사용자 요청에 따라 플레이 테스트와 스모크 테스트는 **미실행**했으므로 실제 전투 동작은 최신 통합 결과로 확인하지 않았다.
+- 2026-08-01 `DEADLINE` 실제 이동 판정 수정은 Unity 6000.1.13f1 스크립트 컴파일, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 재생성과 `ValidateSavedPrototypeRoom`의 두 저장 씬 정적 검증을 통과했다. 두 씬의 `PlayerMovement.minimumPhysicalDisplacement: 0.001`과 `DeadlineController.movement` 참조를 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 벽 접촉 중 발동 억제의 런타임 결과는 **확인 불가**다.
+- 2026-08-01 리플레이 ViewCone 및 전체 시야 토글 변경은 Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`와 종료 코드 0을 확인했다. 입력 에셋·생성 래퍼·Stage1/Stage2 직렬화는 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 메시 경계, 조명 전환, 시야 밖 적 표시의 실제 시각 품질은 **확인 불가**다.
+- 2026-08-02 ViewCone 리플레이 실시간 재계산 전환은 Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`와 종료 코드 0을 확인했다. 정점 샘플·풀링 참조 제거와 재생용 Raycast API 연결은 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 실제 시야 경계와 프레임 비용은 **확인 불가**다.
 - 근접 무기 드롭·재획득, 시작 유형과 다른 무기 사용, 주먹 세 번 피격, 근거리 주먹 우선, 원거리 무기 탐색, 픽업 경쟁, 플레이어 근접 공격과 `DEADLINE` 해제 판정은 구현 코드와 직렬화 연결만 확인했으며 런타임 결과는 **확인 불가**다.
 - 정식 Unity Test Framework 어셈블리는 없으며 `DEADLINE` 발동/행동 준비와 실제 입력 기반 공중 가로채기는 여전히 직접 검증하지 않는다.
 
@@ -57,7 +60,7 @@
 - **추정:** 총알이 닿기 직전 멈춰 시간을 고정하고 여러 원인을 배치한 다음 한 번에 해제하는 전술적 연출.
 - **추정:** 제한 탄약, 무기 투척, 적 무장 해제, 바닥 교환, 공중 가로채기를 연결하는 즉흥적 무기 순환.
 - **추정:** 제한된 시야와 엄폐물 속에서 적 위치와 사격 경고선을 읽는 긴장감.
-- **추정:** 스테이지 종료 후 플레이 결과를 밝은 리플레이로 다시 보는 연출적 보상.
+- **추정:** 스테이지 종료 후 제한 시야 리플레이와 필요할 때 전환하는 밝은 전체 시야로 플레이 결과를 다시 보는 연출적 보상.
 
 ### 2.4 예상 플레이 흐름
 
@@ -82,11 +85,11 @@
 
 | 기능 | 상태 | 설명 | 근거 파일 | 비고 |
 |---|---|---|---|---|
-| 3D 플레이어 이동 | 구현 완료 | `WASD` 입력을 동적 Rigidbody의 평면 속도로 변환하며 충돌과 하드 프리즈를 반영 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs` | 이동 속도 6, 벽 접촉 시 위치 강제 이동 없음 |
+| 3D 플레이어 이동 | 구현 완료 | `WASD` 입력을 동적 Rigidbody의 평면 속도로 변환하고 마지막 물리 스텝의 입력 방향 실제 변위를 공개하며 충돌과 하드 프리즈를 반영 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs` | 이동 속도 6, 실제 이동 최소 변위 0.001m, 벽 접촉 시 위치 강제 이동 없음 |
 | 마우스 조준 | 구현 완료 | 화면 포인터를 지면 평면에 투영하여 플레이어 회전과 조준선을 갱신 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs` | 마우스 전용 |
 | 대시 | 구현 완료 | 이동 방향으로 최대 3.5 거리, 0.03 스킨의 축소 캡슐 캐스트, 대시 중 무적, 0.8초 쿨다운 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerDash.cs` | 벽 0.01 겹침 시작 회귀 검사 포함 스모크 통과 |
 | 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
-| `DEADLINE` | 부분 구현 | 임박한 적 투사체와 이동 정지를 감지해 하드 프리즈, 사격·근접 공격·투척 중 최대 2개 행동 준비, 이동 시 해제 | `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 씬 연결과 컴파일은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
+| `DEADLINE` | 부분 구현 | 실제 입력 방향으로 이동한 마지막 물리 스텝 뒤 입력을 놓았을 때만 임박한 적 투사체를 선점해 하드 프리즈하고, 사격·근접 공격·투척 중 최대 2개 행동을 준비해 이동 입력으로 해제 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 벽 정면 입력은 진입·안내에서 제외. 씬 연결과 컴파일은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
 | 총기 사격 | 구현 완료 | 권총과 자동소총이 공통 탄약·발사 간격 검사와 팩션 기반 투사체 생성을 사용하며 피해는 3 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 권총 적 사용 시 단발, 자동소총 적 사용 시 4발 점사 |
 | 근접 무기 공격 | 구현 완료 | 전방 반각 35도·거리 1.45 안에서 시야가 확보된 가장 가까운 적대 대상 하나에 피해 3을 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | 플레이어는 실제 시간 쿨다운, 적은 월드 시간 상태 머신 사용. 플레이 검증 미실행 |
 | 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 총기 피해 3은 플레이어 최대 체력과 같음 |
@@ -102,8 +105,8 @@
 | 탑다운 카메라 | 구현 완료 | 원근 카메라가 플레이어와 조준 선행 지점을 부드럽게 추적 | `ProjectDeltatime/Assets/_Project/Scripts/Player/TopDownCameraController.cs` | 카메라 1대 |
 | 스테이지 적 등록·클리어 | 구현 완료 | 생존 적을 등록하고 0명이 되면 전투를 막고 리플레이 요청 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 적 3명 고정 콘텐츠 |
 | 사망·재시작 | 구현 완료 | 플레이어 사망 시 전투를 막고 `R`로 현재 씬 재로드 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 체크포인트 없음 |
-| 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz로 기록해 프록시로 반복 재생 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs` | 시각 리플레이만 제공, 종료/스킵/다음 씬 없음 |
-| HUD | 부분 구현 | IMGUI로 적 수, 체력 `HEALTH 3/3`, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, `LMB Attack` 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
+| 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz로 기록해 프록시로 반복 재생하고, ViewCone은 기록된 보간 포즈에서 매 렌더 프레임 재계산하며 `V`로 암흑/전체 시야를 전환 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | 시각 리플레이만 제공, 종료/스킵/다음 씬 없음. 최신 시각 품질·프레임 비용 확인 불가 |
+| HUD | 부분 구현 | IMGUI로 적 수, 체력 `HEALTH 3/3`, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 리플레이 `VIEW DARK`/`VIEW FULL`과 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
 | Stage1/Stage2 콘텐츠 | 부분 구현 | 두 씬 모두 44개 GameObject, 플레이어 1, 이동 연사형 2, 근접 추격형 1, 픽업 1, Navigation 1로 동일 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity` | 조명만 밝음/어두움으로 다름 |
 | 씬 전환 | 미구현 | 현재 씬 재시작 외에 다른 씬을 로드하는 코드가 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | `Stage1 → Stage2` 흐름 필요 여부 확인 |
 | 메인 메뉴·일시정지·설정 | 미구현 | 관련 씬, UI, 입력, 코드가 없음 | `ProjectDeltatime/Assets/_Project` | 계획 필요 |
@@ -147,6 +150,7 @@ flowchart TD
 - 마우스 오른쪽: 현재 무기 투척
 - `Space`: 이동 방향 대시
 - `E`: 공중 무기 가로채기, 바닥 무기 획득 또는 교환
+- 리플레이 중 `V`: 암흑 시야와 전체 시야 전환
 - `R`: 현재 씬 재시작
 - 임박한 적탄이 있을 때 이동 입력을 놓음: `DEADLINE` 진입 조건
 - `DEADLINE` 중 공격/투척: 최대 2개 행동 준비. 근접 공격은 준비 시 방향과 무기 수치를 저장하고 해제 시 판정
@@ -207,11 +211,11 @@ flowchart TD
 ### 5.3 월드 시간 및 `DEADLINE`
 
 - **시스템 목적:** 플레이어 행동량에 따라 월드 진행 속도를 조절하고, 임박한 피격 순간에 원인들을 준비할 수 있는 하드 프리즈를 제공한다.
-- **현재 동작 방식:** 활동량을 0~1로 합산해 0.02~1.0 배율을 보간한다. `DEADLINE`은 반경 1.5 안의 적탄이 0.15 월드초 내 플레이어에게 충돌할 때, 이동하다 정지한 프레임에 투사체를 선점하고 토큰 기반 하드 프리즈를 획득한다.
-- **주요 클래스:** `WorldTimeActivity`, `WorldTimeController`, `DeadlineController`
-- **데이터 흐름:** 이동/조준/행동 펄스 → 목표 월드 배율 → `WorldDeltaTime` → 적·투사체·투척/드롭 무기. 위협 투사체 레지스트리 → `DeadlineController` → 하드 프리즈 토큰 → 준비 행동 해제
-- **다른 시스템과의 의존성:** 입력, 체력, 플레이어 전투, 투사체 정적 레지스트리, HUD
-- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Time`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`
+- **현재 동작 방식:** **구현 완료**. 활동량을 0~1로 합산해 0.02~1.0 배율을 보간한다. `PlayerMovement`는 일반 이동 입력이 적용된 마지막 물리 스텝에서 입력 방향으로 0.001m 이상 이동했는지 기록한다. `DEADLINE`은 이 실제 이동 자격이 있는 플레이어가 입력을 놓았고 반경 1.5 안의 적탄이 0.15 월드초 내 충돌할 때만 투사체를 선점하고 토큰 기반 하드 프리즈를 획득한다. 벽 정면 입력처럼 실제 변위가 없으면 위협 강조와 해제 안내도 표시하지 않는다.
+- **주요 클래스:** `WorldTimeActivity`, `WorldTimeController`, `PlayerMovement`, `DeadlineController`
+- **데이터 흐름:** 이동/조준/행동 펄스 → 목표 월드 배율 → `WorldDeltaTime` → 적·투사체·투척/드롭 무기. 입력과 물리 스텝 전후 Rigidbody 위치 → 실제 이동 자격 → 위협 투사체 레지스트리 → `DeadlineController` → 하드 프리즈 토큰 → 준비 행동 해제
+- **다른 시스템과의 의존성:** 입력, 플레이어 Rigidbody 이동, 체력, 플레이어 전투, 투사체 정적 레지스트리, HUD
+- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`
 - **개선이 필요한 부분:** 전용 자동 테스트와 튜토리얼이 없고, 행동 두 개 제한·재사용 시간의 최종 기획 의도가 문서로 확정되지 않았다.
 
 ### 5.4 전투
@@ -267,17 +271,17 @@ flowchart TD
 ### 5.9 리플레이
 
 - **시스템 목적:** 스테이지 클리어까지의 시각적 전투를 1.00배 월드 시간으로 재생한다.
-- **현재 동작 방식:** 20Hz 실시간 샘플링으로 카메라와 활성 렌더러/라인/등록 조명을 기록한다. 클리어 시 대부분의 `MonoBehaviour`를 끄고 원본 렌더러를 숨긴 뒤 복제 프록시를 보간한다.
+- **현재 동작 방식:** 20Hz 실시간 샘플링으로 카메라, 활성 GameObject의 렌더러/라인과 등록 조명을 기록한다. ViewCone은 위치·회전·스케일만 트랙에 저장하며, 삼각형 토폴로지는 프록시 생성 때 한 번 복제한 뒤 암흑 시야 리플레이의 매 `LateUpdate`에 기록된 보간 포즈와 정적 `VisionObstacle` Raycast로 정점·Bounds·Normals를 다시 계산한다. 적 몸체와 장착 무기는 실제 Renderer 상태와 별도로 논리적 전체 시야 가시성을 기록한다. 클리어 시 대부분의 `MonoBehaviour`를 끄고 원본을 숨긴 뒤 암흑 시야로 프록시를 반복 재생한다. 리플레이 중 `V`를 누르면 ViewCone·동적 조명 프록시를 숨기고 안개 제거, Trilight 환경광과 그림자 없는 Directional Fill Light를 적용해 시야 밖의 생존 적 몸체·장착 무기를 표시하며, 전체 시야에서는 ViewCone Raycast를 수행하지 않는다. 다시 `V`를 누르면 같은 재생 시점의 암흑 시야 메시와 조명을 즉시 복원한다.
 - **주요 클래스:** `StageReplayController`
-- **데이터 흐름:** 라이브 렌더러·카메라·조명 → 샘플 트랙 → 클리어 요청 → 라이브 시뮬레이션 비활성화 → 프록시 재생
-- **다른 시스템과의 의존성:** 스테이지, 카메라, `VisionCone` 런타임 조명, HUD
+- **데이터 흐름:** 라이브 렌더러·카메라·조명·ViewCone 포즈·적 논리 가시성 → 샘플 트랙 → 클리어 요청 → 라이브 시뮬레이션 비활성화 → 프록시 재생 중 ViewCone Raycast 재계산 → `V` 입력에 따른 암흑/전체 시야 적용
+- **다른 시스템과의 의존성:** 스테이지, 입력, 카메라, `VisionCone` 런타임 조명과 메시, `EnemyCombatant`, HUD, 전역 `RenderSettings`
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`
-- **개선이 필요한 부분:** 기록량 상한이 없고 매 캡처마다 씬의 렌더러를 검색한다. 장시간 스테이지의 메모리·CPU 성능, 리플레이 종료/스킵, 오디오 재생은 미구현이다.
+- **개선이 필요한 부분:** ViewCone 정점 기록 메모리는 제거했지만 암흑 시야 리플레이에서는 매 렌더 프레임 97회 Raycast와 메시 Bounds/Normals 갱신이 발생한다. 일반 시각 샘플의 색상·라인 배열 할당, 기록량 상한, 매 캡처의 전체 렌더러 검색, 장시간 스테이지의 메모리·CPU 성능, 리플레이 종료/스킵, 오디오 재생은 미구현이다.
 
 ### 5.10 카메라 및 시야
 
 - **시스템 목적:** 조준 방향을 선행하는 원근 탑다운 화면과 제한 시야를 제공한다.
-- **현재 동작 방식:** 카메라는 플레이어 + 조준 방향 2.25 지점을 지수 보간으로 추적한다. `VisionCone`은 96개 구간의 동적 메시와 장애물 Raycast를 사용한다. 적은 60도·거리 12.5 부채꼴 또는 지면 반경 4 원형 시야 안에 있으면서 장애물에 가리지 않았을 때 몸체와 장착 무기가 렌더링된다. 런타임 손전등 밝기는 7.5이고, 플레이어 기준 높이 1의 원형 Point Light는 지면 반경 4가 되도록 실제 `Light.range`를 계산하며 밝기 4, `ForcePixel`, Soft Shadow 강도 0.85를 사용한다. 두 조명은 매 `LateUpdate`에 플레이어를 추적하고 리플레이에 등록된다.
+- **현재 동작 방식:** 카메라는 플레이어 + 조준 방향 2.25 지점을 지수 보간으로 추적한다. `VisionCone`은 96개 구간의 동적 메시와 장애물 Raycast를 사용한다. 적은 60도·거리 12.5 부채꼴 또는 지면 반경 4 원형 시야 안에 있으면서 장애물에 가리지 않았을 때 몸체와 장착 무기가 렌더링된다. 런타임 손전등 밝기는 7.5이고, 플레이어 기준 높이 1의 원형 Point Light는 지면 반경 4가 되도록 실제 `Light.range`를 계산하며 밝기 4, `ForcePixel`, Soft Shadow 강도 0.85를 사용한다. 두 조명은 매 `LateUpdate`에 플레이어를 추적하고 리플레이에 등록된다. 리플레이 암흑 시야도 저장한 포즈와 정적 `VisionObstacle`을 사용해 같은 메시 계산을 매 프레임 수행하며, `V` 전체 시야에서는 ViewCone과 두 동적 조명을 숨기고 정적 환경 조명은 유지한다.
 - **주요 클래스:** `TopDownCameraController`, `VisionCone`, `WorldTimeVisualFeedback`
 - **데이터 흐름:** 플레이어 위치/조준 → 카메라 초점. 플레이어 Transform/장애물 Layer → 시야 메시·조명·적 렌더러 가시성
 - **다른 시스템과의 의존성:** 입력, 적 AI 렌더러, 리플레이, `VisionObstacle` Layer
@@ -287,7 +291,7 @@ flowchart TD
 ### 5.11 UI 및 피드백
 
 - **시스템 목적:** 프로토타입 상태와 조작법, 전투 경고를 화면에 표시한다.
-- **현재 동작 방식:** 런타임 IMGUI로 텍스트 패널과 진행 막대를 직접 그린다. 월드가 느릴수록 화면에 어두운 오버레이를 적용한다.
+- **현재 동작 방식:** 런타임 IMGUI로 텍스트 패널과 진행 막대를 직접 그린다. 월드가 느릴수록 화면에 어두운 오버레이를 적용하며, 리플레이에서는 `VIEW DARK`/`VIEW FULL` 상태와 `V Toggle Full View` 안내를 표시한다.
 - **주요 클래스:** `GameHud`, `WorldTimeVisualFeedback`, `HitFlash`
 - **데이터 흐름:** 스테이지/시간/대시/`DEADLINE`/무기/리플레이 상태 → HUD. 충돌 이벤트 → `HitFlash`
 - **다른 시스템과의 의존성:** 거의 모든 런타임 상태 시스템
@@ -428,6 +432,7 @@ flowchart LR
 | 마우스 오른쪽 | 무기 투척 / `DEADLINE` 중 투척 준비 | 구현 완료 |
 | `Space` | 이동 방향 대시 | 구현 완료 |
 | `E` | 공중 가로채기 또는 바닥 획득/교환 | 부분 구현: 바닥 교환은 기존 테스트 확인, 공중 가로채기는 최신 테스트 미검증 |
+| `V` | 리플레이 암흑/전체 시야 토글 | 구현 완료: 입력·씬 연결·컴파일 확인, 실제 시각 품질 확인 불가 |
 | `R` | 현재 씬 재시작 | 구현 완료 |
 
 ### 7.2 목표
@@ -441,7 +446,7 @@ flowchart LR
 - 플레이어 행동량에 따라 적과 투사체의 월드 진행 속도가 변한다.
 - 탄약은 발사로 줄며 자동 재장전은 없다.
 - 무기를 던지면 즉시 비무장 상태가 되고, 플레이어는 바닥 또는 공중 무기를 다시 확보해야 한다. 적도 기절에서 회복한 뒤 주먹으로 싸우거나 바닥 무기를 찾아 재무장한다.
-- 적이 모두 사망하면 조작 가능한 전투 대신 리플레이가 반복된다.
+- 적이 모두 사망하면 조작 가능한 전투 대신 암흑 시야 리플레이가 반복되며, 선택한 `V` 전체 시야 상태는 반복 구간이 바뀌어도 유지된다.
 
 ### 7.4 피드백
 
@@ -454,11 +459,11 @@ flowchart LR
 - `DEADLINE` 위협 탄환 강조, HUD 경고, 하드 프리즈, 행동 수 초과 피드백
 - 공중 무기 비행 궤적과 착지 마커
 - 어두운 화면 오버레이와 시야 스폿/근거리 조명
-- 클리어 후 시각 리플레이
+- 클리어 후 재생 포즈와 Raycast로 ViewCone을 재계산하는 시각 리플레이와 `V` 전체 시야 전환
 
 ### 7.5 UI 정보 구조
 
-- 좌측 상단 상태 패널: 적 수, 체력, 실제 플레이 시간, 월드 배율 또는 리플레이 시간, 대시 상태, `DEADLINE` 상태, 무기/탄약 또는 근접 표시
+- 좌측 상단 상태 패널: 적 수, 체력, 실제 플레이 시간, 월드 배율 또는 리플레이 시간과 `VIEW DARK`/`VIEW FULL`, 대시 상태, `DEADLINE` 상태, 무기/탄약 또는 근접 표시
 - 화면 중앙: 사망/클리어 메시지 또는 `DEADLINE` 행동 수·해제 안내
 - 화면 상단 중앙: 임박한 `DEADLINE` 위협 시간
 - 화면 하단: 전체 키보드·마우스 조작법
@@ -617,13 +622,14 @@ Unity 버전: `6000.1.13f1`
 - 신규 가시성 장애물은 Layer 8 `VisionObstacle`에 배치해야 시야 메시와 공중 드롭 충돌 예측에 반영된다.
 - 새 런타임 조명은 리플레이에 보여야 한다면 `StageReplayController.RegisterLight`로 등록해야 한다.
 - 새 렌더러 타입은 현재 리플레이가 지원하는 `MeshRenderer`, `SkinnedMeshRenderer`, `LineRenderer`인지 확인해야 한다.
+- 전체 시야에서 별도 가시성 규칙이 필요한 적 시각 요소는 `EnemyCombatant.TryGetReplayVisibility`와 녹화 정책을 함께 갱신해야 하며, 경고선·일반 이펙트는 자동으로 강제 표시되지 않는다.
 - 새 무기는 `WeaponDefinition`만 추가하는 것으로 끝나지 않고 투사체/투척 프리팹과 HUD 표현 호환성을 검토해야 한다.
 
 ### 8.9 기술 부채
 
 - 이번 기능의 `EnemyCombatant`, `MeleeAttackResolver`, `MeleeWeapon.asset`과 메타 파일은 작업 트리에서 미추적 상태이므로 변경 확정 시 함께 추적해야 한다.
 - 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없다. 커스텀 배치 스모크 코드는 컴파일되지만 이번 변경에서는 실행하지 않아 최신 통합 결과는 확인 불가다.
-- `StageReplayController`는 20Hz마다 전체 활성 렌더러를 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다.
+- `StageReplayController`는 20Hz마다 전체 활성 GameObject의 렌더러를 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다. ViewCone 정점 샘플은 제거했지만 암흑 시야 리플레이의 매 프레임 Raycast·Normals 재계산 비용은 프로파일링이 필요하며, 동적 `VisionObstacle`이 추가되면 과거 상태와 달라질 수 있다. 일반 재질 색상·라인 배열은 변경 샘플마다 할당된다.
 - 리플레이가 시작되면 대부분의 `MonoBehaviour`를 끄며, 현재 반복 리플레이 구조에서는 복구 경로가 없다.
 - 플레이어/적/시간/스테이지 밸런스 수치가 씬 컴포넌트와 코드 기본값에 분산되어 있다.
 - 런타임 코드는 단일 기본 어셈블리에 있고 `.asmdef` 경계가 없다.
@@ -675,6 +681,7 @@ Unity 버전: `6000.1.13f1`
 | `DEADLINE` 위험 반경 | 1.5 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 플레이어 중심 |
 | `DEADLINE` 최대 충돌 예측 | 0.15 월드초 | 같은 씬의 `DeadlineController` | 이내 적탄만 위협 |
 | 이동 입력 임계값 | 0.05 | 같은 씬의 `DeadlineController` | 이동→정지 판정 |
+| 실제 이동 최소 변위 | 0.001m/물리 스텝 | 같은 씬의 `PlayerMovement` | 일반 이동 입력 방향 성분, 관용 시간 없음 |
 | `DEADLINE` 재준비 | 0.35 월드초 | 같은 씬의 `DeadlineController` | 해제 후 |
 | 준비 행동 최대 수 | 2개 | 같은 씬의 `DeadlineController` | 사격/근접 공격/투척 합계 |
 | 플레이어 최대 체력 | 3 | 같은 씬의 `PlayerHealth` | `CurrentHealth`가 피해량만큼 감소 |
@@ -707,6 +714,9 @@ Unity 버전: `6000.1.13f1`
 | 원형 근거리 조명 밝기/높이 | 4 / 플레이어 기준 1 | 같은 씬의 `VisionCone` | `ForcePixel`, Soft Shadow 강도 0.85 |
 | 리플레이 캡처 | 20Hz | 같은 씬의 `StageReplayController` | 실제 시간 샘플링 |
 | 리플레이 끝 유지 | 0.65초 | 같은 씬의 `StageReplayController` | 이후 반복 |
+| 전체 시야 환경광 | Sky 0.30/0.34/0.40, Equator 0.22/0.25/0.30, Ground 0.12/0.14/0.17 | 같은 씬의 `StageReplayController` | Ambient 1, Reflection 0.35, Fog 비활성화 |
+| 전체 시야 Fill Light | RGB 0.78/0.86/1, 강도 0.65, 회전 50/-30/0 | 같은 씬의 `StageReplayController` | 그림자 없는 Directional, 정적 환경 조명 유지 |
+| 전체 시야 카메라 배경 | RGB 0.025/0.04/0.065 | 같은 씬의 `StageReplayController` | 전체 시야 중 기록 배경색 대신 고정 |
 | 적 수 | 3명 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 이동 연사형 2명, 근접 추격형 1명 |
 | 방 크기 | 20 × 18 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs` | 바닥 스케일 |
 | 카메라 FOV | 49도 | 같은 빌더/씬 | 원근 카메라 |
@@ -718,7 +728,7 @@ Unity 버전: `6000.1.13f1`
 
 | 과제 | 현재 상태 | 필요한 작업 | 관련 파일 | 우선순위 | 완료 조건 |
 |---|---|---|---|---|---|
-| 최신 작업 트리 통합 검증 | 2026-08-01 Unity 컴파일과 씬/에셋 정적 검증 통과, 사용자 요청으로 플레이·스모크 미실행 | 무기 드롭·재무장·주먹·교차 무기·플레이어 근접/`DEADLINE` 시나리오를 후속 플레이 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/EnemyRearmBuild.log`, `ProjectDeltatime/EnemyRearmFinalCompile.log` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
+| 최신 작업 트리 통합 검증 | 2026-08-02 최신 Unity 컴파일 통과, 사용자 요청으로 플레이·스모크 미실행 | 리플레이 실시간 ViewCone 경계·프레임 비용과 `V` 조명·적 가시성 전환 및 무기 드롭·재무장·주먹·교차 무기·플레이어 근접/`DEADLINE` 시나리오를 후속 플레이 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/ReplayVisionRecomputeCompile.log` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
 | 미추적 핵심 에셋 정리 | 공통 전투/근접 판정 스크립트와 근접 무기 에셋·메타가 미추적 상태 | 변경 확정 시 코드/에셋과 메타를 함께 추적하고 GUID 참조 재확인 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | P0 | `git status`에서 의도치 않은 누락이 없고 씬/에셋 참조 GUID가 정상 |
 | `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | 위협 감지, 정지 발동, 2개 제한, 해제, 쿨다운, 사망/대시 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `Projectile.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
 | 공중 가로채기 자동 테스트 | 코드·프리팹·씬은 존재, 최신 플레이 결과 없음 | 입력 버퍼, 가장 가까운 무기, 교환 드롭, 장애물 착지, 프리즈 검증 | `InterceptableWeapon.cs`, `EnemyWeaponDrop.cs`, `PlayerCombat.cs` | P1 | 가로채기와 착지 흐름이 반복 가능한 테스트로 통과 |
@@ -751,8 +761,10 @@ Unity 버전: `6000.1.13f1`
 | 적 기절은 현재 장비 드롭 | 모든 적이 기절하면 현재 무기와 남은 탄약을 공중 드롭하고, 회복 뒤 빈손 전투/재무장 판단을 재개 | `EnemyHealth.cs`, `EnemyBehavior.cs`, `EnemyCombatant.cs`, `EnemyWeaponDrop.cs` |
 | 적 공격 방식은 현재 장비가 결정 | 시작 유형은 이동 속도와 시작 장비만 정하며 총기/근접 무기/빈손 공격은 공통 전투 컴포넌트가 선택 | `EnemyCombatant.cs`, `EnemyShooter.cs`, `EnemyChaser.cs` |
 | 플레이어 체력 3·무기 즉사 유지 | 주먹 피해는 1, 총기와 근접 무기 피해는 3으로 설정해 주먹 세 번과 무기 한 번의 사망 규칙을 사용 | `PlayerHealth.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `MeleeWeapon.asset` |
-| `DEADLINE`은 토큰 하드 프리즈 | 임박한 적탄을 한 번 선점하고 최대 2개 행동을 준비한 뒤 이동으로 해제 | `DeadlineController.cs`, `Projectile.cs` |
+| `DEADLINE`은 실제 이동 후 토큰 하드 프리즈 | 일반 이동 입력 방향으로 마지막 물리 스텝에 0.001m 이상 이동한 뒤 입력을 놓아야 임박한 적탄을 선점한다. 벽에 막힌 입력은 진입 자격과 안내를 만들지 않으며, 발동 후에는 기존처럼 이동 입력으로 해제한다 | `PlayerMovement.cs`, `DeadlineController.cs`, `Projectile.cs` |
 | 클리어 보상은 리플레이 | 적 0명 시 전투를 끄고 시각 리플레이를 반복 | `StageController.cs`, `StageReplayController.cs` |
+| 리플레이 전체 시야는 선택형 토글 | 리플레이는 기록된 암흑 시야로 시작하고 `V`로 ViewCone·동적 조명을 제거한 밝은 전체 시야를 전환한다. 반복 중 선택을 유지하고 씬 재시작 시 기본 암흑 시야로 초기화 | `PlayerControls.inputactions`, `StageController.cs`, `StageReplayController.cs`, `GameHud.cs` |
+| ViewCone은 리플레이 중 재계산 | 정점 배열을 20Hz로 저장하지 않고, 기록된 보간 포즈와 현재 정적 `VisionObstacle` Raycast로 프록시 메시를 매 렌더 프레임 계산한다. 전체 시야에서는 메시를 숨기고 계산하지 않는다 | `VisionCone.cs`, `StageReplayController.cs` |
 | 제한 시야와 조명 결합 | 동적 시야 메시와 60도 손전등, 양 스테이지 공통 지면 반경 4 원형광을 사용. 적 렌더러는 부채꼴·원형 시야의 합집합과 공통 장애물 Raycast로 토글하며, 원형광은 Point Light 거리 감쇠와 실시간 Soft Shadow로 부드러운 경계·장애물 차폐를 구성 | `VisionCone.cs`, `EnemyCombatant.cs`, 두 씬 |
 | 에디터 빌더가 프로토타입 콘텐츠 생성 | 메뉴/배치 메서드로 씬·프리팹·머티리얼·데이터·빌드 설정을 생성 | `PrototypeSceneBuilder.cs` |
 | 두 스테이지는 조명 프로필로 분리 | 동일 오브젝트/수치에 밝은 Stage1과 어두운 Stage2 프로필 적용 | 두 씬과 빌더 |
@@ -765,23 +777,25 @@ Unity 버전: `6000.1.13f1`
 4. `Stage1` 클리어 후 `Stage2`로 자동 전환해야 하는가, 아니면 두 씬은 비교용인가?
 5. 리플레이는 자동 종료, 반복, 스킵, 속도 조절 중 어떤 정책이 필요한가?
 6. `DEADLINE`의 최대 준비 행동 2개와 재준비 0.35 월드초는 확정 수치인가?
-7. `DEADLINE` 발동을 “이동 중 정지”로 제한한 것이 의도인가? 처음부터 정지한 플레이어는 발동하지 않는다.
-8. 플레이어 시야 밖의 적이 탐지·조준·발사할 수 있는 현재 동작이 의도인가?
-9. 플레이어 HP 3과 “주먹 3회/무기 1회” 규칙에 피격 무적이나 회복 수단이 필요한가?
-10. 빈손 적의 3 거리 주먹 우선과 총기 경로 차이 2의 무기 선택 가중치는 확정 수치인가?
-11. 공중 가로채기 시 기존 무기를 플레이어 위치에 즉시 떨어뜨리는 교환 규칙이 확정인가?
-12. 무기 종류, 재장전, 탄약 공급, 드롭 확률은 어떻게 확장할 예정인가?
-13. 점수, 등급, 성장, 보상, 저장, 퀘스트가 제품 범위에 포함되는가?
-14. 목표 플랫폼과 지원 입력 장치는 무엇인가?
-15. 사운드가 월드 시간에 맞춰 느려져야 하는지, 플레이어 행동음은 실제 시간으로 유지할지 정책이 필요한가?
-16. `PrototypeSceneBuilder` 재생성을 콘텐츠 제작의 공식 워크플로로 유지할 것인가?
-17. 현재 `feature/EnemyAI`의 공통 적 전투·근접 무기 미커밋/미추적 변경을 어떤 단위로 확정할 것인가?
-18. CI와 자동 테스트의 필수 통과 기준은 무엇인가?
+7. 플레이어 시야 밖의 적이 탐지·조준·발사할 수 있는 현재 동작이 의도인가?
+8. 플레이어 HP 3과 “주먹 3회/무기 1회” 규칙에 피격 무적이나 회복 수단이 필요한가?
+9. 빈손 적의 3 거리 주먹 우선과 총기 경로 차이 2의 무기 선택 가중치는 확정 수치인가?
+10. 공중 가로채기 시 기존 무기를 플레이어 위치에 즉시 떨어뜨리는 교환 규칙이 확정인가?
+11. 무기 종류, 재장전, 탄약 공급, 드롭 확률은 어떻게 확장할 예정인가?
+12. 점수, 등급, 성장, 보상, 저장, 퀘스트가 제품 범위에 포함되는가?
+13. 목표 플랫폼과 지원 입력 장치는 무엇인가?
+14. 사운드가 월드 시간에 맞춰 느려져야 하는지, 플레이어 행동음은 실제 시간으로 유지할지 정책이 필요한가?
+15. `PrototypeSceneBuilder` 재생성을 콘텐츠 제작의 공식 워크플로로 유지할 것인가?
+16. 현재 `feature/EnemyAI`의 공통 적 전투·근접 무기 미커밋/미추적 변경을 어떤 단위로 확정할 것인가?
+17. CI와 자동 테스트의 필수 통과 기준은 무엇인가?
 
 ## 13. 변경 이력
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-02 | 1.2.5 | ViewCone 정점 샘플 기록을 제거하고, 암흑 시야 리플레이 중 기록된 포즈와 정적 장애물 Raycast로 메시를 매 프레임 재계산하도록 변경 | 리플레이 메모리, ViewCone Raycast, V 전체 시야 |
+| 2026-08-01 | 1.2.4 | ViewCone의 20Hz 동적 정점 녹화·보간과 `V` 리플레이 전체 시야, 시야 밖 적 몸체·장착 무기 표시 및 HUD 상태를 반영 | 리플레이 메시, 입력, 조명/안개, 적 가시성, HUD |
+| 2026-08-01 | 1.2.3 | `DEADLINE` 진입을 입력 해제만으로 판단하지 않고 마지막 물리 스텝의 실제 입력 방향 변위가 0.001m 이상인 경우로 제한 | 실제 이동 판정, 벽 접촉 발동 억제, 위협 강조/HUD |
 | 2026-08-01 | 1.2.2 | 적 렌더링 판정을 장애물에 가리지 않은 부채꼴 시야 또는 플레이어 주변 원형 반경 4의 합집합으로 확장 | 적 가시성, 원형 근거리 시야, 벽·엄폐물 차폐 |
 | 2026-08-01 | 1.2.1 | Stage1·Stage2의 플레이어 주변 Point Light를 지면 반경 4·밝기 4·높이 1로 통일하고, 높이를 반영한 실제 범위 계산과 `ForcePixel`·Soft Shadow 강도 0.85를 반영 | 시야 조명, 벽·엄폐물 차폐, 리플레이 조명 |
 | 2026-08-01 | 1.2.0 | 현재 장비 기반 공통 적 전투, 모든 적의 현재 무기 드롭·재무장, 빈손 주먹, 플레이어 HP 3·근접 무기와 `DEADLINE` 준비 공격, 새 무기 데이터와 검증 한계 반영 | 적 AI, 무기 탐색/예약, 근접 전투, 체력/HUD, 씬/밸런스 |
