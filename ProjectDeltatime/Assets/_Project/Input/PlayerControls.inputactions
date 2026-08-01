@@ -51,6 +51,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Deadline",
+                    "type": "Button",
+                    "id": "c73132bb-a4fb-4e9b-b990-47ab9bce5ef2",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Interact",
                     "type": "Button",
                     "id": "1d01f690-f169-4f11-8033-b524835d2674",
@@ -175,6 +184,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Dash",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4d2e1d2e-8065-45ac-b1a1-a52f1fb60831",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Deadline",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

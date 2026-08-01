@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using Deltatime.Combat;
 using Deltatime.Core;
 using Deltatime.InputSystem;
 using Deltatime.TimeSystem;
@@ -17,54 +15,49 @@ namespace Deltatime.Player
         [SerializeField] private PlayerCombat combat;
         [SerializeField] private WorldTimeController worldTime;
 
-        [Header("Trigger")]
-        [SerializeField, Min(0.1f)] private float dangerRadius = 1.5f;
-        [SerializeField, Min(0.01f)] private float maximumImpactWorldTime = 0.15f;
-        [SerializeField, Range(0f, 1f)] private float movementThreshold = 0.05f;
         [SerializeField, Min(0f)] private float rearmWorldDuration = 0.35f;
+
+        [Header("Charges")]
+        [SerializeField, Min(1)] private int maximumCharges = 2;
 
         [Header("Simultaneous Release")]
         [SerializeField, Min(1)] private int maximumStagedActions = 2;
 
-        private Projectile currentThreat;
-        private float impactWorldTime = float.PositiveInfinity;
         private float nextReadyWorldTime;
         private float rejectedFeedbackRemaining;
         private int hardFreezeToken;
+        private int chargesRemaining;
         private int stagedActionCount;
-        private bool wasEligibleMovement;
+        private const float ReleaseMovementThreshold = 0.05f;
 
         public event Action Released;
 
         public bool IsActive { get; private set; }
         public bool ReleasedThisFrame { get; private set; }
-        public bool HasThreat =>
-            currentThreat != null && currentThreat.IsActive;
+        public bool HasCharges => chargesRemaining > 0;
         public bool IsReady =>
             !IsActive &&
+            HasCharges &&
             worldTime != null &&
             worldTime.WorldElapsedTime >= nextReadyWorldTime;
         public bool CanStageAction =>
             IsActive && stagedActionCount < maximumStagedActions;
         public bool RejectedActionFeedback =>
             rejectedFeedbackRemaining > 0f;
-        public float ImpactTime => impactWorldTime;
         public float CooldownRemaining =>
             worldTime == null
                 ? 0f
                 : Mathf.Max(0f, nextReadyWorldTime - worldTime.WorldElapsedTime);
+        public int ChargesRemaining => chargesRemaining;
+        public int MaxCharges => maximumCharges;
         public int StagedActionCount => stagedActionCount;
         public int MaxStagedActions => maximumStagedActions;
 
         private void Awake()
         {
+            maximumCharges = Mathf.Max(1, maximumCharges);
+            chargesRemaining = maximumCharges;
             ValidateConfiguration();
-        }
-
-        private void Start()
-        {
-            wasEligibleMovement =
-                IsMovementInputActive() && IsDeadlineMovementEligible();
         }
 
         private void Update()
@@ -74,9 +67,6 @@ namespace Deltatime.Player
                 0f,
                 rejectedFeedbackRemaining - UnityEngine.Time.unscaledDeltaTime);
 
-            bool isMovementInputActive = IsMovementInputActive();
-            bool isEligibleMovement =
-                isMovementInputActive && IsDeadlineMovementEligible();
             if (health == null ||
                 !health.IsAlive ||
                 health.IsInvulnerable ||
@@ -85,47 +75,27 @@ namespace Deltatime.Player
                 !combat.CombatEnabled)
             {
                 AbortDeadline();
-                wasEligibleMovement = false;
                 return;
             }
 
             if (IsActive)
             {
-                if (isMovementInputActive)
+                if (IsMovementInputActive())
                 {
                     ReleaseDeadline();
                 }
 
-                wasEligibleMovement = false;
                 return;
             }
 
-            if (worldTime.IsHardFrozen || !IsReady)
+            if (!input.DeadlinePressed ||
+                !IsReady ||
+                worldTime.IsHardFrozen)
             {
-                ClearThreat();
-                wasEligibleMovement = isEligibleMovement;
                 return;
             }
 
-            bool stoppedThisFrame =
-                wasEligibleMovement && !isMovementInputActive;
-            if (isEligibleMovement || stoppedThisFrame)
-            {
-                FindImminentThreat();
-            }
-            else
-            {
-                ClearThreat();
-            }
-
-            if (stoppedThisFrame &&
-                currentThreat != null &&
-                currentThreat.TryClaimDeadline())
-            {
-                ActivateDeadline();
-            }
-
-            wasEligibleMovement = isEligibleMovement;
+            ActivateDeadline();
         }
 
         public bool RegisterStagedAction()
@@ -152,70 +122,20 @@ namespace Deltatime.Player
             PlayerMovement playerMovement,
             PlayerHealth playerHealth,
             PlayerCombat playerCombat,
-            WorldTimeController timeSource)
+            WorldTimeController timeSource,
+            int deadlineMaximumCharges)
         {
             input = inputReader;
             movement = playerMovement;
             health = playerHealth;
             combat = playerCombat;
             worldTime = timeSource;
+            SetMaximumCharges(deadlineMaximumCharges);
         }
 
-        private void FindImminentThreat()
+        public void SetMaximumCharges(int deadlineMaximumCharges)
         {
-            Projectile nearestThreat = null;
-            float nearestImpactTime = float.PositiveInfinity;
-            float dangerRadiusSquared = dangerRadius * dangerRadius;
-            IReadOnlyList<Projectile> projectiles =
-                Projectile.ActiveProjectiles;
-
-            for (int i = 0; i < projectiles.Count; i++)
-            {
-                Projectile projectile = projectiles[i];
-                if (projectile == null ||
-                    !projectile.CanTriggerDeadline ||
-                    projectile.Faction != CombatFaction.Enemy)
-                {
-                    continue;
-                }
-
-                Vector3 offset = projectile.transform.position - transform.position;
-                offset.y = 0f;
-                if (offset.sqrMagnitude > dangerRadiusSquared ||
-                    !projectile.TryPredictImpact(
-                        gameObject,
-                        maximumImpactWorldTime,
-                        out float candidateImpactTime) ||
-                    candidateImpactTime >= nearestImpactTime)
-                {
-                    continue;
-                }
-
-                nearestThreat = projectile;
-                nearestImpactTime = candidateImpactTime;
-            }
-
-            SetThreat(nearestThreat, nearestImpactTime);
-        }
-
-        private void SetThreat(
-            Projectile threat,
-            float threatImpactWorldTime)
-        {
-            if (currentThreat != threat && currentThreat != null)
-            {
-                currentThreat.SetDeadlineHighlighted(false);
-            }
-
-            currentThreat = threat;
-            impactWorldTime = threat == null
-                ? float.PositiveInfinity
-                : threatImpactWorldTime;
-
-            if (currentThreat != null)
-            {
-                currentThreat.SetDeadlineHighlighted(true);
-            }
+            maximumCharges = Mathf.Max(1, deadlineMaximumCharges);
         }
 
         private void ActivateDeadline()
@@ -223,7 +143,9 @@ namespace Deltatime.Player
             IsActive = true;
             stagedActionCount = 0;
             rejectedFeedbackRemaining = 0f;
-            hardFreezeToken = worldTime.AcquireHardFreeze();
+            hardFreezeToken = worldTime.AcquireHardFreeze(
+                allowMinimumTimeScaleDuringAim: true);
+            chargesRemaining = Mathf.Max(0, chargesRemaining - 1);
         }
 
         private void ReleaseDeadline()
@@ -243,7 +165,6 @@ namespace Deltatime.Player
             ReleasedThisFrame = true;
             nextReadyWorldTime =
                 worldTime.WorldElapsedTime + rearmWorldDuration;
-            ClearThreat();
             Released?.Invoke();
         }
 
@@ -258,35 +179,17 @@ namespace Deltatime.Player
 
             IsActive = false;
             stagedActionCount = 0;
-            ClearThreat();
-
             if (wasActive)
             {
                 Released?.Invoke();
             }
         }
 
-        private void ClearThreat()
-        {
-            if (currentThreat != null)
-            {
-                currentThreat.SetDeadlineHighlighted(false);
-            }
-
-            currentThreat = null;
-            impactWorldTime = float.PositiveInfinity;
-        }
-
         private bool IsMovementInputActive()
         {
             return input != null &&
                    input.Move.sqrMagnitude >
-                   movementThreshold * movementThreshold;
-        }
-
-        private bool IsDeadlineMovementEligible()
-        {
-            return movement != null && movement.IsPhysicallyMoving;
+                   ReleaseMovementThreshold * ReleaseMovementThreshold;
         }
 
         private void OnDisable()
@@ -294,10 +197,9 @@ namespace Deltatime.Player
             AbortDeadline();
         }
 
-        private void OnDrawGizmosSelected()
+        private void OnValidate()
         {
-            Gizmos.color = new Color(1f, 0.12f, 0.06f, 0.65f);
-            Gizmos.DrawWireSphere(transform.position, dangerRadius);
+            maximumCharges = Mathf.Max(1, maximumCharges);
         }
 
         private void ValidateConfiguration()

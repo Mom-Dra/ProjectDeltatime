@@ -55,6 +55,8 @@ namespace Deltatime.EditorTools
             Prefabs + "/InterceptableWeapon.prefab";
         private const string VisionObstacleLayerName = "VisionObstacle";
         private const int VisionObstacleLayer = 8;
+        private const int Stage1DeadlineCharges = 2;
+        private const int Stage2DeadlineCharges = 2;
 
         [MenuItem("Tools/Prototype/Build Stage 1 + Stage 2")]
         public static void BuildPrototypeRoom()
@@ -172,7 +174,8 @@ namespace Deltatime.EditorTools
                 activity,
                 worldTime,
                 gameplayCamera,
-                replay);
+                replay,
+                Stage1DeadlineCharges);
 
             TopDownCameraController cameraController =
                 gameplayCamera.gameObject.AddComponent<TopDownCameraController>();
@@ -267,6 +270,7 @@ namespace Deltatime.EditorTools
             }
 
             ApplyStageLightingProfile(visualFeedback, keyLight, false);
+            player.Deadline.SetMaximumCharges(Stage2DeadlineCharges);
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, Stage2ScenePath))
             {
@@ -278,7 +282,7 @@ namespace Deltatime.EditorTools
             AssetDatabase.Refresh();
             Selection.activeGameObject = player.Root;
 
-            ValidateScene(scene);
+            ValidateScene(scene, Stage2DeadlineCharges);
             Debug.Log(
                 "Stage1 and Stage2 built successfully. Stage2 remains open.");
         }
@@ -293,7 +297,7 @@ namespace Deltatime.EditorTools
             Scene scene = EditorSceneManager.OpenScene(
                 Stage1ScenePath,
                 OpenSceneMode.Single);
-            ValidateScene(scene);
+            ValidateScene(scene, Stage1DeadlineCharges);
 
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
             const int width = 1280;
@@ -340,12 +344,12 @@ namespace Deltatime.EditorTools
             Scene stage1 = EditorSceneManager.OpenScene(
                 Stage1ScenePath,
                 OpenSceneMode.Single);
-            ValidateScene(stage1);
+            ValidateScene(stage1, Stage1DeadlineCharges);
 
             Scene stage2 = EditorSceneManager.OpenScene(
                 Stage2ScenePath,
                 OpenSceneMode.Single);
-            ValidateScene(stage2);
+            ValidateScene(stage2, Stage2DeadlineCharges);
             Debug.Log("Stage1 and Stage2 validation passed.");
         }
 
@@ -543,7 +547,8 @@ namespace Deltatime.EditorTools
             WorldTimeActivity activity,
             WorldTimeController worldTime,
             Camera gameplayCamera,
-            StageReplayController replay)
+            StageReplayController replay,
+            int deadlineMaximumCharges)
         {
             GameObject root = CreatePrimitiveObject(
                 "Player",
@@ -615,7 +620,13 @@ namespace Deltatime.EditorTools
                 worldTime,
                 activity,
                 deadline);
-            deadline.Configure(input, movement, health, combat, worldTime);
+            deadline.Configure(
+                input,
+                movement,
+                health,
+                combat,
+                worldTime,
+                deadlineMaximumCharges);
 
             GameObject visionObject = new GameObject("Vision Cone");
             visionObject.transform.SetParent(root.transform, false);
@@ -1507,12 +1518,15 @@ namespace Deltatime.EditorTools
             EditorBuildSettings.scenes = stageScenes.ToArray();
         }
 
-        private static void ValidateScene(Scene scene)
+        private static void ValidateScene(
+            Scene scene,
+            int expectedDeadlineCharges)
         {
             int playerCount = CountComponentsInScene<PlayerHealth>(scene);
             int inputCount = CountComponentsInScene<PlayerInputReader>(scene);
             int movementCount = CountComponentsInScene<PlayerMovement>(scene);
             int deadlineCount = CountComponentsInScene<DeadlineController>(scene);
+            int worldTimeCount = CountComponentsInScene<WorldTimeController>(scene);
             int enemyCount = CountComponentsInScene<EnemyHealth>(scene);
             int rangedEnemyCount =
                 CountComponentsInScene<EnemyShooter>(scene);
@@ -1538,12 +1552,61 @@ namespace Deltatime.EditorTools
             int rigidbody2DCount = CountComponentsInScene<Rigidbody2D>(scene);
 
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
+            DeadlineController deadline =
+                UnityEngine.Object.FindObjectOfType<DeadlineController>();
             NavMeshSurface navigationSurface =
                 UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
+            SerializedObject deadlineSerialized = deadline == null
+                ? null
+                : new SerializedObject(deadline);
+            deadlineSerialized?.Update();
+            SerializedProperty deadlineInput = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("input");
+            SerializedProperty deadlineCharges = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("maximumCharges");
+            SerializedProperty deadlineMovement = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("movement");
+            SerializedProperty deadlineCombat = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("combat");
+            SerializedProperty deadlineWorldTime = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("worldTime");
+            SerializedProperty deadlineRearm = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("rearmWorldDuration");
+            SerializedProperty deadlineStagedActions = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("maximumStagedActions");
+            SerializedProperty deadlineDangerRadius = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("dangerRadius");
+            SerializedProperty deadlineMaximumImpact = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("maximumImpactWorldTime");
+            SerializedProperty deadlineMovementThreshold = deadlineSerialized == null
+                ? null
+                : deadlineSerialized.FindProperty("movementThreshold");
+            PlayerControls inputActions = new PlayerControls();
+            InputAction deadlineAction = inputActions.Gameplay.Deadline;
+            bool hasDeadlineKeyBinding = false;
+            for (int i = 0; i < deadlineAction.bindings.Count; i++)
+            {
+                if (deadlineAction.bindings[i].path == "<Keyboard>/q")
+                {
+                    hasDeadlineKeyBinding = true;
+                    break;
+                }
+            }
+            inputActions.Dispose();
             if (playerCount != 1 ||
                 inputCount != 1 ||
                 movementCount != 1 ||
                 deadlineCount != 1 ||
+                worldTimeCount != 1 ||
                 enemyCount != 3 ||
                 rangedEnemyCount != 2 ||
                 chasingEnemyCount != 1 ||
@@ -1562,12 +1625,40 @@ namespace Deltatime.EditorTools
                 navigationSurface == null ||
                 navigationSurface.navMeshData == null ||
                 camera == null ||
-                camera.orthographic)
+                camera.orthographic ||
+                deadlineInput == null ||
+                deadlineInput.objectReferenceValue == null ||
+                deadlineCharges == null ||
+                deadlineCharges.intValue != expectedDeadlineCharges ||
+                deadlineMovement == null ||
+                deadlineMovement.objectReferenceValue == null ||
+                deadlineCombat == null ||
+                deadlineCombat.objectReferenceValue == null ||
+                deadlineWorldTime == null ||
+                deadlineWorldTime.objectReferenceValue == null ||
+                deadlineRearm == null ||
+                !Mathf.Approximately(deadlineRearm.floatValue, 0.35f) ||
+                deadlineStagedActions == null ||
+                deadlineStagedActions.intValue != 2 ||
+                deadlineDangerRadius != null ||
+                deadlineMaximumImpact != null ||
+                deadlineMovementThreshold != null ||
+                !hasDeadlineKeyBinding)
             {
                 throw new InvalidOperationException(
                     "3D stage validation failed: " +
                     $"players={playerCount}, inputs={inputCount}, movements={movementCount}, " +
-                    $"deadlines={deadlineCount}, enemies={enemyCount}, " +
+                    $"deadlines={deadlineCount}, worldTimes={worldTimeCount}, " +
+                    $"deadlineInput={deadlineInput?.objectReferenceValue != null}, " +
+                    $"deadlineCharges={deadlineCharges?.intValue}, " +
+                    $"deadlineMovement={deadlineMovement?.objectReferenceValue != null}, " +
+                    $"deadlineCombat={deadlineCombat?.objectReferenceValue != null}, " +
+                    $"deadlineWorldTime={deadlineWorldTime?.objectReferenceValue != null}, " +
+                    $"deadlineRearm={deadlineRearm?.floatValue}, " +
+                    $"deadlineStagedActions={deadlineStagedActions?.intValue}, " +
+                    $"legacyDeadlineTriggerFields={deadlineDangerRadius != null || deadlineMaximumImpact != null || deadlineMovementThreshold != null}, " +
+                    $"deadlineQBinding={hasDeadlineKeyBinding}, " +
+                    $"expectedDeadlineCharges={expectedDeadlineCharges}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
                     $"perception={perceptionCount}, combatants={combatantCount}, " +
                     $"weapons={weaponControllerCount}, enemyDrops={enemyWeaponDropCount}, " +

@@ -21,6 +21,36 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-02 - Q 키 기반 데드라인 발동 전환
+
+- 변경 유형: 입력·데드라인 게임플레이·HUD·투사체 정리 수정
+- 변경 내용: **부분 구현**. `Q` 키 Down 프레임에 `DEADLINE`을 즉시 발동하도록 전환했다. 기존의 실제 이동·이동 입력 해제·임박 적 탄환·충돌 예측 조건과 탄환 선점·강조를 제거했다. 충전 2회, 성공 발동 차감, 0.35 월드초 재준비, 최대 2개 행동 준비, 이동 해방, 조준 회전 중 최저 월드 배율 및 캐치 프리즈 우선은 유지한다.
+- 영향을 받은 시스템: `PlayerControls`, `PlayerInputReader`, `DeadlineController`, `GameHud`, `Projectile`, `PrototypeSceneBuilder`, Stage1/Stage2 직렬화
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `PROJECT_DESIGN_DOCUMENT.md`를 1.2.8로 갱신해 Q 키 발동, 탄환·이동 조건 제거, `PRESS Q TO DEADLINE` HUD 안내, 기존 충전·동시 해방·시간 정지 규칙 유지를 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`이 모두 종료 코드 0으로 완료됐다. Q 바인딩과 생성 래퍼 일치, 두 씬의 기존 탄환·이동 트리거 필드 제거, `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`, 필수 참조를 확인했다. 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**한다.
+- 남은 작업: **확인 불가**. 탄환이 없는 상태·정지·이동·벽 접촉 중 Q 즉시 발동, `2/2 → 1/2 → 0/2`, 충전 소진·쿨다운·캐치 프리즈 중 Q 무시, 행동 두 개 동시 해방과 조준 회전 위험 속도는 사용자 플레이 확인이 필요하다.
+
+## 2026-08-02 - 데드라인 씬당 충전 횟수 제한
+
+- 변경 유형: 데드라인 게임플레이·밸런스·HUD·씬 직렬화 수정
+- 변경 내용: **부분 구현**. `DeadlineController`에 직렬화된 `maximumCharges: 2`와 런타임 `chargesRemaining`을 추가했다. 성공적인 적 탄환 claim과 하드 프리즈 획득 뒤에만 1회를 차감하며, 실패한 발동 시도·행동 슬롯 사용·해제는 차감하지 않는다. 씬 로드 `Awake`에서 충전을 초기화하고 리플레이의 비활성화/재활성화로는 회복하지 않는다. 충전이 0이면 위협 강조·발동 안내를 중단하며, 기존 0.35 월드초 재준비와 행동 슬롯 2개는 유지한다.
+- 영향을 받은 시스템: `DeadlineController`, `GameHud`, `PrototypeSceneBuilder`, Stage1/Stage2 직렬화, 데드라인 위협 안내
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `PROJECT_DESIGN_DOCUMENT.md`를 1.2.7로 갱신해 씬당 2회, 성공 발동 차감, 씬 재로드 초기화, 리플레이 중 미회복, HUD와 밸런스 값을 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`이 종료 코드 0으로 완료됐다. 두 씬의 `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`와 데드라인 필수 참조를 확인했다. 빌더가 만든 기능 무관한 대규모 씬·머티리얼 재직렬화는 복원하고 충전 필드만 유지했다. 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**했다.
+- 남은 작업: **확인 불가**. 첫·두 번째 발동의 `2/2 → 1/2 → 0/2`, 세 번째 위협의 안내·발동 차단, 실패 시 미차감, 씬 재시작 회복, 리플레이 미회복 및 동시 해방·캐치·대시·사망 회귀는 사용자 플레이 확인이 필요하다.
+
+## 2026-08-02 - 데드라인 회전 중 최저 시간 배율
+
+- 변경 유형: 시간 시스템·데드라인 게임플레이 수정, 문서 갱신
+- 변경 내용: `WorldTimeController.AcquireHardFreeze(bool)`에 데드라인 전용 조준 허용 토큰을 추가했다. 이 토큰만 활성이고 `WorldTimeActivity.AimTurn > 0.0001`이면 월드 전체가 씬의 `minimumTimeScale`(Stage1/Stage2 현재 0.02배)로 진행하며, 마우스를 멈추면 다시 0배 완전 정지한다. 일반 토큰 또는 `RequestHardFreeze` 기반 가로채기 프리즈가 겹치면 완전 정지를 우선한다. `DeadlineController`만 조준 허용 토큰을 요청하며 전역 `Time.timeScale`은 변경하지 않는다.
+- 영향을 받은 시스템: `WorldTimeController`, `WorldTimeActivity`, `DeadlineController`, 적·투사체·투척 무기의 `WorldDeltaTime` 진행, 동시 해방, 공중 가로채기 프리즈
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `PROJECT_DESIGN_DOCUMENT.md`를 1.2.6으로 갱신해 데드라인 중 조준 회전은 최저 월드 배율, 마우스 정지는 완전 정지, 캐치 프리즈 우선 규칙과 0.02배 기준을 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`이 종료 코드 0으로 완료됐다. Stage1/Stage2의 `minimumTimeScale: 0.02`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`와 하드 프리즈 호출 경로를 정적으로 확인했다. 빌더 실행은 기존 기준과 다른 대규모 씬·머티리얼 재직렬화를 만들었으나 기능과 무관해 복원했으며, 사용자 요청에 따라 플레이 모드와 `PrototypePlayModeSmokeTest`는 **미실행**했다.
+- 남은 작업: **확인 불가**. 데드라인 발동 후 마우스 정지 시 0배, 회전 시 0.02배, 재정지 시 0배 복귀와 회전 중 적 탄환·투척물·준비 투사체의 저속 진행을 사용자 플레이로 확인해야 한다. 캐치 정지 중 회전해도 0배 유지, 이동 해제 후 기존 활동량 배율 복귀, 동시 해방·사망·리플레이 회귀도 수동 확인이 필요하다.
+
 ## 2026-08-02 - ViewCone 리플레이 실시간 재계산 전환
 
 - 변경 유형: 리플레이 메모리 최적화, ViewCone 재현 방식 변경, 테스트·문서 갱신

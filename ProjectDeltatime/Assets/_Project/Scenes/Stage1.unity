@@ -2771,10 +2771,8 @@ MonoBehaviour:
   health: {fileID: 1033450344}
   combat: {fileID: 1033450338}
   worldTime: {fileID: 1639936130}
-  dangerRadius: 1.5
-  maximumImpactWorldTime: 0.15
-  movementThreshold: 0.05
   rearmWorldDuration: 0.35
+  maximumCharges: 2
   maximumStagedActions: 2
 --- !u!114 &1033450338
 MonoBehaviour:
