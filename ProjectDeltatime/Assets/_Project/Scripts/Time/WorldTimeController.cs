@@ -6,6 +6,8 @@ namespace Deltatime.TimeSystem
     [DefaultExecutionOrder(-300)]
     public sealed class WorldTimeController : MonoBehaviour
     {
+        private const float AimTurnActivityThreshold = 0.0001f;
+
         [Header("Source")]
         [SerializeField] private WorldTimeActivity activity;
 
@@ -30,6 +32,8 @@ namespace Deltatime.TimeSystem
             Mathf.Max(0f, hardFreezeRemaining);
 
         private readonly HashSet<int> hardFreezeTokens = new HashSet<int>();
+        private readonly HashSet<int> minimumAimFreezeTokens =
+            new HashSet<int>();
         private float smoothedTimeScale;
         private float hardFreezeRemaining;
         private int nextHardFreezeToken = 1;
@@ -67,7 +71,9 @@ namespace Deltatime.TimeSystem
                 TargetTimeScale,
                 blend);
             CurrentTimeScale = hardFrozen
-                ? 0f
+                ? CanUseMinimumTimeScaleWhileAiming()
+                    ? minimumTimeScale
+                    : 0f
                 : smoothedTimeScale;
             WorldDeltaTime = RealDeltaTime * CurrentTimeScale;
             WorldElapsedTime += WorldDeltaTime;
@@ -104,7 +110,8 @@ namespace Deltatime.TimeSystem
             WorldDeltaTime = 0f;
         }
 
-        public int AcquireHardFreeze()
+        public int AcquireHardFreeze(
+            bool allowMinimumTimeScaleDuringAim = false)
         {
             int token = nextHardFreezeToken;
             nextHardFreezeToken =
@@ -122,6 +129,11 @@ namespace Deltatime.TimeSystem
             }
 
             hardFreezeTokens.Add(token);
+            if (allowMinimumTimeScaleDuringAim)
+            {
+                minimumAimFreezeTokens.Add(token);
+            }
+
             CurrentTimeScale = 0f;
             WorldDeltaTime = 0f;
             return token;
@@ -134,7 +146,19 @@ namespace Deltatime.TimeSystem
                 return false;
             }
 
-            return hardFreezeTokens.Remove(token);
+            bool released = hardFreezeTokens.Remove(token);
+            minimumAimFreezeTokens.Remove(token);
+            return released;
+        }
+
+        private bool CanUseMinimumTimeScaleWhileAiming()
+        {
+            return hardFreezeRemaining <= 0f &&
+                   hardFreezeTokens.Count > 0 &&
+                   hardFreezeTokens.Count ==
+                   minimumAimFreezeTokens.Count &&
+                   activity != null &&
+                   activity.AimTurn > AimTurnActivityThreshold;
         }
 
         private void OnValidate()
@@ -156,6 +180,7 @@ namespace Deltatime.TimeSystem
         private void OnDisable()
         {
             hardFreezeTokens.Clear();
+            minimumAimFreezeTokens.Clear();
             hardFreezeRemaining = 0f;
         }
     }

@@ -7,7 +7,7 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-02 (KST) |
-| 문서 버전 | 1.2.5 |
+| 문서 버전 | 1.2.8 |
 | 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 현재 장비에 따라 총기·근접 무기·주먹을 사용하는 공통 적 전투 AI, 적 무기 드롭·재무장, 플레이어 HP 3과 근접 무기 사용, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
 
 ### 1.1 분석 기준과 범위
@@ -29,6 +29,9 @@
 - 2026-08-01 `DEADLINE` 실제 이동 판정 수정은 Unity 6000.1.13f1 스크립트 컴파일, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 재생성과 `ValidateSavedPrototypeRoom`의 두 저장 씬 정적 검증을 통과했다. 두 씬의 `PlayerMovement.minimumPhysicalDisplacement: 0.001`과 `DeadlineController.movement` 참조를 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 벽 접촉 중 발동 억제의 런타임 결과는 **확인 불가**다.
 - 2026-08-01 리플레이 ViewCone 및 전체 시야 토글 변경은 Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`와 종료 코드 0을 확인했다. 입력 에셋·생성 래퍼·Stage1/Stage2 직렬화는 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 메시 경계, 조명 전환, 시야 밖 적 표시의 실제 시각 품질은 **확인 불가**다.
 - 2026-08-02 ViewCone 리플레이 실시간 재계산 전환은 Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`와 종료 코드 0을 확인했다. 정점 샘플·풀링 참조 제거와 재생용 Raycast API 연결은 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 실제 시야 경계와 프레임 비용은 **확인 불가**다.
+- 2026-08-02 `DEADLINE` 회전 중 최저 시간 배율 변경은 Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. 두 씬의 `minimumTimeScale: 0.02`, `DeadlineController`·`WorldTimeController` 참조와 캐치의 `RequestHardFreeze` 경로를 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 회전 중 위험 진행 체감과 동시 해방 결과는 **확인 불가**다.
+- 2026-08-02 `DEADLINE` 씬당 충전 횟수 제한은 Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. 두 씬의 `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`와 필수 참조를 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 충전 차감·소진·씬 재시작 회복의 런타임 결과는 **확인 불가**다.
+- 2026-08-02 Q 키 기반 `DEADLINE` 발동 전환은 Unity 6000.1.13f1 배치 모드의 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`으로 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. `Deadline` 입력의 Q 바인딩, 기존 탄환·실제 이동 트리거 필드 제거, `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`를 확인했으며, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**이므로 실제 사용 감각은 **확인 불가**다.
 - 근접 무기 드롭·재획득, 시작 유형과 다른 무기 사용, 주먹 세 번 피격, 근거리 주먹 우선, 원거리 무기 탐색, 픽업 경쟁, 플레이어 근접 공격과 `DEADLINE` 해제 판정은 구현 코드와 직렬화 연결만 확인했으며 런타임 결과는 **확인 불가**다.
 - 정식 Unity Test Framework 어셈블리는 없으며 `DEADLINE` 발동/행동 준비와 실제 입력 기반 공중 가로채기는 여전히 직접 검증하지 않는다.
 
@@ -48,7 +51,7 @@
 - 플레이어는 실제 시간 기준으로 조작되며, 적·투사체·투척 무기 등 월드 객체는 별도의 `WorldDeltaTime`으로 진행된다.
 - 적은 베이크된 NavMesh 경로와 충돌 안전 캡슐 이동으로 엄폐물을 우회하며, 시작 유형과 무관하게 현재 장비에 따라 총기 거리 유지·근접 추격·빈손 주먹 및 무기 탐색을 선택한다.
 - 플레이어의 시야 부채꼴 또는 주변 원형 반경 4 안에 있고 장애물에 가리지 않은 적만 렌더링된다. 두 스테이지 모두 같은 반경을 밝히는 원형 Point Light를 사용하며, 어두운 Stage2에서는 부채꼴 손전등과 함께 가시성을 보조한다.
-- 적의 총알이 임박한 순간 이동을 멈추면 `DEADLINE` 하드 프리즈가 발동할 수 있고, 정지 중 최대 2개의 사격·근접 공격·투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
+- `Q` 키를 누르면 탄환·이동 상태와 무관하게 `DEADLINE` 하드 프리즈가 발동하며 씬당 최대 2회 사용한다. 마우스를 멈추면 월드는 완전히 정지하고, 정지 중 마우스 회전은 최저 월드 배율로만 진행된다. 최대 2개의 사격·근접 공격·투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
 - 무기는 종류에 따라 발사하거나 근접 공격에 사용하며, 던져 모든 적을 기절·무장 해제하거나, 플레이어와 적이 바닥 무기를 확보하고, 적에게서 날아온 무기를 플레이어가 공중에서 가로챌 수 있다.
 - 모든 적을 제거하면 실시간 시뮬레이션을 멈추고 기록된 시각 상태를 1.00배 월드 시간으로 반복 재생한다.
 
@@ -88,8 +91,8 @@
 | 3D 플레이어 이동 | 구현 완료 | `WASD` 입력을 동적 Rigidbody의 평면 속도로 변환하고 마지막 물리 스텝의 입력 방향 실제 변위를 공개하며 충돌과 하드 프리즈를 반영 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs` | 이동 속도 6, 실제 이동 최소 변위 0.001m, 벽 접촉 시 위치 강제 이동 없음 |
 | 마우스 조준 | 구현 완료 | 화면 포인터를 지면 평면에 투영하여 플레이어 회전과 조준선을 갱신 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs` | 마우스 전용 |
 | 대시 | 구현 완료 | 이동 방향으로 최대 3.5 거리, 0.03 스킨의 축소 캡슐 캐스트, 대시 중 무적, 0.8초 쿨다운 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerDash.cs` | 벽 0.01 겹침 시작 회귀 검사 포함 스모크 통과 |
-| 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
-| `DEADLINE` | 부분 구현 | 실제 입력 방향으로 이동한 마지막 물리 스텝 뒤 입력을 놓았을 때만 임박한 적 투사체를 선점해 하드 프리즈하고, 사격·근접 공격·투척 중 최대 2개 행동을 준비해 이동 입력으로 해제 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 벽 정면 입력은 진입·안내에서 제외. 씬 연결과 컴파일은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
+| 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간하며, 데드라인 전용 하드 프리즈 토큰은 조준 회전 중에만 최저 배율을 허용 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
+| `DEADLINE` | 부분 구현 | `Q` 키 Down 프레임에 탄환·이동 상태와 무관하게 하드 프리즈하고, 마우스 정지 시 0배·회전 시 최저 배율로 전환한다. 씬당 최대 2회 발동하며 사격·근접 공격·투척 중 최대 2개 행동을 준비해 이동 입력으로 해제한다 | `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 성공 발동에서만 충전 차감, 씬 재로드 시 회복, 리플레이 중 회복 없음. 씬 연결·컴파일·정적 검증은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
 | 총기 사격 | 구현 완료 | 권총과 자동소총이 공통 탄약·발사 간격 검사와 팩션 기반 투사체 생성을 사용하며 피해는 3 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 권총 적 사용 시 단발, 자동소총 적 사용 시 4발 점사 |
 | 근접 무기 공격 | 구현 완료 | 전방 반각 35도·거리 1.45 안에서 시야가 확보된 가장 가까운 적대 대상 하나에 피해 3을 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | 플레이어는 실제 시간 쿨다운, 적은 월드 시간 상태 머신 사용. 플레이 검증 미실행 |
 | 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 총기 피해 3은 플레이어 최대 체력과 같음 |
@@ -152,8 +155,9 @@ flowchart TD
 - `E`: 공중 무기 가로채기, 바닥 무기 획득 또는 교환
 - 리플레이 중 `V`: 암흑 시야와 전체 시야 전환
 - `R`: 현재 씬 재시작
-- 임박한 적탄이 있을 때 이동 입력을 놓음: `DEADLINE` 진입 조건
+- `Q` 키 Down: 탄환·이동 상태와 무관한 `DEADLINE` 진입 조건
 - `DEADLINE` 중 공격/투척: 최대 2개 행동 준비. 근접 공격은 준비 시 방향과 무기 수치를 저장하고 해제 시 판정
+- `DEADLINE` 중 마우스 회전: 월드 전체를 최저 배율로 진행, 마우스 정지 시 다시 완전 정지
 - `DEADLINE` 중 이동: 하드 프리즈 해제 및 준비 행동 진행
 
 ### 4.3 적 또는 장애물과의 상호작용
@@ -211,9 +215,9 @@ flowchart TD
 ### 5.3 월드 시간 및 `DEADLINE`
 
 - **시스템 목적:** 플레이어 행동량에 따라 월드 진행 속도를 조절하고, 임박한 피격 순간에 원인들을 준비할 수 있는 하드 프리즈를 제공한다.
-- **현재 동작 방식:** **구현 완료**. 활동량을 0~1로 합산해 0.02~1.0 배율을 보간한다. `PlayerMovement`는 일반 이동 입력이 적용된 마지막 물리 스텝에서 입력 방향으로 0.001m 이상 이동했는지 기록한다. `DEADLINE`은 이 실제 이동 자격이 있는 플레이어가 입력을 놓았고 반경 1.5 안의 적탄이 0.15 월드초 내 충돌할 때만 투사체를 선점하고 토큰 기반 하드 프리즈를 획득한다. 벽 정면 입력처럼 실제 변위가 없으면 위협 강조와 해제 안내도 표시하지 않는다.
+- **현재 동작 방식:** **부분 구현**. 활동량을 0~1로 합산해 0.02~1.0 배율을 보간한다. `DEADLINE`은 플레이어가 살아 있고 전투가 활성화됐으며 충전·재사용 대기 조건을 만족할 때 `Q` 키 Down 프레임에 회전 허용 토큰 기반 하드 프리즈를 획득한다. 탄환 존재·충돌 예측·플레이어 이동·입력 해제는 발동 조건에 포함하지 않는다. 성공 발동 직후 씬당 최대 2회 충전 중 1회를 차감하며, 충전 0에서는 Q 안내를 만들지 않는다. 충전은 씬 `Awake`에서 초기화되고 리플레이의 비활성화/재활성화로는 회복하지 않는다. 데드라인 중 `WorldTimeActivity.AimTurn`이 0.0001보다 크면 `WorldTimeController.minimumTimeScale`로 월드 전체가 진행하고, 마우스 정지 시 `CurrentTimeScale`과 `WorldDeltaTime`은 0으로 돌아간다. 일반 하드 프리즈 또는 0.2초 공중 가로채기 프리즈가 겹치면 완전 정지가 우선한다.
 - **주요 클래스:** `WorldTimeActivity`, `WorldTimeController`, `PlayerMovement`, `DeadlineController`
-- **데이터 흐름:** 이동/조준/행동 펄스 → 목표 월드 배율 → `WorldDeltaTime` → 적·투사체·투척/드롭 무기. 입력과 물리 스텝 전후 Rigidbody 위치 → 실제 이동 자격 → 위협 투사체 레지스트리 → `DeadlineController` → 하드 프리즈 토큰 → 준비 행동 해제
+- **데이터 흐름:** 이동/조준/행동 펄스 → 목표 월드 배율 → `WorldDeltaTime` → 적·투사체·투척/드롭 무기. Q 입력 → `PlayerInputReader.DeadlinePressed` → `DeadlineController` → 회전 허용 하드 프리즈 토큰 → 조준 활동 여부에 따른 0 또는 최저 배율 → 준비 행동 해제
 - **다른 시스템과의 의존성:** 입력, 플레이어 Rigidbody 이동, 체력, 플레이어 전투, 투사체 정적 레지스트리, HUD
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`
 - **개선이 필요한 부분:** 전용 자동 테스트와 튜토리얼이 없고, 행동 두 개 제한·재사용 시간의 최종 기획 의도가 문서로 확정되지 않았다.
@@ -430,6 +434,7 @@ flowchart LR
 | 마우스 이동 | 지면 조준·플레이어 회전 | 구현 완료 |
 | 마우스 왼쪽 | 장비에 따른 발사/근접 공격 / `DEADLINE` 중 공격 준비 | 구현 완료: 컴파일·씬 연결 확인, 근접 런타임 확인 불가 |
 | 마우스 오른쪽 | 무기 투척 / `DEADLINE` 중 투척 준비 | 구현 완료 |
+| `Q` | `DEADLINE` 즉시 발동 | 부분 구현: 충전·재사용 대기·하드 프리즈 조건을 만족하면 탄환·이동 상태와 무관하게 발동 |
 | `Space` | 이동 방향 대시 | 구현 완료 |
 | `E` | 공중 가로채기 또는 바닥 획득/교환 | 부분 구현: 바닥 교환은 기존 테스트 확인, 공중 가로채기는 최신 테스트 미검증 |
 | `V` | 리플레이 암흑/전체 시야 토글 | 구현 완료: 입력·씬 연결·컴파일 확인, 실제 시각 품질 확인 불가 |
@@ -456,7 +461,7 @@ flowchart LR
 - 저속 시간에서 길어지는 투사체·투척 트레일
 - 피격/기절/가로채기 위치의 `HitFlash`
 - 대시 중 무적
-- `DEADLINE` 위협 탄환 강조, HUD 경고, 하드 프리즈, 행동 수 초과 피드백
+- `DEADLINE` Q 발동 안내, 하드 프리즈, 행동 수 초과 피드백
 - 공중 무기 비행 궤적과 착지 마커
 - 어두운 화면 오버레이와 시야 스폿/근거리 조명
 - 클리어 후 재생 포즈와 Raycast로 ViewCone을 재계산하는 시각 리플레이와 `V` 전체 시야 전환
@@ -465,7 +470,7 @@ flowchart LR
 
 - 좌측 상단 상태 패널: 적 수, 체력, 실제 플레이 시간, 월드 배율 또는 리플레이 시간과 `VIEW DARK`/`VIEW FULL`, 대시 상태, `DEADLINE` 상태, 무기/탄약 또는 근접 표시
 - 화면 중앙: 사망/클리어 메시지 또는 `DEADLINE` 행동 수·해제 안내
-- 화면 상단 중앙: 임박한 `DEADLINE` 위협 시간
+- 화면 상단 중앙: 사용 가능할 때 `PRESS Q TO DEADLINE` 안내
 - 화면 하단: 전체 키보드·마우스 조작법
 - 별도 메뉴, 설정, 일시정지, 인벤토리, 결과 화면은 없다.
 
@@ -544,7 +549,7 @@ flowchart TD
 | `DeadlineController` | 임박한 투사체 탐색, 정지 트리거, 행동 준비/해제 |
 | `WeaponController` | 현재 무기 종류/탄약/사용 쿨다운, 장비 변경 이벤트, 사격·즉시/준비 근접 공격·투척 |
 | `MeleeAttackResolver` | 전방 부채꼴과 시야선에서 가장 가까운 적대 대상 하나 판정 |
-| `Projectile` | 활성 투사체 레지스트리, 이동, 충돌, `DEADLINE` 선점 |
+| `Projectile` | 월드 시간 기반 이동, SphereCast 충돌, 피해와 트레일 표시 |
 | `ThrownWeapon` | 기절 투척물 이동과 바닥 픽업 변환 |
 | `InterceptableWeapon` | 적 드롭 무기의 포물선, 장애물, 예측, 가로채기 |
 | `EnemyBehavior` | 적 유형 공통 기절·장비 해제·재무장·사망 수명주기 |
@@ -651,6 +656,7 @@ Unity 버전: `6000.1.13f1`
 | 대시 쿨다운 | 0.8초 | 같은 씬의 `PlayerDash` | 실제 시간 |
 | 대시 활동 펄스 | 1.0 / 0.22초 | 같은 씬의 `PlayerDash` | 월드 시간 활동량 |
 | 최소 월드 배율 | 0.02배 | 같은 씬의 `WorldTimeController` | 완전 정지가 아닌 기본 저속 |
+| `DEADLINE` 회전 중 월드 배율 | 최소 월드 배율과 동일한 0.02배 | `WorldTimeController` | 데드라인 전용 토큰만 존재하고 `AimTurn > 0.0001`일 때. 일반/캐치 하드 프리즈가 겹치면 0배 우선 |
 | 최대 월드 배율 | 1.0배 | 같은 씬의 `WorldTimeController` | 활동량 1 이상 |
 | 시간 보간 속도 | 8 | 같은 씬의 `WorldTimeController` | 지수 보간 계수 |
 | 이동/조준/펄스 가중치 | 각 1 | 같은 씬의 `WorldTimeController` | 합산 후 0~1 제한 |
@@ -678,11 +684,10 @@ Unity 버전: `6000.1.13f1`
 | 공중 드롭 수평 거리 | 3 | 같은 프리팹 | 장애물에 막히면 단축 |
 | 공중 드롭 호 높이 | 1.25 | 같은 프리팹 | 포물선 추가 높이 |
 | 궤적 예측 점 | 16개 | 같은 프리팹 | 장애물까지 표시 |
-| `DEADLINE` 위험 반경 | 1.5 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 플레이어 중심 |
-| `DEADLINE` 최대 충돌 예측 | 0.15 월드초 | 같은 씬의 `DeadlineController` | 이내 적탄만 위협 |
-| 이동 입력 임계값 | 0.05 | 같은 씬의 `DeadlineController` | 이동→정지 판정 |
+| `DEADLINE` 발동 키 | `Q` | `PlayerControls.inputactions` | 키 Down 프레임에 즉시 발동 |
 | 실제 이동 최소 변위 | 0.001m/물리 스텝 | 같은 씬의 `PlayerMovement` | 일반 이동 입력 방향 성분, 관용 시간 없음 |
 | `DEADLINE` 재준비 | 0.35 월드초 | 같은 씬의 `DeadlineController` | 해제 후 |
+| `DEADLINE` 씬당 최대 충전 | 2회 | 같은 씬의 `DeadlineController` | 성공 발동 시 1회 차감, 씬 재로드 시 초기화, 리플레이 중 회복 없음 |
 | 준비 행동 최대 수 | 2개 | 같은 씬의 `DeadlineController` | 사격/근접 공격/투척 합계 |
 | 플레이어 최대 체력 | 3 | 같은 씬의 `PlayerHealth` | `CurrentHealth`가 피해량만큼 감소 |
 | 사격 적 탐지 거리 | 18 | 같은 씬의 `EnemyPerception` | 시야선 필요 |
@@ -730,7 +735,7 @@ Unity 버전: `6000.1.13f1`
 |---|---|---|---|---|---|
 | 최신 작업 트리 통합 검증 | 2026-08-02 최신 Unity 컴파일 통과, 사용자 요청으로 플레이·스모크 미실행 | 리플레이 실시간 ViewCone 경계·프레임 비용과 `V` 조명·적 가시성 전환 및 무기 드롭·재무장·주먹·교차 무기·플레이어 근접/`DEADLINE` 시나리오를 후속 플레이 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/ReplayVisionRecomputeCompile.log` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
 | 미추적 핵심 에셋 정리 | 공통 전투/근접 판정 스크립트와 근접 무기 에셋·메타가 미추적 상태 | 변경 확정 시 코드/에셋과 메타를 함께 추적하고 GUID 참조 재확인 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | P0 | `git status`에서 의도치 않은 누락이 없고 씬/에셋 참조 GUID가 정상 |
-| `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | 위협 감지, 정지 발동, 2개 제한, 해제, 쿨다운, 사망/대시 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `Projectile.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
+| `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | Q 발동, 2개 제한, 해제, 쿨다운, 사망/대시·캐치 프리즈 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `PlayerInputReader.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
 | 공중 가로채기 자동 테스트 | 코드·프리팹·씬은 존재, 최신 플레이 결과 없음 | 입력 버퍼, 가장 가까운 무기, 교환 드롭, 장애물 착지, 프리즈 검증 | `InterceptableWeapon.cs`, `EnemyWeaponDrop.cs`, `PlayerCombat.cs` | P1 | 가로채기와 착지 흐름이 반복 가능한 테스트로 통과 |
 | 스테이지 전환/종료 흐름 | 현재 리플레이 무한 반복과 현재 씬 재시작만 가능 | `Stage1 → Stage2`, 결과 화면, 리플레이 스킵/다음 단계 정책 결정 및 구현 | `StageController.cs`, `StageReplayController.cs`, `EditorBuildSettings.asset` | P1 | 클리어 후 사용자가 정의된 다음 상태로 이동 가능 |
 | Stage1/Stage2 역할 차별화 | 조명 외 동일 콘텐츠 | 학습/도전 역할 확정, 적·배치·규칙·목표 차별화 또는 단일 씬+프로필화 | 두 씬, `PrototypeSceneBuilder.cs` | P1 | 두 씬의 존재 이유가 기획과 데이터에서 명확하거나 중복이 제거됨 |
@@ -761,7 +766,9 @@ Unity 버전: `6000.1.13f1`
 | 적 기절은 현재 장비 드롭 | 모든 적이 기절하면 현재 무기와 남은 탄약을 공중 드롭하고, 회복 뒤 빈손 전투/재무장 판단을 재개 | `EnemyHealth.cs`, `EnemyBehavior.cs`, `EnemyCombatant.cs`, `EnemyWeaponDrop.cs` |
 | 적 공격 방식은 현재 장비가 결정 | 시작 유형은 이동 속도와 시작 장비만 정하며 총기/근접 무기/빈손 공격은 공통 전투 컴포넌트가 선택 | `EnemyCombatant.cs`, `EnemyShooter.cs`, `EnemyChaser.cs` |
 | 플레이어 체력 3·무기 즉사 유지 | 주먹 피해는 1, 총기와 근접 무기 피해는 3으로 설정해 주먹 세 번과 무기 한 번의 사망 규칙을 사용 | `PlayerHealth.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `MeleeWeapon.asset` |
-| `DEADLINE`은 실제 이동 후 토큰 하드 프리즈 | 일반 이동 입력 방향으로 마지막 물리 스텝에 0.001m 이상 이동한 뒤 입력을 놓아야 임박한 적탄을 선점한다. 벽에 막힌 입력은 진입 자격과 안내를 만들지 않으며, 발동 후에는 기존처럼 이동 입력으로 해제한다 | `PlayerMovement.cs`, `DeadlineController.cs`, `Projectile.cs` |
+| `DEADLINE`은 Q 키 기반 토큰 하드 프리즈 | Q 키 Down으로 즉시 발동하며 탄환 존재·충돌 예측·실제 이동·입력 해제는 사용하지 않는다. 충전·재사용 대기·캐치 프리즈·사망·리플레이 제한은 유지하고, 발동 후에는 기존처럼 이동 입력으로 해제한다 | `PlayerControls.inputactions`, `PlayerInputReader.cs`, `DeadlineController.cs` |
+| `DEADLINE` 회전은 최저 배율 위험을 수반 | 데드라인 전용 토큰만 활성인 상태에서 조준이 회전하면 월드 전체가 `minimumTimeScale`로 진행하고, 조준을 멈추면 0배로 완전 정지한다. 일반 하드 프리즈와 공중 가로채기 프리즈는 회전 중에도 0배를 우선한다 | `WorldTimeController.cs`, `DeadlineController.cs`, `PlayerAim.cs`, `PlayerCombat.cs` |
+| `DEADLINE`은 씬당 2회 충전 스킬 | 성공 발동 시에만 1회를 차감하며, 실패·행동 준비·해제는 차감하지 않는다. 씬 재로드는 2회로 초기화하지만 리플레이는 충전을 회복하지 않고 0회일 때 Q 안내·발동을 막는다 | `DeadlineController.cs`, `GameHud.cs`, `PrototypeSceneBuilder.cs` |
 | 클리어 보상은 리플레이 | 적 0명 시 전투를 끄고 시각 리플레이를 반복 | `StageController.cs`, `StageReplayController.cs` |
 | 리플레이 전체 시야는 선택형 토글 | 리플레이는 기록된 암흑 시야로 시작하고 `V`로 ViewCone·동적 조명을 제거한 밝은 전체 시야를 전환한다. 반복 중 선택을 유지하고 씬 재시작 시 기본 암흑 시야로 초기화 | `PlayerControls.inputactions`, `StageController.cs`, `StageReplayController.cs`, `GameHud.cs` |
 | ViewCone은 리플레이 중 재계산 | 정점 배열을 20Hz로 저장하지 않고, 기록된 보간 포즈와 현재 정적 `VisionObstacle` Raycast로 프록시 메시를 매 렌더 프레임 계산한다. 전체 시야에서는 메시를 숨기고 계산하지 않는다 | `VisionCone.cs`, `StageReplayController.cs` |
@@ -793,6 +800,9 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-02 | 1.2.8 | 데드라인의 발동 조건을 실제 이동·임박 탄환·입력 해제에서 Q 키 Down 즉시 발동으로 전환하고, 입력·HUD·투사체 정리·Stage1/Stage2 정적 검증을 갱신 | 데드라인 입력, HUD, 투사체 |
+| 2026-08-02 | 1.2.7 | 데드라인을 성공 발동 때만 차감되는 씬당 최대 2회 충전 스킬로 전환하고 HUD·Stage1/Stage2 직렬화·정적 검증에 충전 상태를 반영 | 데드라인 충전, HUD, 씬 빌더 |
+| 2026-08-02 | 1.2.6 | 데드라인 전용 하드 프리즈가 조준 회전 중에만 씬의 최소 월드 배율을 허용하고, 일반·캐치 프리즈와 겹치면 완전 정지가 우선하도록 갱신 | 데드라인, 월드 시간, 동시 해방 |
 | 2026-08-02 | 1.2.5 | ViewCone 정점 샘플 기록을 제거하고, 암흑 시야 리플레이 중 기록된 포즈와 정적 장애물 Raycast로 메시를 매 프레임 재계산하도록 변경 | 리플레이 메모리, ViewCone Raycast, V 전체 시야 |
 | 2026-08-01 | 1.2.4 | ViewCone의 20Hz 동적 정점 녹화·보간과 `V` 리플레이 전체 시야, 시야 밖 적 몸체·장착 무기 표시 및 HUD 상태를 반영 | 리플레이 메시, 입력, 조명/안개, 적 가시성, HUD |
 | 2026-08-01 | 1.2.3 | `DEADLINE` 진입을 입력 해제만으로 판단하지 않고 마지막 물리 스텝의 실제 입력 방향 변위가 0.001m 이상인 경우로 제한 | 실제 이동 판정, 벽 접촉 발동 억제, 위협 강조/HUD |

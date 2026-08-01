@@ -58,11 +58,14 @@ namespace Deltatime.UI
             string dashState = playerDash.CooldownRemaining <= 0f
                 ? "READY"
                 : $"{playerDash.CooldownRemaining:0.0}s";
-            string deadlineState = deadline.IsActive
-                ? $"{deadline.StagedActionCount}/{deadline.MaxStagedActions}"
-                : deadline.CooldownRemaining > 0f
-                    ? $"{deadline.CooldownRemaining:0.00}w"
-                    : "READY";
+            string deadlineCharges =
+                $"{deadline.ChargesRemaining}/{deadline.MaxCharges}";
+            string deadlineState =
+                !deadline.IsActive &&
+                deadline.HasCharges &&
+                deadline.CooldownRemaining > 0f
+                    ? $"{deadlineCharges} | {deadline.CooldownRemaining:0.00}w"
+                    : deadlineCharges;
 
             string replayView = replay.IsOmniscientViewEnabled
                 ? "FULL"
@@ -128,7 +131,7 @@ namespace Deltatime.UI
             string controls = replay.IsReplaying
                 ? "V Toggle Full View  |  R Restart"
                 : "WASD Move  |  Mouse Aim  |  LMB Attack  |  RMB Throw\n" +
-                  "Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
+                  "Q Deadline  |  Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),
                 controls,
@@ -198,7 +201,7 @@ namespace Deltatime.UI
                     ? "CAUSES FULL"
                     : $"CAUSES {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
                 string text =
-                    $"DEADLINE  |  IMPACT {deadline.ImpactTime:0.00}s\n" +
+                    "DEADLINE\n" +
                     $"{causes}\n" +
                     "MOVE TO RELEASE";
                 Rect panel = new Rect(
@@ -211,13 +214,15 @@ namespace Deltatime.UI
                 return;
             }
 
-            if (!deadline.HasThreat)
+            if (!deadline.IsReady ||
+                worldTime.IsHardFrozen ||
+                replay.IsReplaying ||
+                !playerHealth.IsAlive)
             {
                 return;
             }
 
-            string warning =
-                $"RELEASE TO DEADLINE  |  {deadline.ImpactTime:0.00}s";
+            const string warning = "PRESS Q TO DEADLINE";
             Rect warningPanel = new Rect(
                 (Screen.width - 460f) * 0.5f,
                 28f,

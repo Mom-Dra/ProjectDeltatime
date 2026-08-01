@@ -140,6 +140,15 @@ namespace Deltatime.InputSystem
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""Deadline"",
+                    ""type"": ""Button"",
+                    ""id"": ""c73132bb-a4fb-4e9b-b990-47ab9bce5ef2"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""Interact"",
                     ""type"": ""Button"",
                     ""id"": ""1d01f690-f169-4f11-8033-b524835d2674"",
@@ -269,6 +278,17 @@ namespace Deltatime.InputSystem
                 },
                 {
                     ""name"": """",
+                    ""id"": ""4d2e1d2e-8065-45ac-b1a1-a52f1fb60831"",
+                    ""path"": ""<Keyboard>/q"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""Deadline"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""ba7528d7-318e-4098-9b14-5ba81e7a1b21"",
                     ""path"": ""<Keyboard>/e"",
                     ""interactions"": """",
@@ -329,6 +349,7 @@ namespace Deltatime.InputSystem
             m_Gameplay_Fire = m_Gameplay.FindAction("Fire", throwIfNotFound: true);
             m_Gameplay_Throw = m_Gameplay.FindAction("Throw", throwIfNotFound: true);
             m_Gameplay_Dash = m_Gameplay.FindAction("Dash", throwIfNotFound: true);
+            m_Gameplay_Deadline = m_Gameplay.FindAction("Deadline", throwIfNotFound: true);
             m_Gameplay_Interact = m_Gameplay.FindAction("Interact", throwIfNotFound: true);
             m_Gameplay_Restart = m_Gameplay.FindAction("Restart", throwIfNotFound: true);
             m_Gameplay_ReplayVisionToggle = m_Gameplay.FindAction("ReplayVisionToggle", throwIfNotFound: true);
@@ -417,6 +438,7 @@ namespace Deltatime.InputSystem
         private readonly InputAction m_Gameplay_Fire;
         private readonly InputAction m_Gameplay_Throw;
         private readonly InputAction m_Gameplay_Dash;
+        private readonly InputAction m_Gameplay_Deadline;
         private readonly InputAction m_Gameplay_Interact;
         private readonly InputAction m_Gameplay_Restart;
         private readonly InputAction m_Gameplay_ReplayVisionToggle;
@@ -451,6 +473,10 @@ namespace Deltatime.InputSystem
             /// Provides access to the underlying input action "Gameplay/Dash".
             /// </summary>
             public InputAction @Dash => m_Wrapper.m_Gameplay_Dash;
+            /// <summary>
+            /// Provides access to the underlying input action "Gameplay/Deadline".
+            /// </summary>
+            public InputAction @Deadline => m_Wrapper.m_Gameplay_Deadline;
             /// <summary>
             /// Provides access to the underlying input action "Gameplay/Interact".
             /// </summary>
@@ -504,6 +530,9 @@ namespace Deltatime.InputSystem
                 @Dash.started += instance.OnDash;
                 @Dash.performed += instance.OnDash;
                 @Dash.canceled += instance.OnDash;
+                @Deadline.started += instance.OnDeadline;
+                @Deadline.performed += instance.OnDeadline;
+                @Deadline.canceled += instance.OnDeadline;
                 @Interact.started += instance.OnInteract;
                 @Interact.performed += instance.OnInteract;
                 @Interact.canceled += instance.OnInteract;
@@ -539,6 +568,9 @@ namespace Deltatime.InputSystem
                 @Dash.started -= instance.OnDash;
                 @Dash.performed -= instance.OnDash;
                 @Dash.canceled -= instance.OnDash;
+                @Deadline.started -= instance.OnDeadline;
+                @Deadline.performed -= instance.OnDeadline;
+                @Deadline.canceled -= instance.OnDeadline;
                 @Interact.started -= instance.OnInteract;
                 @Interact.performed -= instance.OnInteract;
                 @Interact.canceled -= instance.OnInteract;
@@ -636,6 +668,13 @@ namespace Deltatime.InputSystem
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnDash(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Deadline" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnDeadline(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "Interact" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

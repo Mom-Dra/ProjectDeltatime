@@ -15,6 +15,7 @@ namespace Deltatime.InputSystem
         public bool FirePressed { get; private set; }
         public bool ThrowPressed { get; private set; }
         public bool DashPressed { get; private set; }
+        public bool DeadlinePressed { get; private set; }
         public bool InteractPressed { get; private set; }
         public bool RestartPressed { get; private set; }
         public bool ReplayVisionTogglePressed { get; private set; }
@@ -44,6 +45,7 @@ namespace Deltatime.InputSystem
             FirePressed = gameplay.Fire.WasPressedThisFrame();
             ThrowPressed = gameplay.Throw.WasPressedThisFrame();
             DashPressed = gameplay.Dash.WasPressedThisFrame();
+            DeadlinePressed = gameplay.Deadline.WasPressedThisFrame();
             InteractPressed = gameplay.Interact.WasPressedThisFrame();
             RestartPressed = gameplay.Restart.WasPressedThisFrame();
             ReplayVisionTogglePressed =
@@ -76,6 +78,7 @@ namespace Deltatime.InputSystem
             FirePressed = false;
             ThrowPressed = false;
             DashPressed = false;
+            DeadlinePressed = false;
             InteractPressed = false;
             RestartPressed = false;
             ReplayVisionTogglePressed = false;
