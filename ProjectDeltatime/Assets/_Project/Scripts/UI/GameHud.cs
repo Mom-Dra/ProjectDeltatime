@@ -70,8 +70,19 @@ namespace Deltatime.UI
             string replayView = replay.IsOmniscientViewEnabled
                 ? "FULL"
                 : "DARK";
+            string replaySpeedLabel = "REPLAY 1.00x";
+            if (replay.CurrentPlaybackPhase ==
+                StageReplayController.ReplayPlaybackPhase.Deadline)
+            {
+                replaySpeedLabel = "DEADLINE CINEMATIC";
+            }
+            else if (replay.CurrentPlaybackPhase ==
+                     StageReplayController.ReplayPlaybackPhase.DeadlineAftermath)
+            {
+                replaySpeedLabel = "DEADLINE AFTERMATH 0.50x";
+            }
             string timeStatus = replay.IsReplaying
-                ? $"STAGE CLEAR  •  REPLAY 1.00x\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\nVIEW  {replayView}"
+                ? $"STAGE CLEAR  •  {replaySpeedLabel}\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\nVIEW  {replayView}"
                 : $"REAL TIME  {stage.RealPlayTime:0.0}s\nWORLD  {worldTime.CurrentTimeScale:0.00}x";
             string status =
                 $"ENEMIES  {stage.RemainingEnemyCount}\n" +

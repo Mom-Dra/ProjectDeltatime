@@ -21,6 +21,16 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-02 - Deadline 전용 시네마틱 리플레이 시간축
+
+- 변경 유형: 리플레이 시간축·카메라 연출·HUD·씬 직렬화·플레이 모드 스모크 검증·문서 갱신
+- 변경 내용: **구현 완료**. `StageReplayController`가 20Hz 현실 시간 샘플에 현실·월드 타임스탬프와 Deadline 활성 상태를 기록하고, 시작 시 일반 월드 시간·Deadline 시네마틱·해제 후 슬로모션을 결합한 프레젠테이션 시간축을 생성한다. Deadline 활성 구간은 `현실 길이 / 0.50`을 0.8~2.0초로 제한하며, 해제 후 0.75 월드 초는 0.50배로 재생한다. Deadline 중 카메라는 진입 포즈로 고정되고 해제 후 0.2초 동안 기록 카메라로 보간 복귀한다. HUD는 `REPLAY 1.00x`, `DEADLINE CINEMATIC`, `DEADLINE AFTERMATH 0.50x`를 현재 단계에 따라 표시한다.
+- 영향을 받은 시스템: `StageReplayController`, `DeadlineController` 상태 기록, 카메라 리플레이, 시각·조명·ViewCone 샘플 보간, `GameHud`, Stage1/Stage2 리플레이 직렬화, `PrototypeSceneBuilder`, `PrototypePlayModeSmokeTest`
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `PROJECT_DESIGN_DOCUMENT.md`를 1.2.9로 갱신해 하이브리드 시간축, 0.50배/0.8~2.0초/0.75 월드 초/0.2초 기본값, HUD 단계와 자동 검증 범위를 반영했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일 `Tundra build success`, `BuildAndValidateFromCommandLine`의 씬 재생성·검증, `PrototypePlayModeSmokeTest`를 통과했다. 스모크는 약 1초의 0.02배 Deadline을 최대 2초, 짧은 Deadline을 최소 0.8초, 해제 후 0.75 월드 초를 1.5초로 변환하고 재생 카메라의 고정·복귀를 확인한다.
+- 남은 작업: **확인 불가**. 실제 플레이에서 `Q → 조준 회전 → 행동 준비 → 이동 해제 → 적 전멸`의 연출 품질과 `R` 재시작을 수동 확인해야 한다. ViewCone의 97회 Raycast와 메시 재계산 비용은 Unity Profiler로 별도 측정이 필요하다.
+
 ## 2026-08-02 - Q 키 기반 데드라인 발동 전환
 
 - 변경 유형: 입력·데드라인 게임플레이·HUD·투사체 정리 수정

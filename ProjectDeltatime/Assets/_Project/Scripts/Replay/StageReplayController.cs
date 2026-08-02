@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Deltatime.Enemies;
 using Deltatime.InputSystem;
 using Deltatime.Level;
+using Deltatime.Player;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
 using Deltatime.Vision;
@@ -14,14 +15,36 @@ namespace Deltatime.Replay
     [DefaultExecutionOrder(10000)]
     public sealed class StageReplayController : MonoBehaviour
     {
+        public enum ReplayPlaybackPhase
+        {
+            Normal,
+            Deadline,
+            DeadlineAftermath
+        }
+
         private const string BaseColorProperty = "_BaseColor";
         private const string ColorProperty = "_Color";
 
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private Camera gameplayCamera;
+        [SerializeField] private DeadlineController deadline;
         [SerializeField, Min(1f)] private float captureRate = 20f;
         [SerializeField, Min(0f)] private float endHoldDuration = 0.65f;
         [SerializeField] private bool loop = true;
+
+        [Header("Deadline Cinematic Replay")]
+        [SerializeField, Range(0.05f, 1f)]
+        private float deadlineCinematicPlaybackRate = 0.5f;
+        [SerializeField, Min(0f)]
+        private float minimumDeadlineCinematicDuration = 0.8f;
+        [SerializeField, Min(0f)]
+        private float maximumDeadlineCinematicDuration = 2f;
+        [SerializeField, Min(0f)]
+        private float deadlineAftermathWorldDuration = 0.75f;
+        [SerializeField, Range(0.05f, 1f)]
+        private float deadlineAftermathPlaybackRate = 0.5f;
+        [SerializeField, Min(0f)]
+        private float deadlineCameraRecoveryDuration = 0.2f;
 
         [Header("Omniscient Replay View")]
         [SerializeField] private Color omniscientAmbientSkyColor =
@@ -44,6 +67,10 @@ namespace Deltatime.Replay
 
         private readonly List<CameraSample> cameraSamples =
             new List<CameraSample>(2048);
+        private readonly List<ReplayTimingSample> timingSamples =
+            new List<ReplayTimingSample>(2048);
+        private readonly List<ReplaySegment> replaySegments =
+            new List<ReplaySegment>(128);
         private readonly Dictionary<int, VisualTrack> tracksByInstanceId =
             new Dictionary<int, VisualTrack>();
         private readonly List<VisualTrack> tracks = new List<VisualTrack>();
@@ -59,14 +86,23 @@ namespace Deltatime.Replay
         private ReplayLightingSnapshot replayLightingSnapshot;
         private bool hasReplayLightingSnapshot;
         private bool replayRequested;
-        private float firstRecordedTime;
-        private float lastRecordedTime;
+        private float recordingElapsedTime;
+        private float firstPresentationTime;
+        private float lastPresentationTime;
         private float playbackTime;
         private float holdRemaining;
         private float captureAccumulator;
+        private bool hasCapturedDeadlineState;
+        private bool lastCapturedDeadlineState;
 
         public bool IsReplaying { get; private set; }
         public bool IsOmniscientViewEnabled { get; private set; }
+        public ReplayPlaybackPhase CurrentPlaybackPhase { get; private set; }
+        public bool IsReplayCameraLocked { get; private set; }
+        public int DeadlineCinematicSegmentCount { get; private set; }
+        public float ShortestDeadlineCinematicDuration { get; private set; }
+        public float LongestDeadlineCinematicDuration { get; private set; }
+        public float LongestDeadlineAftermathDuration { get; private set; }
         public float CaptureRate => captureRate;
         public int CapturedFrameCount => cameraSamples.Count;
         public int TrackedReplayVisionConeCount
@@ -154,20 +190,22 @@ namespace Deltatime.Replay
             }
         }
         public float RecordedDuration =>
-            cameraSamples.Count < 2
+            replaySegments.Count == 0
                 ? 0f
-                : Mathf.Max(0f, lastRecordedTime - firstRecordedTime);
+                : Mathf.Max(0f, lastPresentationTime - firstPresentationTime);
         public float PlaybackElapsed =>
-            IsReplaying ? Mathf.Max(0f, playbackTime - firstRecordedTime) : 0f;
+            IsReplaying
+                ? Mathf.Max(0f, playbackTime - firstPresentationTime)
+                : 0f;
 
         private void Awake()
         {
             EnsureReplayRoot();
 
-            if (worldTime == null || gameplayCamera == null)
+            if (worldTime == null || gameplayCamera == null || deadline == null)
             {
                 Debug.LogError(
-                    $"{nameof(StageReplayController)} requires world time and a gameplay camera.",
+                    $"{nameof(StageReplayController)} requires world time, a gameplay camera, and Deadline.",
                     this);
                 enabled = false;
             }
@@ -209,7 +247,7 @@ namespace Deltatime.Replay
         {
             if (enabled)
             {
-                CaptureFrame();
+                CaptureFrame(true);
             }
         }
 
@@ -221,21 +259,27 @@ namespace Deltatime.Replay
                 return;
             }
 
+            recordingElapsedTime += UnityEngine.Time.unscaledDeltaTime;
             float captureInterval = 1f / Mathf.Max(1f, captureRate);
             captureAccumulator += UnityEngine.Time.unscaledDeltaTime;
             bool captureDue = captureAccumulator >= captureInterval;
+            bool deadlineStateChanged = HasDeadlineStateChanged();
 
             if (captureDue)
             {
                 captureAccumulator %= captureInterval;
-                CaptureFrame();
+            }
+
+            if (captureDue || deadlineStateChanged)
+            {
+                CaptureFrame(deadlineStateChanged);
             }
 
             if (replayRequested)
             {
-                if (!captureDue)
+                if (!captureDue && !deadlineStateChanged)
                 {
-                    CaptureFrame();
+                    CaptureFrame(false);
                 }
 
                 BeginReplay();
@@ -244,10 +288,12 @@ namespace Deltatime.Replay
 
         public void Configure(
             WorldTimeController timeSource,
-            Camera targetCamera)
+            Camera targetCamera,
+            DeadlineController deadlineController)
         {
             worldTime = timeSource;
             gameplayCamera = targetCamera;
+            deadline = deadlineController;
         }
 
         public bool RequestReplay()
@@ -309,6 +355,26 @@ namespace Deltatime.Replay
         {
             captureRate = Mathf.Max(1f, captureRate);
             endHoldDuration = Mathf.Max(0f, endHoldDuration);
+            deadlineCinematicPlaybackRate = Mathf.Clamp(
+                deadlineCinematicPlaybackRate,
+                0.05f,
+                1f);
+            minimumDeadlineCinematicDuration = Mathf.Max(
+                0f,
+                minimumDeadlineCinematicDuration);
+            maximumDeadlineCinematicDuration = Mathf.Max(
+                minimumDeadlineCinematicDuration,
+                maximumDeadlineCinematicDuration);
+            deadlineAftermathWorldDuration = Mathf.Max(
+                0f,
+                deadlineAftermathWorldDuration);
+            deadlineAftermathPlaybackRate = Mathf.Clamp(
+                deadlineAftermathPlaybackRate,
+                0.05f,
+                1f);
+            deadlineCameraRecoveryDuration = Mathf.Max(
+                0f,
+                deadlineCameraRecoveryDuration);
             omniscientAmbientIntensity =
                 Mathf.Max(0f, omniscientAmbientIntensity);
             omniscientReflectionIntensity =
@@ -322,28 +388,30 @@ namespace Deltatime.Replay
             }
         }
 
-        private void CaptureFrame()
+        private bool HasDeadlineStateChanged()
         {
-            float timestamp = worldTime.WorldElapsedTime;
-            if (cameraSamples.Count > 0)
-            {
-                timestamp = Mathf.Max(
-                    timestamp,
-                    cameraSamples[cameraSamples.Count - 1].Time + 0.000001f);
-            }
+            bool deadlineActive = deadline != null && deadline.IsActive;
+            return !hasCapturedDeadlineState ||
+                   deadlineActive != lastCapturedDeadlineState;
+        }
 
-            if (cameraSamples.Count == 0)
-            {
-                firstRecordedTime = timestamp;
-            }
+        private void CaptureFrame(bool forceKeyframe)
+        {
+            float timestamp = recordingElapsedTime;
+            bool deadlineActive = deadline != null && deadline.IsActive;
+            hasCapturedDeadlineState = true;
+            lastCapturedDeadlineState = deadlineActive;
 
-            lastRecordedTime = timestamp;
             cameraSamples.Add(new CameraSample(
                 timestamp,
                 gameplayCamera.transform.position,
                 gameplayCamera.transform.rotation,
                 gameplayCamera.backgroundColor,
                 gameplayCamera.fieldOfView));
+            timingSamples.Add(new ReplayTimingSample(
+                timestamp,
+                worldTime.WorldElapsedTime,
+                deadlineActive));
 
             visibleRendererIds.Clear();
             Renderer[] renderers = FindObjectsByType<Renderer>(
@@ -375,7 +443,7 @@ namespace Deltatime.Replay
                     tracks.Add(track);
                 }
 
-                track.Capture(timestamp);
+                track.Capture(timestamp, forceKeyframe);
             }
 
             for (int i = 0; i < tracks.Count; i++)
@@ -383,20 +451,280 @@ namespace Deltatime.Replay
                 VisualTrack track = tracks[i];
                 if (!visibleRendererIds.Contains(track.InstanceId))
                 {
-                    track.CaptureHidden(timestamp);
+                    track.CaptureHidden(timestamp, forceKeyframe);
                 }
             }
 
             for (int i = 0; i < lightTracks.Count; i++)
             {
-                lightTracks[i].Capture(timestamp);
+                lightTracks[i].Capture(timestamp, forceKeyframe);
             }
+        }
+
+        private void BuildPresentationTimeline()
+        {
+            replaySegments.Clear();
+            firstPresentationTime = 0f;
+            lastPresentationTime = 0f;
+            CurrentPlaybackPhase = ReplayPlaybackPhase.Normal;
+            IsReplayCameraLocked = false;
+            DeadlineCinematicSegmentCount = 0;
+            ShortestDeadlineCinematicDuration = 0f;
+            LongestDeadlineCinematicDuration = 0f;
+            LongestDeadlineAftermathDuration = 0f;
+
+            if (timingSamples.Count < 2 ||
+                cameraSamples.Count != timingSamples.Count)
+            {
+                return;
+            }
+
+            int cursor = 0;
+            while (cursor < timingSamples.Count - 1)
+            {
+                if (timingSamples[cursor].DeadlineActive)
+                {
+                    int deadlineEnd = FindDeadlineEndIndex(cursor);
+                    CameraSample cameraAnchor = cameraSamples[cursor];
+                    AppendDeadlineSegment(cursor, deadlineEnd, cameraAnchor);
+                    cursor = deadlineEnd;
+
+                    if (cursor < timingSamples.Count - 1 &&
+                        !timingSamples[cursor].DeadlineActive)
+                    {
+                        int aftermathEnd = FindAftermathEndIndex(cursor);
+                        AppendWorldTimeSegment(
+                            cursor,
+                            aftermathEnd,
+                            ReplayPlaybackPhase.DeadlineAftermath,
+                            deadlineAftermathPlaybackRate,
+                            cameraAnchor,
+                            deadlineCameraRecoveryDuration);
+                        cursor = aftermathEnd;
+                    }
+
+                    continue;
+                }
+
+                int nextDeadline = cursor + 1;
+                while (nextDeadline < timingSamples.Count &&
+                       !timingSamples[nextDeadline].DeadlineActive)
+                {
+                    nextDeadline++;
+                }
+
+                int normalEnd = Mathf.Min(
+                    nextDeadline,
+                    timingSamples.Count - 1);
+
+                AppendWorldTimeSegment(
+                    cursor,
+                    normalEnd,
+                    ReplayPlaybackPhase.Normal,
+                    1f,
+                    default,
+                    0f);
+                cursor = normalEnd;
+            }
+        }
+
+        private int FindDeadlineEndIndex(int startIndex)
+        {
+            int index = startIndex + 1;
+            while (index < timingSamples.Count &&
+                   timingSamples[index].DeadlineActive)
+            {
+                index++;
+            }
+
+            return Mathf.Min(index, timingSamples.Count - 1);
+        }
+
+        private int FindAftermathEndIndex(int startIndex)
+        {
+            if (deadlineAftermathWorldDuration <= 0f)
+            {
+                return startIndex;
+            }
+
+            float targetWorldTime =
+                timingSamples[startIndex].WorldTimestamp +
+                deadlineAftermathWorldDuration;
+            int index = startIndex + 1;
+            while (index < timingSamples.Count)
+            {
+                if (timingSamples[index].DeadlineActive ||
+                    timingSamples[index].WorldTimestamp >= targetWorldTime)
+                {
+                    return index;
+                }
+
+                index++;
+            }
+
+            return timingSamples.Count - 1;
+        }
+
+        private void AppendDeadlineSegment(
+            int startIndex,
+            int endIndex,
+            CameraSample cameraAnchor)
+        {
+            if (endIndex < startIndex)
+            {
+                return;
+            }
+
+            float sourceDuration = Mathf.Max(
+                0f,
+                timingSamples[endIndex].SourceTimestamp -
+                timingSamples[startIndex].SourceTimestamp);
+            float presentationDuration = Mathf.Clamp(
+                sourceDuration /
+                Mathf.Max(0.05f, deadlineCinematicPlaybackRate),
+                minimumDeadlineCinematicDuration,
+                maximumDeadlineCinematicDuration);
+            AppendReplaySegment(
+                timingSamples[startIndex].SourceTimestamp,
+                timingSamples[endIndex].SourceTimestamp,
+                presentationDuration,
+                ReplayPlaybackPhase.Deadline,
+                cameraAnchor,
+                0f);
+        }
+
+        private void AppendWorldTimeSegment(
+            int startIndex,
+            int endIndex,
+            ReplayPlaybackPhase phase,
+            float playbackRate,
+            CameraSample cameraAnchor,
+            float cameraRecoveryDuration)
+        {
+            if (endIndex <= startIndex)
+            {
+                return;
+            }
+
+            float worldDuration = Mathf.Max(
+                0f,
+                timingSamples[endIndex].WorldTimestamp -
+                timingSamples[startIndex].WorldTimestamp);
+            if (worldDuration <= 0.000001f)
+            {
+                return;
+            }
+
+            AppendReplaySegment(
+                timingSamples[startIndex].SourceTimestamp,
+                timingSamples[endIndex].SourceTimestamp,
+                worldDuration / Mathf.Max(0.05f, playbackRate),
+                phase,
+                cameraAnchor,
+                cameraRecoveryDuration);
+        }
+
+        private void AppendReplaySegment(
+            float sourceStart,
+            float sourceEnd,
+            float presentationDuration,
+            ReplayPlaybackPhase phase,
+            CameraSample cameraAnchor,
+            float cameraRecoveryDuration)
+        {
+            if (presentationDuration <= 0.000001f)
+            {
+                return;
+            }
+
+            float presentationStart = lastPresentationTime;
+            lastPresentationTime += presentationDuration;
+            replaySegments.Add(new ReplaySegment(
+                presentationStart,
+                lastPresentationTime,
+                sourceStart,
+                sourceEnd,
+                phase,
+                cameraAnchor,
+                cameraRecoveryDuration));
+
+            if (phase == ReplayPlaybackPhase.Deadline)
+            {
+                if (DeadlineCinematicSegmentCount == 0)
+                {
+                    ShortestDeadlineCinematicDuration = presentationDuration;
+                }
+                else
+                {
+                    ShortestDeadlineCinematicDuration = Mathf.Min(
+                        ShortestDeadlineCinematicDuration,
+                        presentationDuration);
+                }
+
+                DeadlineCinematicSegmentCount++;
+                LongestDeadlineCinematicDuration = Mathf.Max(
+                    LongestDeadlineCinematicDuration,
+                    presentationDuration);
+            }
+            else if (phase == ReplayPlaybackPhase.DeadlineAftermath)
+            {
+                LongestDeadlineAftermathDuration = Mathf.Max(
+                    LongestDeadlineAftermathDuration,
+                    presentationDuration);
+            }
+        }
+
+        private ReplayPosition ResolveReplayPosition(float presentationTimestamp)
+        {
+            if (replaySegments.Count == 0)
+            {
+                return new ReplayPosition(
+                    new ReplaySegment(
+                        0f,
+                        0f,
+                        0f,
+                        0f,
+                        ReplayPlaybackPhase.Normal,
+                        default,
+                        0f),
+                    0f);
+            }
+
+            int low = 0;
+            int high = replaySegments.Count - 1;
+            while (low < high)
+            {
+                int middle = low + ((high - low) / 2);
+                if (replaySegments[middle].PresentationEnd <=
+                    presentationTimestamp)
+                {
+                    low = middle + 1;
+                }
+                else
+                {
+                    high = middle;
+                }
+            }
+
+            ReplaySegment segment = replaySegments[low];
+            if (presentationTimestamp >= lastPresentationTime)
+            {
+                segment = replaySegments[replaySegments.Count - 1];
+            }
+
+            return new ReplayPosition(
+                segment,
+                segment.GetSourceTimestamp(presentationTimestamp));
         }
 
         private void BeginReplay()
         {
             replayRequested = false;
-            if (cameraSamples.Count == 0 || tracks.Count == 0)
+            BuildPresentationTimeline();
+            if (cameraSamples.Count == 0 ||
+                timingSamples.Count < 2 ||
+                replaySegments.Count == 0 ||
+                tracks.Count == 0)
             {
                 Debug.LogWarning("Replay could not start because no frames were captured.", this);
                 return;
@@ -419,7 +747,7 @@ namespace Deltatime.Replay
             IsReplaying = true;
             IsOmniscientViewEnabled = false;
             omniscientFillLight.enabled = false;
-            playbackTime = firstRecordedTime;
+            playbackTime = firstPresentationTime;
             holdRemaining = 0f;
             ApplyReplay(playbackTime);
         }
@@ -452,7 +780,7 @@ namespace Deltatime.Replay
         {
             if (RecordedDuration <= 0f)
             {
-                ApplyReplay(firstRecordedTime);
+                ApplyReplay(firstPresentationTime);
                 return;
             }
 
@@ -464,16 +792,16 @@ namespace Deltatime.Replay
                     return;
                 }
 
-                playbackTime = firstRecordedTime;
+                playbackTime = firstPresentationTime;
             }
             else
             {
                 playbackTime += realDeltaTime;
             }
 
-            if (playbackTime >= lastRecordedTime)
+            if (playbackTime >= lastPresentationTime)
             {
-                playbackTime = lastRecordedTime;
+                playbackTime = lastPresentationTime;
                 ApplyReplay(playbackTime);
                 holdRemaining = endHoldDuration;
                 return;
@@ -482,12 +810,17 @@ namespace Deltatime.Replay
             ApplyReplay(playbackTime);
         }
 
-        private void ApplyReplay(float timestamp)
+        private void ApplyReplay(float presentationTimestamp)
         {
-            ApplyCamera(timestamp);
+            ReplayPosition replayPosition = ResolveReplayPosition(
+                presentationTimestamp);
+            CurrentPlaybackPhase = replayPosition.Phase;
+            ApplyCamera(replayPosition);
             for (int i = 0; i < tracks.Count; i++)
             {
-                tracks[i].Apply(timestamp, IsOmniscientViewEnabled);
+                tracks[i].Apply(
+                    replayPosition.SourceTimestamp,
+                    IsOmniscientViewEnabled);
             }
 
             if (IsOmniscientViewEnabled)
@@ -503,26 +836,57 @@ namespace Deltatime.Replay
             {
                 for (int i = 0; i < lightTracks.Count; i++)
                 {
-                    lightTracks[i].Apply(timestamp);
+                    lightTracks[i].Apply(replayPosition.SourceTimestamp);
                 }
             }
         }
 
-        private void ApplyCamera(float timestamp)
+        private void ApplyCamera(ReplayPosition replayPosition)
         {
             if (cameraSamples.Count == 0 || gameplayCamera == null)
             {
                 return;
             }
 
+            ReplaySegment segment = replayPosition.Segment;
+            if (segment.Phase == ReplayPlaybackPhase.Deadline)
+            {
+                IsReplayCameraLocked = true;
+                SetCamera(segment.CameraAnchor);
+                return;
+            }
+
+            CameraSample recorded = EvaluateCamera(
+                replayPosition.SourceTimestamp);
+            IsReplayCameraLocked = false;
+            if (segment.Phase == ReplayPlaybackPhase.DeadlineAftermath &&
+                segment.CameraRecoveryDuration > 0f)
+            {
+                float recoveryBlend = Mathf.Clamp01(
+                    (playbackTime - segment.PresentationStart) /
+                    segment.CameraRecoveryDuration);
+                if (recoveryBlend < 1f)
+                {
+                    SetCamera(CameraSample.Interpolate(
+                        segment.CameraAnchor,
+                        recorded,
+                        recoveryBlend));
+                    return;
+                }
+            }
+
+            SetCamera(recorded);
+        }
+
+        private CameraSample EvaluateCamera(float timestamp)
+        {
             int nextIndex = FindNextCameraSample(timestamp);
             int previousIndex = Mathf.Max(0, nextIndex - 1);
             CameraSample previous = cameraSamples[previousIndex];
 
             if (nextIndex >= cameraSamples.Count)
             {
-                SetCamera(previous);
-                return;
+                return previous;
             }
 
             CameraSample next = cameraSamples[nextIndex];
@@ -530,14 +894,7 @@ namespace Deltatime.Replay
             float blend = duration <= 0.000001f
                 ? 0f
                 : Mathf.Clamp01((timestamp - previous.Time) / duration);
-
-            gameplayCamera.transform.SetPositionAndRotation(
-                Vector3.Lerp(previous.Position, next.Position, blend),
-                Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
-            gameplayCamera.backgroundColor =
-                Color.Lerp(previous.BackgroundColor, next.BackgroundColor, blend);
-            gameplayCamera.fieldOfView =
-                Mathf.Lerp(previous.FieldOfView, next.FieldOfView, blend);
+            return CameraSample.Interpolate(previous, next, blend);
         }
 
         private int FindNextCameraSample(float timestamp)
@@ -771,6 +1128,8 @@ namespace Deltatime.Replay
         {
             RestoreReplayLightingState();
             IsOmniscientViewEnabled = false;
+            CurrentPlaybackPhase = ReplayPlaybackPhase.Normal;
+            IsReplayCameraLocked = false;
         }
 
         private void OnDestroy()
@@ -865,6 +1224,93 @@ namespace Deltatime.Replay
                 Rotation = rotation;
                 BackgroundColor = backgroundColor;
                 FieldOfView = fieldOfView;
+            }
+
+            public static CameraSample Interpolate(
+                CameraSample previous,
+                CameraSample next,
+                float blend)
+            {
+                return new CameraSample(
+                    Mathf.Lerp(previous.Time, next.Time, blend),
+                    Vector3.Lerp(previous.Position, next.Position, blend),
+                    Quaternion.Slerp(previous.Rotation, next.Rotation, blend),
+                    Color.Lerp(
+                        previous.BackgroundColor,
+                        next.BackgroundColor,
+                        blend),
+                    Mathf.Lerp(previous.FieldOfView, next.FieldOfView, blend));
+            }
+        }
+
+        private readonly struct ReplayTimingSample
+        {
+            public readonly float SourceTimestamp;
+            public readonly float WorldTimestamp;
+            public readonly bool DeadlineActive;
+
+            public ReplayTimingSample(
+                float sourceTimestamp,
+                float worldTimestamp,
+                bool deadlineActive)
+            {
+                SourceTimestamp = sourceTimestamp;
+                WorldTimestamp = worldTimestamp;
+                DeadlineActive = deadlineActive;
+            }
+        }
+
+        private readonly struct ReplaySegment
+        {
+            public readonly float PresentationStart;
+            public readonly float PresentationEnd;
+            public readonly float SourceStart;
+            public readonly float SourceEnd;
+            public readonly ReplayPlaybackPhase Phase;
+            public readonly CameraSample CameraAnchor;
+            public readonly float CameraRecoveryDuration;
+
+            public ReplaySegment(
+                float presentationStart,
+                float presentationEnd,
+                float sourceStart,
+                float sourceEnd,
+                ReplayPlaybackPhase phase,
+                CameraSample cameraAnchor,
+                float cameraRecoveryDuration)
+            {
+                PresentationStart = presentationStart;
+                PresentationEnd = presentationEnd;
+                SourceStart = sourceStart;
+                SourceEnd = sourceEnd;
+                Phase = phase;
+                CameraAnchor = cameraAnchor;
+                CameraRecoveryDuration = cameraRecoveryDuration;
+            }
+
+            public float GetSourceTimestamp(float presentationTimestamp)
+            {
+                float duration = PresentationEnd - PresentationStart;
+                float blend = duration <= 0.000001f
+                    ? 0f
+                    : Mathf.Clamp01(
+                        (presentationTimestamp - PresentationStart) / duration);
+                return Mathf.Lerp(SourceStart, SourceEnd, blend);
+            }
+        }
+
+        private readonly struct ReplayPosition
+        {
+            public readonly ReplaySegment Segment;
+            public readonly float SourceTimestamp;
+            public ReplayPlaybackPhase Phase => Segment.Phase;
+
+            public ReplayPosition(
+                ReplaySegment segment,
+                float sourceTimestamp)
+            {
+                Segment = segment;
+                SourceTimestamp = sourceTimestamp;
             }
         }
 
@@ -968,11 +1414,11 @@ namespace Deltatime.Replay
                 proxy = proxyLight;
             }
 
-            public void Capture(float timestamp)
+            public void Capture(float timestamp, bool forceKeyframe)
             {
                 if (!IsSourceEnabled)
                 {
-                    CaptureHidden(timestamp);
+                    CaptureHidden(timestamp, forceKeyframe);
                     return;
                 }
 
@@ -984,7 +1430,8 @@ namespace Deltatime.Replay
                 float spotAngle = source.spotAngle;
                 float innerSpotAngle = source.innerSpotAngle;
 
-                if (samples.Count > 0 &&
+                if (!forceKeyframe &&
+                    samples.Count > 0 &&
                     samples[samples.Count - 1].Matches(
                         position,
                         rotation,
@@ -1063,9 +1510,10 @@ namespace Deltatime.Replay
                 ApplyInterpolated(previous, next, blend);
             }
 
-            private void CaptureHidden(float timestamp)
+            private void CaptureHidden(float timestamp, bool forceKeyframe)
             {
-                if (samples.Count == 0 || !samples[samples.Count - 1].Visible)
+                if (samples.Count == 0 ||
+                    (!forceKeyframe && !samples[samples.Count - 1].Visible))
                 {
                     return;
                 }
@@ -1187,7 +1635,7 @@ namespace Deltatime.Replay
                 proxy.enabled = false;
             }
 
-            public void Capture(float timestamp)
+            public void Capture(float timestamp, bool forceKeyframe)
             {
                 bool active = source != null &&
                               source.gameObject.activeInHierarchy;
@@ -1206,7 +1654,7 @@ namespace Deltatime.Replay
 
                 if (!visible && !omniscientVisible)
                 {
-                    CaptureHidden(timestamp);
+                    CaptureHidden(timestamp, forceKeyframe);
                     return;
                 }
 
@@ -1231,7 +1679,8 @@ namespace Deltatime.Replay
                 Vector3 position = source.transform.position;
                 Quaternion rotation = source.transform.rotation;
                 Vector3 scale = source.transform.lossyScale;
-                if (samples.Count > 0 &&
+                if (!forceKeyframe &&
+                    samples.Count > 0 &&
                     samples[samples.Count - 1].Matches(
                         visible,
                         omniscientVisible,
@@ -1261,10 +1710,11 @@ namespace Deltatime.Replay
                     endColor));
             }
 
-            public void CaptureHidden(float timestamp)
+            public void CaptureHidden(float timestamp, bool forceKeyframe)
             {
                 if (samples.Count == 0 ||
-                    !samples[samples.Count - 1].HasAnyVisibility)
+                    (!forceKeyframe &&
+                     !samples[samples.Count - 1].HasAnyVisibility))
                 {
                     return;
                 }

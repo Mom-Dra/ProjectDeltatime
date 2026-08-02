@@ -37,6 +37,22 @@ namespace Deltatime.EditorTools
         private static bool movementChecksRan;
         private static bool stunChecksRan;
         private static bool replayChecksRan;
+        private static bool deadlineLongProbeStarted;
+        private static bool deadlineLongProbeReleased;
+        private static bool deadlineShortProbeStarted;
+        private static bool deadlineShortProbeReleased;
+        private static bool stageClearTriggered;
+        private static bool deadlineReplayLockCaptured;
+        private static bool deadlineReplayLockValidated;
+        private static bool deadlineReplayAftermathCaptured;
+        private static bool deadlineReplayAftermathValidated;
+        private static bool deadlineReplayFinalValidationRan;
+        private static double deadlineReplayLockCapturedAt;
+        private static double deadlineReplayAftermathCapturedAt;
+        private static float deadlineLongWorldStart;
+        private static Vector3 deadlineLockedCameraPosition;
+        private static Quaternion deadlineLockedCameraRotation;
+        private static float deadlineLockedCameraFieldOfView;
         private static bool callbacksAttached;
         private static readonly System.Collections.Generic.Dictionary<int, Vector3>
             EnemyMovementStarts =
@@ -105,6 +121,7 @@ namespace Deltatime.EditorTools
                 movementChecksRan = false;
                 stunChecksRan = false;
                 replayChecksRan = false;
+                ResetDeadlineReplayProbe();
                 SessionState.SetString(PhaseKey, "playing");
             }
             else if (state == PlayModeStateChange.ExitingPlayMode)
@@ -136,6 +153,7 @@ namespace Deltatime.EditorTools
                     movementChecksRan = false;
                     stunChecksRan = false;
                     replayChecksRan = false;
+                    ResetDeadlineReplayProbe();
                     SessionState.SetString(PhaseKey, "playing");
                 }
 
@@ -163,16 +181,67 @@ namespace Deltatime.EditorTools
                 {
                     stunChecksRan = true;
                     ValidateStunRecovery();
+                    BeginDeadlineReplayProbe(false);
+                }
+
+                if ((deadlineLongProbeStarted && !deadlineLongProbeReleased) ||
+                    (deadlineShortProbeStarted && !deadlineShortProbeReleased))
+                {
+                    SustainDeadlineReplayProbe();
+                }
+
+                if (deadlineLongProbeStarted &&
+                    !deadlineLongProbeReleased &&
+                    elapsed >= 4.65d)
+                {
+                    ReleaseDeadlineReplayProbe(true);
+                }
+
+                if (deadlineLongProbeReleased &&
+                    !deadlineShortProbeStarted &&
+                    elapsed >= 5.2d)
+                {
+                    BeginDeadlineReplayProbe(true);
+                }
+
+                if (deadlineShortProbeStarted &&
+                    !deadlineShortProbeReleased &&
+                    elapsed >= 5.45d)
+                {
+                    ReleaseDeadlineReplayProbe(false);
+                }
+
+                if (deadlineShortProbeReleased &&
+                    !stageClearTriggered &&
+                    elapsed >= 6.35d)
+                {
+                    stageClearTriggered = true;
                     ClearStage();
                 }
 
-                if (!replayChecksRan && elapsed >= 3.95d)
+                if (!replayChecksRan && elapsed >= 6.7d)
                 {
                     replayChecksRan = true;
                     ValidateReplayState();
                 }
 
-                if (elapsed >= 4.5d)
+                if (replayChecksRan)
+                {
+                    ValidateDeadlineReplayPresentation();
+                }
+
+                if (!deadlineReplayFinalValidationRan && elapsed >= 15.5d)
+                {
+                    deadlineReplayFinalValidationRan = true;
+                    Require(
+                        deadlineReplayLockValidated,
+                        "Deadline replay never held the camera lock for the cinematic segment.");
+                    Require(
+                        deadlineReplayAftermathValidated,
+                        "Deadline replay never completed the aftermath camera recovery.");
+                }
+
+                if (elapsed >= 16d)
                 {
                     SessionState.SetString(PhaseKey, "stopping");
                     EditorApplication.isPlaying = false;
@@ -181,6 +250,258 @@ namespace Deltatime.EditorTools
             else if (phase == "stopping")
             {
                 Finish();
+            }
+        }
+
+        private static void ResetDeadlineReplayProbe()
+        {
+            deadlineLongProbeStarted = false;
+            deadlineLongProbeReleased = false;
+            deadlineShortProbeStarted = false;
+            deadlineShortProbeReleased = false;
+            stageClearTriggered = false;
+            deadlineReplayLockCaptured = false;
+            deadlineReplayLockValidated = false;
+            deadlineReplayAftermathCaptured = false;
+            deadlineReplayAftermathValidated = false;
+            deadlineReplayFinalValidationRan = false;
+            deadlineReplayLockCapturedAt = 0d;
+            deadlineReplayAftermathCapturedAt = 0d;
+            deadlineLongWorldStart = 0f;
+            deadlineLockedCameraPosition = Vector3.zero;
+            deadlineLockedCameraRotation = Quaternion.identity;
+            deadlineLockedCameraFieldOfView = 0f;
+        }
+
+        private static void BeginDeadlineReplayProbe(bool shortProbe)
+        {
+            DeadlineController deadline =
+                UnityEngine.Object.FindObjectOfType<DeadlineController>();
+            WorldTimeController worldTime =
+                UnityEngine.Object.FindObjectOfType<WorldTimeController>();
+            WorldTimeActivity activity =
+                UnityEngine.Object.FindObjectOfType<WorldTimeActivity>();
+            PlayerAim aim = UnityEngine.Object.FindObjectOfType<PlayerAim>();
+            Camera camera = Camera.main;
+            System.Reflection.MethodInfo activateMethod =
+                typeof(DeadlineController).GetMethod(
+                    "ActivateDeadline",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+
+            Require(
+                deadline != null &&
+                worldTime != null &&
+                activity != null &&
+                aim != null &&
+                camera != null &&
+                activateMethod != null,
+                "Deadline replay probe dependencies are missing.");
+            if (deadline == null ||
+                worldTime == null ||
+                activity == null ||
+                aim == null ||
+                camera == null ||
+                activateMethod == null)
+            {
+                return;
+            }
+
+            if (!shortProbe)
+            {
+                EnemyHealth[] enemies =
+                    UnityEngine.Object.FindObjectsOfType<EnemyHealth>();
+                for (int i = 0; i < enemies.Length; i++)
+                {
+                    enemies[i].ReceiveStun(new StunHit(
+                        10f,
+                        enemies[i].transform.position,
+                        Vector3.forward,
+                        null));
+                }
+
+                deadlineLongWorldStart = worldTime.WorldElapsedTime;
+                deadlineLongProbeStarted = true;
+            }
+            else
+            {
+                deadlineShortProbeStarted = true;
+            }
+
+            aim.enabled = false;
+            activity.SetAimTurn(1f);
+            camera.transform.position += shortProbe
+                ? new Vector3(-0.45f, 0.12f, 0.25f)
+                : new Vector3(0.7f, 0.2f, -0.35f);
+
+            try
+            {
+                activateMethod.Invoke(deadline, null);
+            }
+            catch (Exception exception)
+            {
+                RecordFailure(
+                    $"Deadline replay probe activation threw: {exception}");
+                return;
+            }
+
+            Require(
+                deadline.IsActive,
+                "Deadline replay probe did not activate Deadline.");
+        }
+
+        private static void SustainDeadlineReplayProbe()
+        {
+            WorldTimeActivity activity =
+                UnityEngine.Object.FindObjectOfType<WorldTimeActivity>();
+            Camera camera = Camera.main;
+            activity?.SetAimTurn(1f);
+            if (camera != null)
+            {
+                camera.transform.position += new Vector3(0.012f, 0f, 0.006f);
+                camera.transform.rotation =
+                    Quaternion.AngleAxis(0.7f, Vector3.up) *
+                    camera.transform.rotation;
+            }
+        }
+
+        private static void ReleaseDeadlineReplayProbe(bool longProbe)
+        {
+            DeadlineController deadline =
+                UnityEngine.Object.FindObjectOfType<DeadlineController>();
+            WorldTimeController worldTime =
+                UnityEngine.Object.FindObjectOfType<WorldTimeController>();
+            WorldTimeActivity activity =
+                UnityEngine.Object.FindObjectOfType<WorldTimeActivity>();
+            PlayerAim aim = UnityEngine.Object.FindObjectOfType<PlayerAim>();
+            System.Reflection.MethodInfo releaseMethod =
+                typeof(DeadlineController).GetMethod(
+                    "ReleaseDeadline",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+
+            Require(
+                deadline != null &&
+                worldTime != null &&
+                activity != null &&
+                aim != null &&
+                releaseMethod != null,
+                "Deadline replay probe release dependencies are missing.");
+            if (deadline == null ||
+                worldTime == null ||
+                activity == null ||
+                aim == null ||
+                releaseMethod == null)
+            {
+                return;
+            }
+
+            try
+            {
+                releaseMethod.Invoke(deadline, null);
+            }
+            catch (Exception exception)
+            {
+                RecordFailure(
+                    $"Deadline replay probe release threw: {exception}");
+                return;
+            }
+
+            aim.enabled = true;
+            activity.SetAimTurn(0f);
+            activity.Pulse(1f, 1.2f);
+            Require(
+                !deadline.IsActive,
+                "Deadline replay probe did not release Deadline.");
+
+            if (longProbe)
+            {
+                float deadlineWorldDuration =
+                    worldTime.WorldElapsedTime - deadlineLongWorldStart;
+                Require(
+                    deadlineWorldDuration >= 0.01f &&
+                    deadlineWorldDuration <= 0.06f,
+                    $"One-second Deadline probe advanced world time by {deadlineWorldDuration:0.000}s instead of about 0.02s.");
+                deadlineLongProbeReleased = true;
+            }
+            else
+            {
+                deadlineShortProbeReleased = true;
+            }
+        }
+
+        private static void ValidateDeadlineReplayPresentation()
+        {
+            StageReplayController replay =
+                UnityEngine.Object.FindObjectOfType<StageReplayController>();
+            Camera camera = Camera.main;
+            if (replay == null || camera == null || !replay.IsReplaying)
+            {
+                return;
+            }
+
+            double now = EditorApplication.timeSinceStartup;
+            if (replay.CurrentPlaybackPhase ==
+                StageReplayController.ReplayPlaybackPhase.Deadline)
+            {
+                if (!deadlineReplayLockCaptured)
+                {
+                    deadlineReplayLockCaptured = true;
+                    deadlineReplayLockCapturedAt = now;
+                    deadlineLockedCameraPosition = camera.transform.position;
+                    deadlineLockedCameraRotation = camera.transform.rotation;
+                    deadlineLockedCameraFieldOfView = camera.fieldOfView;
+                    Require(
+                        replay.IsReplayCameraLocked,
+                        "Deadline replay did not lock the camera at the cinematic entry.");
+                }
+                else if (!deadlineReplayLockValidated &&
+                         now - deadlineReplayLockCapturedAt >= 0.25d)
+                {
+                    deadlineReplayLockValidated = true;
+                    Require(
+                        replay.IsReplayCameraLocked &&
+                        (camera.transform.position -
+                         deadlineLockedCameraPosition).sqrMagnitude <=
+                        0.000001f &&
+                        Quaternion.Dot(
+                            camera.transform.rotation,
+                            deadlineLockedCameraRotation) >= 0.999999f &&
+                        Mathf.Abs(
+                            camera.fieldOfView -
+                            deadlineLockedCameraFieldOfView) <= 0.0001f,
+                        "Deadline replay camera moved while the cinematic lock was active.");
+                }
+            }
+            else if (replay.CurrentPlaybackPhase ==
+                     StageReplayController.ReplayPlaybackPhase.DeadlineAftermath)
+            {
+                if (!deadlineReplayAftermathCaptured)
+                {
+                    deadlineReplayAftermathCaptured = true;
+                    deadlineReplayAftermathCapturedAt = now;
+                    Require(
+                        !replay.IsReplayCameraLocked,
+                        "Deadline aftermath kept the camera in its hard-locked state.");
+                }
+                else if (!deadlineReplayAftermathValidated &&
+                         now - deadlineReplayAftermathCapturedAt >= 0.25d)
+                {
+                    deadlineReplayAftermathValidated = true;
+                    bool cameraRecovered =
+                        (camera.transform.position -
+                         deadlineLockedCameraPosition).sqrMagnitude >
+                        0.0001f ||
+                        Quaternion.Dot(
+                            camera.transform.rotation,
+                            deadlineLockedCameraRotation) < 0.9999f ||
+                        Mathf.Abs(
+                            camera.fieldOfView -
+                            deadlineLockedCameraFieldOfView) > 0.01f;
+                    Require(
+                        !replay.IsReplayCameraLocked && cameraRecovered,
+                        "Deadline aftermath did not recover from the locked camera pose.");
+                }
             }
         }
 
@@ -555,6 +876,24 @@ namespace Deltatime.EditorTools
             Require(
                 replay != null && replay.RecordedDuration > 0f,
                 "The replay did not retain a playable recording.");
+            Require(
+                replay != null && replay.DeadlineCinematicSegmentCount == 2,
+                "Replay did not retain both Deadline cinematic segments.");
+            Require(
+                replay != null &&
+                replay.ShortestDeadlineCinematicDuration >= 0.79f &&
+                replay.ShortestDeadlineCinematicDuration <= 0.81f,
+                $"Short Deadline cinematic duration was {replay?.ShortestDeadlineCinematicDuration:0.000}s instead of 0.8s.");
+            Require(
+                replay != null &&
+                replay.LongestDeadlineCinematicDuration >= 1.95f &&
+                replay.LongestDeadlineCinematicDuration <= 2.01f,
+                $"Long Deadline cinematic duration was {replay?.LongestDeadlineCinematicDuration:0.000}s instead of 2.0s.");
+            Require(
+                replay != null &&
+                replay.LongestDeadlineAftermathDuration >= 1.45f &&
+                replay.LongestDeadlineAftermathDuration <= 1.6f,
+                $"Deadline aftermath duration was {replay?.LongestDeadlineAftermathDuration:0.000}s instead of 1.5s.");
             Require(
                 cameraRig != null && !cameraRig.enabled,
                 "Live camera simulation remained enabled during replay.");

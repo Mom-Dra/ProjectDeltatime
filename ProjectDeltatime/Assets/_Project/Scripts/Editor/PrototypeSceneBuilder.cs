@@ -152,7 +152,6 @@ namespace Deltatime.EditorTools
             Camera gameplayCamera = CreateCamera(worldTime, keyLight);
             StageReplayController replay =
                 systems.AddComponent<StageReplayController>();
-            replay.Configure(worldTime, gameplayCamera);
             ConfigureReplayOmniscientView(replay);
 
             CreateFloorAndWalls(
@@ -176,6 +175,7 @@ namespace Deltatime.EditorTools
                 gameplayCamera,
                 replay,
                 Stage1DeadlineCharges);
+            replay.Configure(worldTime, gameplayCamera, player.Deadline);
 
             TopDownCameraController cameraController =
                 gameplayCamera.gameObject.AddComponent<TopDownCameraController>();
@@ -1554,6 +1554,8 @@ namespace Deltatime.EditorTools
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
             DeadlineController deadline =
                 UnityEngine.Object.FindObjectOfType<DeadlineController>();
+            StageReplayController replay =
+                UnityEngine.Object.FindObjectOfType<StageReplayController>();
             NavMeshSurface navigationSurface =
                 UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
             SerializedObject deadlineSerialized = deadline == null
@@ -1590,6 +1592,37 @@ namespace Deltatime.EditorTools
             SerializedProperty deadlineMovementThreshold = deadlineSerialized == null
                 ? null
                 : deadlineSerialized.FindProperty("movementThreshold");
+            SerializedObject replaySerialized = replay == null
+                ? null
+                : new SerializedObject(replay);
+            replaySerialized?.Update();
+            SerializedProperty replayWorldTime = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("worldTime");
+            SerializedProperty replayCamera = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("gameplayCamera");
+            SerializedProperty replayDeadline = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("deadline");
+            SerializedProperty replayDeadlineRate = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("deadlineCinematicPlaybackRate");
+            SerializedProperty replayDeadlineMinimumDuration = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("minimumDeadlineCinematicDuration");
+            SerializedProperty replayDeadlineMaximumDuration = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("maximumDeadlineCinematicDuration");
+            SerializedProperty replayAftermathWorldDuration = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("deadlineAftermathWorldDuration");
+            SerializedProperty replayAftermathRate = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("deadlineAftermathPlaybackRate");
+            SerializedProperty replayCameraRecoveryDuration = replaySerialized == null
+                ? null
+                : replaySerialized.FindProperty("deadlineCameraRecoveryDuration");
             PlayerControls inputActions = new PlayerControls();
             InputAction deadlineAction = inputActions.Gameplay.Deadline;
             bool hasDeadlineKeyBinding = false;
@@ -1643,6 +1676,33 @@ namespace Deltatime.EditorTools
                 deadlineDangerRadius != null ||
                 deadlineMaximumImpact != null ||
                 deadlineMovementThreshold != null ||
+                replay == null ||
+                replayWorldTime == null ||
+                replayWorldTime.objectReferenceValue == null ||
+                replayCamera == null ||
+                replayCamera.objectReferenceValue == null ||
+                replayDeadline == null ||
+                replayDeadline.objectReferenceValue == null ||
+                replayDeadlineRate == null ||
+                !Mathf.Approximately(replayDeadlineRate.floatValue, 0.5f) ||
+                replayDeadlineMinimumDuration == null ||
+                !Mathf.Approximately(
+                    replayDeadlineMinimumDuration.floatValue,
+                    0.8f) ||
+                replayDeadlineMaximumDuration == null ||
+                !Mathf.Approximately(
+                    replayDeadlineMaximumDuration.floatValue,
+                    2f) ||
+                replayAftermathWorldDuration == null ||
+                !Mathf.Approximately(
+                    replayAftermathWorldDuration.floatValue,
+                    0.75f) ||
+                replayAftermathRate == null ||
+                !Mathf.Approximately(replayAftermathRate.floatValue, 0.5f) ||
+                replayCameraRecoveryDuration == null ||
+                !Mathf.Approximately(
+                    replayCameraRecoveryDuration.floatValue,
+                    0.2f) ||
                 !hasDeadlineKeyBinding)
             {
                 throw new InvalidOperationException(
@@ -1657,6 +1717,15 @@ namespace Deltatime.EditorTools
                     $"deadlineRearm={deadlineRearm?.floatValue}, " +
                     $"deadlineStagedActions={deadlineStagedActions?.intValue}, " +
                     $"legacyDeadlineTriggerFields={deadlineDangerRadius != null || deadlineMaximumImpact != null || deadlineMovementThreshold != null}, " +
+                    $"replayWorldTime={replayWorldTime?.objectReferenceValue != null}, " +
+                    $"replayCamera={replayCamera?.objectReferenceValue != null}, " +
+                    $"replayDeadline={replayDeadline?.objectReferenceValue != null}, " +
+                    $"replayDeadlineRate={replayDeadlineRate?.floatValue}, " +
+                    $"replayDeadlineMin={replayDeadlineMinimumDuration?.floatValue}, " +
+                    $"replayDeadlineMax={replayDeadlineMaximumDuration?.floatValue}, " +
+                    $"replayAftermathWorld={replayAftermathWorldDuration?.floatValue}, " +
+                    $"replayAftermathRate={replayAftermathRate?.floatValue}, " +
+                    $"replayCameraRecovery={replayCameraRecoveryDuration?.floatValue}, " +
                     $"deadlineQBinding={hasDeadlineKeyBinding}, " +
                     $"expectedDeadlineCharges={expectedDeadlineCharges}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +

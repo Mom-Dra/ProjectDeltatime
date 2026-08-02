@@ -7,7 +7,7 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-02 (KST) |
-| 문서 버전 | 1.2.8 |
+| 문서 버전 | 1.2.9 |
 | 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 현재 장비에 따라 총기·근접 무기·주먹을 사용하는 공통 적 전투 AI, 적 무기 드롭·재무장, 플레이어 HP 3과 근접 무기 사용, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
 
 ### 1.1 분석 기준과 범위
@@ -23,8 +23,8 @@
 ### 1.2 테스트 근거의 한계
 
 - `ProjectDeltatime/EnemyMovementSmoke.log`에는 2026-07-31에 `Prototype play-mode smoke test passed.`가 기록되어 있다.
-- 커스텀 스모크 테스트는 `Stage2`를 열고 초기 플레이어/적/카메라/월드 시간, NavMeshData, 적 이동 누적 거리와 경로 획득, 근접형 추격 상태, 투척 무기 6 거리, 두 적 유형의 기절·무장 해제, 사격 적 무기 드롭, 적 전멸 후 리플레이와 시야 조명 프록시를 검사한다.
-- 현재 테스트 코드에는 `DEADLINE` 발동/행동 준비와 플레이어의 공중 무기 가로채기를 직접 검증하는 어설션이 없다.
+- 커스텀 스모크 테스트는 `Stage2`를 열고 초기 플레이어/적/카메라/월드 시간, NavMeshData, 적 이동 누적 거리와 경로 획득, 근접형 추격 상태, 투척 무기 6 거리, 두 적 유형의 기절·무장 해제, 두 번의 `DEADLINE` 시네마틱 리플레이 시간축·카메라 고정·해제 후 복귀, 적 전멸 후 리플레이와 시야 조명 프록시를 검사한다.
+- 현재 테스트 코드는 키보드 `Q` 입력 자체와 플레이어의 공중 무기 가로채기를 직접 검증하는 어설션이 없다. Deadline 리플레이 스모크는 시간축 회귀를 분리하기 위해 `DeadlineController`의 비공개 발동·해제 경로를 호출한다.
 - 이번 적 무기 드롭·재무장·주먹 공격 및 플레이어 근접 전투 코드는 위 스모크 테스트보다 최신이다. Unity 6000.1.13f1 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 씬·에셋 정적 검증은 통과했지만, 사용자 요청에 따라 플레이 테스트와 스모크 테스트는 **미실행**했으므로 실제 전투 동작은 최신 통합 결과로 확인하지 않았다.
 - 2026-08-01 `DEADLINE` 실제 이동 판정 수정은 Unity 6000.1.13f1 스크립트 컴파일, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 재생성과 `ValidateSavedPrototypeRoom`의 두 저장 씬 정적 검증을 통과했다. 두 씬의 `PlayerMovement.minimumPhysicalDisplacement: 0.001`과 `DeadlineController.movement` 참조를 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 벽 접촉 중 발동 억제의 런타임 결과는 **확인 불가**다.
 - 2026-08-01 리플레이 ViewCone 및 전체 시야 토글 변경은 Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`와 종료 코드 0을 확인했다. 입력 에셋·생성 래퍼·Stage1/Stage2 직렬화는 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 메시 경계, 조명 전환, 시야 밖 적 표시의 실제 시각 품질은 **확인 불가**다.
@@ -32,6 +32,7 @@
 - 2026-08-02 `DEADLINE` 회전 중 최저 시간 배율 변경은 Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. 두 씬의 `minimumTimeScale: 0.02`, `DeadlineController`·`WorldTimeController` 참조와 캐치의 `RequestHardFreeze` 경로를 정적으로 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 회전 중 위험 진행 체감과 동시 해방 결과는 **확인 불가**다.
 - 2026-08-02 `DEADLINE` 씬당 충전 횟수 제한은 Unity 6000.1.13f1 배치 모드에서 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. 두 씬의 `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`와 필수 참조를 확인했지만, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**했으므로 충전 차감·소진·씬 재시작 회복의 런타임 결과는 **확인 불가**다.
 - 2026-08-02 Q 키 기반 `DEADLINE` 발동 전환은 Unity 6000.1.13f1 배치 모드의 스크립트 컴파일과 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`으로 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. `Deadline` 입력의 Q 바인딩, 기존 탄환·실제 이동 트리거 필드 제거, `maximumCharges: 2`, `rearmWorldDuration: 0.35`, `maximumStagedActions: 2`를 확인했으며, 사용자 요청에 따라 플레이 모드와 커스텀 스모크 테스트는 **미실행**이므로 실제 사용 감각은 **확인 불가**다.
+- 2026-08-02 Deadline 전용 시네마틱 리플레이 시간축은 Unity 6000.1.13f1 배치 스크립트 컴파일의 `Tundra build success`, `BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증, `PrototypePlayModeSmokeTest`를 모두 통과했다. 스모크는 약 1초의 0.02배 Deadline을 최대 2초, 짧은 Deadline을 최소 0.8초, 해제 후 0.75 월드 초를 1.5초로 재생하는지와 카메라 고정·복귀를 확인한다. 실제 Q 조작 감각, 조준·행동 준비·이동 해제의 시각 연출과 R 재시작은 **확인 불가**다.
 - 근접 무기 드롭·재획득, 시작 유형과 다른 무기 사용, 주먹 세 번 피격, 근거리 주먹 우선, 원거리 무기 탐색, 픽업 경쟁, 플레이어 근접 공격과 `DEADLINE` 해제 판정은 구현 코드와 직렬화 연결만 확인했으며 런타임 결과는 **확인 불가**다.
 - 정식 Unity Test Framework 어셈블리는 없으며 `DEADLINE` 발동/행동 준비와 실제 입력 기반 공중 가로채기는 여전히 직접 검증하지 않는다.
 
@@ -53,7 +54,7 @@
 - 플레이어의 시야 부채꼴 또는 주변 원형 반경 4 안에 있고 장애물에 가리지 않은 적만 렌더링된다. 두 스테이지 모두 같은 반경을 밝히는 원형 Point Light를 사용하며, 어두운 Stage2에서는 부채꼴 손전등과 함께 가시성을 보조한다.
 - `Q` 키를 누르면 탄환·이동 상태와 무관하게 `DEADLINE` 하드 프리즈가 발동하며 씬당 최대 2회 사용한다. 마우스를 멈추면 월드는 완전히 정지하고, 정지 중 마우스 회전은 최저 월드 배율로만 진행된다. 최대 2개의 사격·근접 공격·투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
 - 무기는 종류에 따라 발사하거나 근접 공격에 사용하며, 던져 모든 적을 기절·무장 해제하거나, 플레이어와 적이 바닥 무기를 확보하고, 적에게서 날아온 무기를 플레이어가 공중에서 가로챌 수 있다.
-- 모든 적을 제거하면 실시간 시뮬레이션을 멈추고 기록된 시각 상태를 1.00배 월드 시간으로 반복 재생한다.
+- 모든 적을 제거하면 실시간 시뮬레이션을 멈추고 기록된 시각 상태를 하이브리드 시간축으로 반복 재생한다. 일반 구간은 1.00배 월드 시간, `DEADLINE`은 현실 시간 기반 시네마틱 구간과 해제 후 0.50배 후속 구간으로 표시한다.
 
 근거 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`
 
@@ -108,7 +109,7 @@
 | 탑다운 카메라 | 구현 완료 | 원근 카메라가 플레이어와 조준 선행 지점을 부드럽게 추적 | `ProjectDeltatime/Assets/_Project/Scripts/Player/TopDownCameraController.cs` | 카메라 1대 |
 | 스테이지 적 등록·클리어 | 구현 완료 | 생존 적을 등록하고 0명이 되면 전투를 막고 리플레이 요청 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 적 3명 고정 콘텐츠 |
 | 사망·재시작 | 구현 완료 | 플레이어 사망 시 전투를 막고 `R`로 현재 씬 재로드 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 체크포인트 없음 |
-| 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz로 기록해 프록시로 반복 재생하고, ViewCone은 기록된 보간 포즈에서 매 렌더 프레임 재계산하며 `V`로 암흑/전체 시야를 전환 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | 시각 리플레이만 제공, 종료/스킵/다음 씬 없음. 최신 시각 품질·프레임 비용 확인 불가 |
+| 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz 현실 시간으로 기록하고, 일반 구간은 1.00배 월드 시간, `DEADLINE`은 0.8~2.0초 시네마틱과 해제 후 0.50배 후속 구간으로 매핑해 프록시 재생한다. ViewCone은 기록된 보간 포즈에서 매 렌더 프레임 재계산하며 `V`로 암흑/전체 시야를 전환 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | Deadline 중 카메라를 진입 포즈에 고정하고 해제 후 0.2초 동안 복귀. 종료/스킵/다음 씬 없음, 최신 수동 시각 품질·프레임 비용 확인 불가 |
 | HUD | 부분 구현 | IMGUI로 적 수, 체력 `HEALTH 3/3`, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 리플레이 `VIEW DARK`/`VIEW FULL`과 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
 | Stage1/Stage2 콘텐츠 | 부분 구현 | 두 씬 모두 44개 GameObject, 플레이어 1, 이동 연사형 2, 근접 추격형 1, 픽업 1, Navigation 1로 동일 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity` | 조명만 밝음/어두움으로 다름 |
 | 씬 전환 | 미구현 | 현재 씬 재시작 외에 다른 씬을 로드하는 코드가 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | `Stage1 → Stage2` 흐름 필요 여부 확인 |
@@ -274,8 +275,8 @@ flowchart TD
 
 ### 5.9 리플레이
 
-- **시스템 목적:** 스테이지 클리어까지의 시각적 전투를 1.00배 월드 시간으로 재생한다.
-- **현재 동작 방식:** 20Hz 실시간 샘플링으로 카메라, 활성 GameObject의 렌더러/라인과 등록 조명을 기록한다. ViewCone은 위치·회전·스케일만 트랙에 저장하며, 삼각형 토폴로지는 프록시 생성 때 한 번 복제한 뒤 암흑 시야 리플레이의 매 `LateUpdate`에 기록된 보간 포즈와 정적 `VisionObstacle` Raycast로 정점·Bounds·Normals를 다시 계산한다. 적 몸체와 장착 무기는 실제 Renderer 상태와 별도로 논리적 전체 시야 가시성을 기록한다. 클리어 시 대부분의 `MonoBehaviour`를 끄고 원본을 숨긴 뒤 암흑 시야로 프록시를 반복 재생한다. 리플레이 중 `V`를 누르면 ViewCone·동적 조명 프록시를 숨기고 안개 제거, Trilight 환경광과 그림자 없는 Directional Fill Light를 적용해 시야 밖의 생존 적 몸체·장착 무기를 표시하며, 전체 시야에서는 ViewCone Raycast를 수행하지 않는다. 다시 `V`를 누르면 같은 재생 시점의 암흑 시야 메시와 조명을 즉시 복원한다.
+- **시스템 목적:** 스테이지 클리어까지의 시각적 전투를 정상 월드 시간으로 재생하되, `DEADLINE`의 느린 조준·준비 구간은 읽을 수 있는 시네마틱 길이로 보존한다.
+- **현재 동작 방식:** **부분 구현**. 20Hz 현실 시간 샘플마다 현실·월드 타임스탬프와 `DeadlineController.IsActive`를 함께 기록하며, Deadline 진입·해제 프레임은 즉시 추가 기록한다. 리플레이 시작 시 일반 구간은 월드 시간 차이, Deadline 활성 구간은 `현실 길이 / 0.50`을 0.8~2.0초로 제한한 길이, 해제 후 0.75 월드 초는 0.50배 길이로 프레젠테이션 시간축을 구성한다. 시각·조명·ViewCone은 프레젠테이션 시점에서 대응하는 현실 샘플 시점으로 보간한다. Deadline 중 카메라는 진입 샘플의 위치·회전·FOV·배경색으로 고정하고, 해제 후 첫 0.2초에는 기록 카메라로 보간 복귀한다. ViewCone은 위치·회전·스케일만 트랙에 저장하며, 삼각형 토폴로지는 프록시 생성 때 한 번 복제한 뒤 암흑 시야 리플레이의 매 `LateUpdate`에 기록된 보간 포즈와 정적 `VisionObstacle` Raycast로 정점·Bounds·Normals를 다시 계산한다. 적 몸체와 장착 무기는 실제 Renderer 상태와 별도로 논리적 전체 시야 가시성을 기록한다. 클리어 시 대부분의 `MonoBehaviour`를 끄고 원본을 숨긴 뒤 암흑 시야로 프록시를 반복 재생한다. 리플레이 중 `V`를 누르면 ViewCone·동적 조명 프록시를 숨기고 안개 제거, Trilight 환경광과 그림자 없는 Directional Fill Light를 적용해 시야 밖의 생존 적 몸체·장착 무기를 표시하며, 전체 시야에서는 ViewCone Raycast를 수행하지 않는다. 다시 `V`를 누르면 같은 재생 시점의 암흑 시야 메시와 조명을 즉시 복원한다.
 - **주요 클래스:** `StageReplayController`
 - **데이터 흐름:** 라이브 렌더러·카메라·조명·ViewCone 포즈·적 논리 가시성 → 샘플 트랙 → 클리어 요청 → 라이브 시뮬레이션 비활성화 → 프록시 재생 중 ViewCone Raycast 재계산 → `V` 입력에 따른 암흑/전체 시야 적용
 - **다른 시스템과의 의존성:** 스테이지, 입력, 카메라, `VisionCone` 런타임 조명과 메시, `EnemyCombatant`, HUD, 전역 `RenderSettings`
@@ -717,7 +718,9 @@ Unity 버전: `6000.1.13f1`
 | 부채꼴 손전등 밝기 | 7.5 | 같은 씬의 `VisionCone` | 거리 12.5, Soft Shadow 사용 |
 | 원형 근거리 조명 지면 반경 | 4 | 같은 씬의 `VisionCone` | 높이를 포함해 실제 Point Light 범위를 계산 |
 | 원형 근거리 조명 밝기/높이 | 4 / 플레이어 기준 1 | 같은 씬의 `VisionCone` | `ForcePixel`, Soft Shadow 강도 0.85 |
-| 리플레이 캡처 | 20Hz | 같은 씬의 `StageReplayController` | 실제 시간 샘플링 |
+| 리플레이 캡처 | 20Hz | 같은 씬의 `StageReplayController` | 현실·월드 시간과 Deadline 활성 상태를 함께 기록 |
+| Deadline 시네마틱 | 0.50배, 최소 0.8초 / 최대 2초 | 같은 씬의 `StageReplayController` | 현실 기록 길이를 이 범위로 리타이밍하고 카메라 고정 |
+| Deadline 해제 후 | 0.75 월드 초, 0.50배 | 같은 씬의 `StageReplayController` | 카메라는 첫 0.2초 동안 복귀 |
 | 리플레이 끝 유지 | 0.65초 | 같은 씬의 `StageReplayController` | 이후 반복 |
 | 전체 시야 환경광 | Sky 0.30/0.34/0.40, Equator 0.22/0.25/0.30, Ground 0.12/0.14/0.17 | 같은 씬의 `StageReplayController` | Ambient 1, Reflection 0.35, Fog 비활성화 |
 | 전체 시야 Fill Light | RGB 0.78/0.86/1, 강도 0.65, 회전 50/-30/0 | 같은 씬의 `StageReplayController` | 그림자 없는 Directional, 정적 환경 조명 유지 |
@@ -800,6 +803,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-02 | 1.2.9 | 일반 월드 시간 재생과 Deadline 전용 현실 시간 시네마틱을 분리하고, 해제 후 슬로모션·카메라 고정·HUD 단계 표시·집중 스모크 검증을 추가 | 리플레이, DEADLINE, HUD, 스모크 테스트 |
 | 2026-08-02 | 1.2.8 | 데드라인의 발동 조건을 실제 이동·임박 탄환·입력 해제에서 Q 키 Down 즉시 발동으로 전환하고, 입력·HUD·투사체 정리·Stage1/Stage2 정적 검증을 갱신 | 데드라인 입력, HUD, 투사체 |
 | 2026-08-02 | 1.2.7 | 데드라인을 성공 발동 때만 차감되는 씬당 최대 2회 충전 스킬로 전환하고 HUD·Stage1/Stage2 직렬화·정적 검증에 충전 상태를 반영 | 데드라인 충전, HUD, 씬 빌더 |
 | 2026-08-02 | 1.2.6 | 데드라인 전용 하드 프리즈가 조준 회전 중에만 씬의 최소 월드 배율을 허용하고, 일반·캐치 프리즈와 겹치면 완전 정지가 우선하도록 갱신 | 데드라인, 월드 시간, 동시 해방 |

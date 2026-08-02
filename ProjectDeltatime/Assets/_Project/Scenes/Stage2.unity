@@ -4506,9 +4506,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   worldTime: {fileID: 1639936130}
   gameplayCamera: {fileID: 1576118338}
+  deadline: {fileID: 1033450337}
   captureRate: 20
   endHoldDuration: 0.65
   loop: 1
+  deadlineCinematicPlaybackRate: 0.5
+  minimumDeadlineCinematicDuration: 0.8
+  maximumDeadlineCinematicDuration: 2
+  deadlineAftermathWorldDuration: 0.75
+  deadlineAftermathPlaybackRate: 0.5
+  deadlineCameraRecoveryDuration: 0.2
   omniscientAmbientSkyColor: {r: 0.3, g: 0.34, b: 0.4, a: 1}
   omniscientAmbientEquatorColor: {r: 0.22, g: 0.25, b: 0.3, a: 1}
   omniscientAmbientGroundColor: {r: 0.12, g: 0.14, b: 0.17, a: 1}
