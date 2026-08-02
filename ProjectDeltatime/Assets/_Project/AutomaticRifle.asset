@@ -19,6 +19,11 @@ MonoBehaviour:
   projectileSpeed: 16
   damage: 3
   projectileRadius: 0.075
+  fireMode: 1
+  projectileCount: 1
+  spreadAngle: 0
+  spreadJitterAngle: 1.5
+  spreadSeed: 211
   enemyBurstShotCount: 4
   meleeRange: 1.45
   meleeHalfAngle: 35

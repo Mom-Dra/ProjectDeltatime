@@ -34,6 +34,7 @@ namespace Deltatime.EditorTools
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
         private const string AutomaticRifleDefinitionPath =
             Root + "/AutomaticRifle.asset";
+        private const string ShotgunDefinitionPath = Root + "/Shotgun.asset";
         private const string MeleeWeaponDefinitionPath =
             Root + "/MeleeWeapon.asset";
         private const string LineMaterialPath = Materials + "/PrototypeLine.mat";
@@ -50,6 +51,8 @@ namespace Deltatime.EditorTools
         private const string VisionMaterialPath = Materials + "/PrototypeVisionCone3D.mat";
         private const string ProjectilePrefabPath = Prefabs + "/Projectile.prefab";
         private const string PickupPrefabPath = Prefabs + "/WeaponPickup.prefab";
+        private const string PistolPickupPrefabPath = Prefabs + "/PistolPickup.prefab";
+        private const string ShotgunPickupPrefabPath = Prefabs + "/ShotgunPickup.prefab";
         private const string ThrownWeaponPrefabPath = Prefabs + "/ThrownWeapon.prefab";
         private const string InterceptableWeaponPrefabPath =
             Prefabs + "/InterceptableWeapon.prefab";
@@ -122,6 +125,7 @@ namespace Deltatime.EditorTools
             WeaponDefinition pistol = EnsurePistolDefinition();
             WeaponDefinition automaticRifle =
                 EnsureAutomaticRifleDefinition();
+            WeaponDefinition shotgun = EnsureShotgunDefinition();
             WeaponDefinition meleeWeapon = EnsureMeleeWeaponDefinition();
             EnsureProjectilePrefab(lineMaterial);
             EnsurePickupPrefab(pickupMaterial);
@@ -131,6 +135,28 @@ namespace Deltatime.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
+            pistol = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                PistolDefinitionPath);
+            automaticRifle = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                AutomaticRifleDefinitionPath);
+            shotgun = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                ShotgunDefinitionPath);
+            meleeWeapon = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                MeleeWeaponDefinitionPath);
+            EnsureConfiguredPickupPrefab(
+                PistolPickupPrefabPath,
+                "Pistol Pickup",
+                pickupMaterial,
+                pistol,
+                8);
+            EnsureConfiguredPickupPrefab(
+                ShotgunPickupPrefabPath,
+                "Shotgun Pickup",
+                pickupMaterial,
+                shotgun,
+                6);
+            AssetDatabase.SaveAssets();
+
             Scene scene = EditorSceneManager.NewScene(
                 NewSceneSetup.EmptyScene,
                 NewSceneMode.Single);
@@ -139,6 +165,10 @@ namespace Deltatime.EditorTools
                 LoadPrefabComponent<Projectile>(ProjectilePrefabPath);
             WeaponPickup pickupPrefab =
                 LoadPrefabComponent<WeaponPickup>(PickupPrefabPath);
+            WeaponPickup pistolPickupPrefab =
+                LoadPrefabComponent<WeaponPickup>(PistolPickupPrefabPath);
+            WeaponPickup shotgunPickupPrefab =
+                LoadPrefabComponent<WeaponPickup>(ShotgunPickupPrefabPath);
             ThrownWeapon thrownPrefab =
                 LoadPrefabComponent<ThrownWeapon>(ThrownWeaponPrefabPath);
             InterceptableWeapon interceptablePrefab =
@@ -187,9 +217,12 @@ namespace Deltatime.EditorTools
 
             CreatePickup(
                 new Vector3(-2.4f, 0.18f, -4.2f),
-                pickupPrefab,
-                pistol,
-                8);
+                pistolPickupPrefab,
+                "Pistol Pickup");
+            CreatePickup(
+                new Vector3(2.4f, 0.18f, -4.2f),
+                shotgunPickupPrefab,
+                "Shotgun Pickup");
 
             CreateRangedEnemy(
                 "Enemy West",
@@ -280,9 +313,12 @@ namespace Deltatime.EditorTools
             AddStageScenesToBuildSettings();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Selection.activeGameObject = player.Root;
 
-            ValidateScene(scene, Stage2DeadlineCharges);
+            ValidateSavedPrototypeRoom();
+            if (!Application.isBatchMode)
+            {
+                Selection.activeGameObject = GameObject.Find("Player");
+            }
             Debug.Log(
                 "Stage1 and Stage2 built successfully. Stage2 remains open.");
         }
@@ -1057,15 +1093,21 @@ namespace Deltatime.EditorTools
         private static void CreatePickup(
             Vector3 position,
             WeaponPickup pickupPrefab,
-            WeaponDefinition definition,
-            int ammunition)
+            string pickupName)
         {
-            WeaponPickup pickup = UnityEngine.Object.Instantiate(
-                pickupPrefab,
+            GameObject pickupObject = PrefabUtility.InstantiatePrefab(
+                pickupPrefab.gameObject) as GameObject;
+            if (pickupObject == null)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to instantiate {pickupName} prefab.");
+            }
+
+            pickupObject.name = pickupName;
+            pickupObject.transform.SetPositionAndRotation(
                 position,
                 Quaternion.Euler(0f, 28f, 0f));
-            pickup.name = "Pistol Pickup";
-            pickup.Initialize(definition, ammunition);
+            EditorSceneManager.MarkSceneDirty(pickupObject.scene);
         }
 
         private static GameObject CreatePrimitiveObject(
@@ -1146,6 +1188,29 @@ namespace Deltatime.EditorTools
             root.AddComponent<WeaponPickup>();
 
             PrefabUtility.SaveAsPrefabAsset(root, PickupPrefabPath);
+            UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        private static void EnsureConfiguredPickupPrefab(
+            string path,
+            string pickupName,
+            Material pickupMaterial,
+            WeaponDefinition definition,
+            int ammunition)
+        {
+            GameObject root = CreatePrimitiveObject(
+                pickupName,
+                PrimitiveType.Cube,
+                new Vector3(0f, 0.18f, 0f),
+                new Vector3(0.82f, 0.16f, 0.26f),
+                pickupMaterial,
+                true);
+            BoxCollider collider = root.GetComponent<BoxCollider>();
+            collider.isTrigger = true;
+            WeaponPickup pickup = root.AddComponent<WeaponPickup>();
+            pickup.Initialize(definition, ammunition);
+
+            PrefabUtility.SaveAsPrefabAsset(root, path);
             UnityEngine.Object.DestroyImmediate(root);
         }
 
@@ -1296,7 +1361,12 @@ namespace Deltatime.EditorTools
                 17f,
                 3,
                 0.08f,
-                1);
+                1,
+                WeaponFireMode.SemiAutomatic,
+                1,
+                0f,
+                1.5f,
+                101);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1322,7 +1392,40 @@ namespace Deltatime.EditorTools
                 16f,
                 3,
                 0.075f,
-                4);
+                4,
+                WeaponFireMode.Automatic,
+                1,
+                0f,
+                1.5f,
+                211);
+            EditorUtility.SetDirty(definition);
+            return definition;
+        }
+
+        private static WeaponDefinition EnsureShotgunDefinition()
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    ShotgunDefinitionPath);
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<WeaponDefinition>();
+                AssetDatabase.CreateAsset(definition, ShotgunDefinitionPath);
+            }
+
+            definition.ConfigureFirearmPrototype(
+                "Shotgun",
+                6,
+                0.75f,
+                16f,
+                1,
+                0.075f,
+                1,
+                WeaponFireMode.SemiAutomatic,
+                8,
+                18f,
+                1f,
+                307);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1558,6 +1661,53 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.FindObjectOfType<StageReplayController>();
             NavMeshSurface navigationSurface =
                 UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
+            WeaponDefinition pistolDefinition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    PistolDefinitionPath);
+            WeaponDefinition automaticRifleDefinition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    AutomaticRifleDefinitionPath);
+            WeaponDefinition shotgunDefinition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    ShotgunDefinitionPath);
+            WeaponPickup pistolPickup = GameObject.Find("Pistol Pickup")
+                ?.GetComponent<WeaponPickup>();
+            WeaponPickup shotgunPickup = GameObject.Find("Shotgun Pickup")
+                ?.GetComponent<WeaponPickup>();
+            bool hasConfiguredWeaponDefinitions =
+                pistolDefinition != null &&
+                pistolDefinition.FireMode == WeaponFireMode.SemiAutomatic &&
+                pistolDefinition.ProjectileCount == 1 &&
+                Mathf.Approximately(pistolDefinition.SpreadAngle, 0f) &&
+                Mathf.Approximately(pistolDefinition.SpreadJitterAngle, 1.5f) &&
+                pistolDefinition.SpreadSeed == 101 &&
+                automaticRifleDefinition != null &&
+                automaticRifleDefinition.FireMode == WeaponFireMode.Automatic &&
+                automaticRifleDefinition.ProjectileCount == 1 &&
+                Mathf.Approximately(
+                    automaticRifleDefinition.SpreadAngle,
+                    0f) &&
+                Mathf.Approximately(
+                    automaticRifleDefinition.SpreadJitterAngle,
+                    1.5f) &&
+                automaticRifleDefinition.SpreadSeed == 211 &&
+                shotgunDefinition != null &&
+                shotgunDefinition.FireMode == WeaponFireMode.SemiAutomatic &&
+                shotgunDefinition.AmmunitionCapacity == 6 &&
+                Mathf.Approximately(shotgunDefinition.FireInterval, 0.75f) &&
+                Mathf.Approximately(shotgunDefinition.ProjectileSpeed, 16f) &&
+                shotgunDefinition.Damage == 1 &&
+                shotgunDefinition.ProjectileCount == 8 &&
+                Mathf.Approximately(shotgunDefinition.SpreadAngle, 18f) &&
+                Mathf.Approximately(shotgunDefinition.SpreadJitterAngle, 1f) &&
+                shotgunDefinition.SpreadSeed == 307;
+            bool hasConfiguredWeaponPickups =
+                pistolPickup != null &&
+                pistolPickup.Definition == pistolDefinition &&
+                pistolPickup.Ammunition == 8 &&
+                shotgunPickup != null &&
+                shotgunPickup.Definition == shotgunDefinition &&
+                shotgunPickup.Ammunition == 6;
             SerializedObject deadlineSerialized = deadline == null
                 ? null
                 : new SerializedObject(deadline);
@@ -1625,7 +1775,9 @@ namespace Deltatime.EditorTools
                 : replaySerialized.FindProperty("deadlineCameraRecoveryDuration");
             PlayerControls inputActions = new PlayerControls();
             InputAction deadlineAction = inputActions.Gameplay.Deadline;
+            InputAction fireAction = inputActions.Gameplay.Fire;
             bool hasDeadlineKeyBinding = false;
+            bool hasFireLeftMouseBinding = false;
             for (int i = 0; i < deadlineAction.bindings.Count; i++)
             {
                 if (deadlineAction.bindings[i].path == "<Keyboard>/q")
@@ -1634,7 +1786,15 @@ namespace Deltatime.EditorTools
                     break;
                 }
             }
-            inputActions.Dispose();
+            for (int i = 0; i < fireAction.bindings.Count; i++)
+            {
+                if (fireAction.bindings[i].path == "<Mouse>/leftButton")
+                {
+                    hasFireLeftMouseBinding = true;
+                    break;
+                }
+            }
+            UnityEngine.Object.DestroyImmediate(inputActions.asset);
             if (playerCount != 1 ||
                 inputCount != 1 ||
                 movementCount != 1 ||
@@ -1651,7 +1811,7 @@ namespace Deltatime.EditorTools
                 navigationSurfaceCount != 1 ||
                 stageCount != 1 ||
                 replayCount != 1 ||
-                pickupCount < 1 ||
+                pickupCount != 2 ||
                 cameraCount != 1 ||
                 cameraRigCount != 1 ||
                 rigidbody2DCount != 0 ||
@@ -1703,7 +1863,10 @@ namespace Deltatime.EditorTools
                 !Mathf.Approximately(
                     replayCameraRecoveryDuration.floatValue,
                     0.2f) ||
-                !hasDeadlineKeyBinding)
+                !hasDeadlineKeyBinding ||
+                !hasFireLeftMouseBinding ||
+                !hasConfiguredWeaponDefinitions ||
+                !hasConfiguredWeaponPickups)
             {
                 throw new InvalidOperationException(
                     "3D stage validation failed: " +
@@ -1727,6 +1890,9 @@ namespace Deltatime.EditorTools
                     $"replayAftermathRate={replayAftermathRate?.floatValue}, " +
                     $"replayCameraRecovery={replayCameraRecoveryDuration?.floatValue}, " +
                     $"deadlineQBinding={hasDeadlineKeyBinding}, " +
+                    $"fireLmbBinding={hasFireLeftMouseBinding}, " +
+                    $"weaponDefinitions={hasConfiguredWeaponDefinitions}, " +
+                    $"weaponPickups={hasConfiguredWeaponPickups}, " +
                     $"expectedDeadlineCharges={expectedDeadlineCharges}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
                     $"perception={perceptionCount}, combatants={combatantCount}, " +

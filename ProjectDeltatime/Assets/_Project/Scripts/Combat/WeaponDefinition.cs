@@ -8,6 +8,12 @@ namespace Deltatime.Combat
         Melee
     }
 
+    public enum WeaponFireMode
+    {
+        SemiAutomatic,
+        Automatic
+    }
+
     [CreateAssetMenu(
         fileName = "WeaponDefinition",
         menuName = "Deltatime/Weapon Definition")]
@@ -20,6 +26,12 @@ namespace Deltatime.Combat
         [SerializeField, Min(0.1f)] private float projectileSpeed = 17f;
         [SerializeField, Min(1)] private int damage = 1;
         [SerializeField, Min(0.01f)] private float projectileRadius = 0.08f;
+        [SerializeField] private WeaponFireMode fireMode =
+            WeaponFireMode.SemiAutomatic;
+        [SerializeField, Min(1)] private int projectileCount = 1;
+        [SerializeField, Range(0f, 180f)] private float spreadAngle;
+        [SerializeField, Range(0f, 45f)] private float spreadJitterAngle;
+        [SerializeField] private int spreadSeed = 1;
 
         [Header("Enemy Firearm Use")]
         [SerializeField, Min(1)] private int enemyBurstShotCount = 1;
@@ -44,6 +56,11 @@ namespace Deltatime.Combat
         public float ProjectileSpeed => projectileSpeed;
         public int Damage => damage;
         public float ProjectileRadius => projectileRadius;
+        public WeaponFireMode FireMode => fireMode;
+        public int ProjectileCount => projectileCount;
+        public float SpreadAngle => spreadAngle;
+        public float SpreadJitterAngle => spreadJitterAngle;
+        public int SpreadSeed => spreadSeed;
         public int EnemyBurstShotCount => enemyBurstShotCount;
         public float MeleeRange => meleeRange;
         public float MeleeHalfAngle => meleeHalfAngle;
@@ -52,6 +69,8 @@ namespace Deltatime.Combat
         public Color VisualColor => visualColor;
         public bool IsFirearm => kind == WeaponKind.Firearm;
         public bool IsMelee => kind == WeaponKind.Melee;
+        public bool IsAutomatic =>
+            IsFirearm && fireMode == WeaponFireMode.Automatic;
 
         public void ConfigureFirearmPrototype(
             string weaponName,
@@ -60,7 +79,12 @@ namespace Deltatime.Combat
             float speed,
             int projectileDamage,
             float radius,
-            int burstCount)
+            int burstCount,
+            WeaponFireMode mode,
+            int pellets,
+            float totalSpreadAngle,
+            float maximumSpreadJitterAngle,
+            int deterministicSpreadSeed)
         {
             kind = WeaponKind.Firearm;
             displayName = weaponName;
@@ -69,6 +93,14 @@ namespace Deltatime.Combat
             projectileSpeed = Mathf.Max(0.1f, speed);
             damage = Mathf.Max(1, projectileDamage);
             projectileRadius = Mathf.Max(0.01f, radius);
+            fireMode = mode;
+            projectileCount = Mathf.Max(1, pellets);
+            spreadAngle = Mathf.Clamp(totalSpreadAngle, 0f, 180f);
+            spreadJitterAngle = Mathf.Clamp(
+                maximumSpreadJitterAngle,
+                0f,
+                45f);
+            spreadSeed = deterministicSpreadSeed;
             enemyBurstShotCount = Mathf.Max(1, burstCount);
             heldVisualScale = new Vector3(0.18f, 0.16f, 0.78f);
             worldVisualScale = new Vector3(0.82f, 0.16f, 0.26f);
@@ -87,6 +119,11 @@ namespace Deltatime.Combat
             ammunitionCapacity = 0;
             fireInterval = Mathf.Max(0.01f, interval);
             damage = Mathf.Max(1, meleeDamage);
+            fireMode = WeaponFireMode.SemiAutomatic;
+            projectileCount = 1;
+            spreadAngle = 0f;
+            spreadJitterAngle = 0f;
+            spreadSeed = 0;
             enemyBurstShotCount = 1;
             meleeRange = Mathf.Max(0.1f, range);
             meleeHalfAngle = Mathf.Clamp(halfAngle, 1f, 90f);

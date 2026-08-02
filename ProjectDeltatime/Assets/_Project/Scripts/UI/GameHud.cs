@@ -141,7 +141,7 @@ namespace Deltatime.UI
 
             string controls = replay.IsReplaying
                 ? "V Toggle Full View  |  R Restart"
-                : "WASD Move  |  Mouse Aim  |  LMB Attack  |  RMB Throw\n" +
+                : "WASD Move  |  Mouse Aim  |  LMB Attack / Hold Auto Rifle  |  RMB Throw\n" +
                   "Q Deadline  |  Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),

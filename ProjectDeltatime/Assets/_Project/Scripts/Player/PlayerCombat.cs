@@ -24,6 +24,12 @@ namespace Deltatime.Player
         [SerializeField, Min(0.01f)] private float catchFreezeDuration = 0.2f;
         [SerializeField] private LayerMask pickupLayers = ~0;
 
+        [Header("Unarmed Punch")]
+        [SerializeField, Min(0.1f)] private float punchRange = 1.2f;
+        [SerializeField, Range(1f, 90f)] private float punchHalfAngle = 35f;
+        [SerializeField, Min(1)] private int punchDamage = 1;
+        [SerializeField, Min(0.01f)] private float punchInterval = 0.6f;
+
         [Header("Activity Pulses")]
         [SerializeField, Range(0f, 1f)] private float fireActivity = 0.9f;
         [SerializeField, Min(0.01f)] private float fireActivityDuration = 0.16f;
@@ -35,7 +41,9 @@ namespace Deltatime.Player
             stagedMeleeAttacks =
                 new WeaponController.StagedMeleeAttack[2];
         private float catchBufferRemaining;
+        private float nextPunchTime;
         private int stagedMeleeAttackCount;
+        private int stagedUnarmedPunchCount;
 
         public bool CombatEnabled { get; private set; } = true;
         public WeaponController Weapon => weapon;
@@ -101,7 +109,11 @@ namespace Deltatime.Player
                 catchBufferRemaining = 0f;
             }
 
-            if (input.FirePressed && TryUseEquippedWeapon())
+            bool shouldUseWeapon = input.FirePressed ||
+                (input.FireHeld &&
+                 weapon.Definition != null &&
+                 weapon.Definition.IsAutomatic);
+            if (shouldUseWeapon && TryUseEquippedWeapon())
             {
                 worldTimeActivity.Pulse(fireActivity, fireActivityDuration);
             }
@@ -197,6 +209,13 @@ namespace Deltatime.Player
                     clock);
             }
 
+            if (stagedUnarmedPunchCount > 0)
+            {
+                nextPunchTime = Mathf.Max(
+                    nextPunchTime,
+                    clock + punchInterval);
+            }
+
             if (stagedMeleeAttackCount > 0)
             {
                 worldTimeActivity.Pulse(
@@ -211,7 +230,7 @@ namespace Deltatime.Player
         {
             if (weapon.Definition == null)
             {
-                return false;
+                return TryUseUnarmedPunch();
             }
 
             float clock = UnityEngine.Time.unscaledTime;
@@ -232,7 +251,7 @@ namespace Deltatime.Player
         {
             if (weapon.Definition == null)
             {
-                return false;
+                return TryStageUnarmedPunch();
             }
 
             if (weapon.Definition.IsFirearm)
@@ -259,6 +278,55 @@ namespace Deltatime.Player
         private void ClearStagedMeleeAttacks()
         {
             stagedMeleeAttackCount = 0;
+            stagedUnarmedPunchCount = 0;
+        }
+
+        private bool TryUseUnarmedPunch()
+        {
+            float clock = UnityEngine.Time.unscaledTime;
+            Vector3 direction = aim.AimDirection;
+            direction.y = 0f;
+            if (clock < nextPunchTime ||
+                direction.sqrMagnitude <= 0.000001f)
+            {
+                return false;
+            }
+
+            nextPunchTime = clock + punchInterval;
+            MeleeAttackResolver.TryHitNearest(
+                gameObject,
+                CombatFaction.Player,
+                direction,
+                punchRange,
+                punchHalfAngle,
+                punchDamage);
+            return true;
+        }
+
+        private bool TryStageUnarmedPunch()
+        {
+            if (stagedMeleeAttackCount >= stagedMeleeAttacks.Length)
+            {
+                return false;
+            }
+
+            Vector3 direction = aim.AimDirection;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.000001f)
+            {
+                return false;
+            }
+
+            stagedMeleeAttacks[stagedMeleeAttackCount] =
+                new WeaponController.StagedMeleeAttack(
+                    direction.normalized,
+                    punchRange,
+                    punchHalfAngle,
+                    punchDamage,
+                    punchInterval);
+            stagedMeleeAttackCount++;
+            stagedUnarmedPunchCount++;
+            return true;
         }
 
         private void UpdateWeaponInteraction()

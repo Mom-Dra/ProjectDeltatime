@@ -21,6 +21,26 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-02 - 무기별 결정적 좌우 산포
+
+- 변경 유형: 총기 탄도 보정, 무기 데이터·씬 빌더 정적 검증·문서 갱신
+- 변경 내용: **구현 완료**. `WeaponDefinition`에 기본 팬 각도와 분리된 `spreadJitterAngle`, `spreadSeed`를 추가했다. 공용 `WeaponController`는 실제로 발사에 성공한 순간에만 발사 순번을 하나 늘리고, 무기 시드·발사 순번·펠릿 인덱스를 조합한 상태 없는 해시로 `[-산포 최대각, +산포 최대각]`의 좌우 오프셋을 결정한다. 권총과 자동소총은 최대 ±1.5도(시드 101/211), 샷건은 기존 18도 대칭 팬의 각 펠릿에 최대 ±1도(시드 307)를 더한다. Unity 전역 `Random`은 사용하지 않으며, 조준점·플레이어 회전·카메라는 변경하지 않았다. 일반 발사와 `DEADLINE` 준비 발사는 같은 발사 경로로 방향을 확정하고, 적 자동소총도 같은 무기 정의·컨트롤러를 사용하므로 같은 산포 규칙을 적용한다.
+- 영향을 받은 시스템: 플레이어·적 총기 투사체 방향, 자동소총 점사, 샷건 펠릿 패턴, `DEADLINE` 준비 발사, 무기 ScriptableObject, Stage1/Stage2 생성·저장 씬 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.1로 갱신해 총기 발사 경로, 무기별 실제 산포·시드, 샷건 팬 패턴, 조준점 반동 제외 범위, 정적 검증 결과와 런타임 검증 한계를 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 `Tundra build success`를 확인했고, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`이 Stage1/Stage2를 재생성한 뒤 `ValidateSavedPrototypeRoom` 검증을 종료 코드 0으로 완료했다. 권총/자동소총의 `spreadAngle: 0`, `spreadJitterAngle: 1.5`, 샷건의 `spreadAngle: 18`, `projectileCount: 8`, `spreadJitterAngle: 1`과 세 시드 101/211/307, 샷건 정의 GUID → 픽업 프리팹 → 두 저장 씬 참조, 기존 `<Mouse>/leftButton` 바인딩과 `DEADLINE`의 Down 기반 준비 분기를 정적으로 대조했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 연속 발사 산포 체감, 샷건 펠릿 명중 분포, 적 자동소총 점사, `DEADLINE`에서 확정된 방향의 행동 준비·해제 결과는 플레이 모드 테스트를 생략했으므로 확인하지 않았다.
+
+## 2026-08-02 - 플레이어 자동 연사·샷건·빈손 주먹 공격
+
+- 변경 유형: 전투 기능 확장, 무기 데이터·픽업 콘텐츠 추가, 입력/HUD/정적 검증 갱신
+- 변경 내용: **구현 완료**. `WeaponDefinition`에 반자동/자동 발사 모드, 투사체 수, 총 퍼짐을 추가했다. 권총은 반자동 1발, 자동소총은 자동 1발이며 플레이어는 LMB 홀드로 자동소총만 발사 간격마다 연사한다. 샷건은 반자동·탄창 6·발사 간격 0.75초·탄속 16·펠릿 피해 1·8펠릿·총 퍼짐 18도(좌우 ±9도)로 추가했고, 각 발의 펠릿은 재현 가능한 대칭 고정 패턴으로 생성한다. 빈손 플레이어는 LMB Down으로 거리 1.2·반각 35도·피해 1·간격 0.6초의 주먹 공격을 사용하며 기존 `MeleeAttackResolver`와 `DEADLINE` 준비/해제 경로를 재사용한다. Stage1/Stage2에는 권총과 샷건 정의 GUID를 각각 보관하는 시작 픽업 프리팹을 배치했다.
+- 영향을 받은 시스템: 플레이어 입력·전투, 총기 투사체 생성, 근접 판정, 무기 픽업/교환/드롭 호환성, HUD 조작 안내, ScriptableObject, 프리팹, Stage1/Stage2, 에디터 빌더 정적 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.0으로 갱신해 자동소총 홀드 연사, 샷건 수치·펠릿 패턴, 빈손 주먹, 무기별 시작 픽업, LMB 안내와 검증 한계를 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 스크립트 컴파일에서 `Tundra build success`를 확인했고, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`과 `ValidateSavedPrototypeRoom`이 Stage1/Stage2를 종료 코드 0으로 재생성·검증했다. 권총/자동소총/샷건의 직렬화 발사 모드·투사체 수·퍼짐, 샷건 정의 GUID → `ShotgunPickup.prefab` → 두 저장 씬의 참조, 기존 `PlayerControls.inputactions`와 생성 `PlayerControls.cs`의 `<Mouse>/leftButton` 바인딩을 정적으로 대조했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 자동 연사 체감, 산탄 명중, 빈손 주먹 적중, 샷건 획득/교환/투척/가로채기와 `DEADLINE` 중 행동 준비·이동 해제의 런타임 결과는 후속 플레이 검증이 필요하다.
+
 ## 2026-08-02 - Deadline 전용 시네마틱 리플레이 시간축
 
 - 변경 유형: 리플레이 시간축·카메라 연출·HUD·씬 직렬화·플레이 모드 스모크 검증·문서 갱신

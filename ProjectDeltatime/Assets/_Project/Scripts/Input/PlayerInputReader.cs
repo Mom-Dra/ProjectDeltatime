@@ -13,6 +13,7 @@ namespace Deltatime.InputSystem
         public Vector2 Move { get; private set; }
         public Vector2 PointerScreenPosition { get; private set; }
         public bool FirePressed { get; private set; }
+        public bool FireHeld { get; private set; }
         public bool ThrowPressed { get; private set; }
         public bool DashPressed { get; private set; }
         public bool DeadlinePressed { get; private set; }
@@ -43,6 +44,7 @@ namespace Deltatime.InputSystem
             Move = Vector2.ClampMagnitude(gameplay.Move.ReadValue<Vector2>(), 1f);
             PointerScreenPosition = gameplay.Point.ReadValue<Vector2>();
             FirePressed = gameplay.Fire.WasPressedThisFrame();
+            FireHeld = gameplay.Fire.IsPressed();
             ThrowPressed = gameplay.Throw.WasPressedThisFrame();
             DashPressed = gameplay.Dash.WasPressedThisFrame();
             DeadlinePressed = gameplay.Deadline.WasPressedThisFrame();
@@ -76,6 +78,7 @@ namespace Deltatime.InputSystem
             Move = Vector2.zero;
             PointerScreenPosition = Vector2.zero;
             FirePressed = false;
+            FireHeld = false;
             ThrowPressed = false;
             DashPressed = false;
             DeadlinePressed = false;

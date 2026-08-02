@@ -39,6 +39,7 @@ namespace Deltatime.Combat
 
         private float nextUseTime;
         private bool hasStagedFire;
+        private int shotSequence;
 
         public event Action EquipmentChanged;
 
@@ -83,7 +84,11 @@ namespace Deltatime.Combat
 
             Ammunition--;
             nextUseTime = clock + Definition.UseInterval;
-            SpawnProjectile(faction, direction, worldTime);
+            SpawnProjectile(
+                faction,
+                direction,
+                worldTime,
+                ConsumeShotSequence());
             return true;
         }
 
@@ -129,7 +134,11 @@ namespace Deltatime.Combat
 
             Ammunition--;
             hasStagedFire = true;
-            SpawnProjectile(faction, direction, worldTime);
+            SpawnProjectile(
+                faction,
+                direction,
+                worldTime,
+                ConsumeShotSequence());
             return true;
         }
 
@@ -290,20 +299,98 @@ namespace Deltatime.Combat
         private void SpawnProjectile(
             CombatFaction faction,
             Vector3 direction,
-            WorldTimeController worldTime)
+            WorldTimeController worldTime,
+            int currentShotSequence)
         {
-            Projectile projectile = Instantiate(
-                projectilePrefab,
-                muzzle.position,
-                Quaternion.identity);
-            projectile.Initialize(
-                worldTime,
-                faction,
-                gameObject,
-                direction,
-                Definition.ProjectileSpeed,
-                Definition.Damage,
-                Definition.ProjectileRadius);
+            int projectileCount = Mathf.Max(1, Definition.ProjectileCount);
+            float totalSpreadAngle = projectileCount > 1
+                ? Definition.SpreadAngle
+                : 0f;
+
+            for (int i = 0; i < projectileCount; i++)
+            {
+                Projectile projectile = Instantiate(
+                    projectilePrefab,
+                    muzzle.position,
+                    Quaternion.identity);
+                projectile.Initialize(
+                    worldTime,
+                    faction,
+                    gameObject,
+                    GetProjectileDirection(
+                        direction,
+                        i,
+                        projectileCount,
+                        totalSpreadAngle,
+                        Definition.SpreadJitterAngle,
+                        Definition.SpreadSeed,
+                        currentShotSequence),
+                    Definition.ProjectileSpeed,
+                    Definition.Damage,
+                    Definition.ProjectileRadius);
+            }
+        }
+
+        private static Vector3 GetProjectileDirection(
+            Vector3 baseDirection,
+            int projectileIndex,
+            int projectileCount,
+            float totalSpreadAngle,
+            float maximumSpreadJitterAngle,
+            int spreadSeed,
+            int currentShotSequence)
+        {
+            Vector3 normalizedDirection = baseDirection.sqrMagnitude > 0.0001f
+                ? baseDirection.normalized
+                : Vector3.forward;
+            float fanAngle = 0f;
+            if (projectileCount > 1 && totalSpreadAngle > 0f)
+            {
+                float spreadT = projectileIndex / (float)(projectileCount - 1);
+                fanAngle = Mathf.Lerp(
+                    -totalSpreadAngle * 0.5f,
+                    totalSpreadAngle * 0.5f,
+                    spreadT);
+            }
+
+            float jitterAngle = GetDeterministicSpreadJitter(
+                maximumSpreadJitterAngle,
+                spreadSeed,
+                currentShotSequence,
+                projectileIndex);
+            return Quaternion.AngleAxis(fanAngle + jitterAngle, Vector3.up) *
+                   normalizedDirection;
+        }
+
+        private int ConsumeShotSequence()
+        {
+            int currentShotSequence = shotSequence;
+            shotSequence++;
+            return currentShotSequence;
+        }
+
+        private static float GetDeterministicSpreadJitter(
+            float maximumAngle,
+            int spreadSeed,
+            int currentShotSequence,
+            int projectileIndex)
+        {
+            if (maximumAngle <= 0f)
+            {
+                return 0f;
+            }
+
+            uint state = (uint)spreadSeed;
+            state += (uint)currentShotSequence * 0x9E3779B9u;
+            state += (uint)projectileIndex * 0x85EBCA6Bu;
+            state ^= state >> 16;
+            state *= 0x7FEB352Du;
+            state ^= state >> 15;
+            state *= 0x846CA68Bu;
+            state ^= state >> 16;
+
+            float normalizedSample = (state & 0x00FFFFFFu) / 16777215f;
+            return Mathf.Lerp(-maximumAngle, maximumAngle, normalizedSample);
         }
 
         private void ValidateConfiguration()
