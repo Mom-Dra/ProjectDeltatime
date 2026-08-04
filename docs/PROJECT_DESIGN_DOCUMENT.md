@@ -6,9 +6,9 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-02 (KST) |
-| 문서 버전 | 1.3.1 |
-| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 결정적 좌우 탄도 산포가 있는 권총·자동소총·샷건, 빈손 플레이어 주먹, 현재 장비에 따른 공통 적 전투 AI, 적 무기 드롭·재무장, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
+| 마지막 분석일 | 2026-08-04 (KST) |
+| 문서 버전 | 1.3.4 |
+| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 물리 표면 조준점과 총구 기준 수평 발사, 결정적 수평·수직 탄도 산포와 빈 탄약 발사 시도 시간 활동이 있는 권총·자동소총·샷건, 빈손 플레이어 주먹, 현재 장비에 따른 공통 적 전투 AI, 적 무기 드롭·재무장, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
 
 ### 1.1 분석 기준과 범위
 
@@ -16,7 +16,7 @@
 - 실제 Unity 프로젝트 루트는 저장소 안의 `ProjectDeltatime/`이다. 따라서 Unity의 `Assets`, `Packages`, `ProjectSettings`는 각각 `ProjectDeltatime/Assets`, `ProjectDeltatime/Packages`, `ProjectDeltatime/ProjectSettings`에 있다.
 - 확정된 내용은 현재 파일, 직렬화된 씬/프리팹/데이터, 프로젝트 설정, Git 상태에서 직접 확인한 사실만 사용했다.
 - 의도나 장르처럼 파일만으로 확정할 수 없는 내용에는 **추정**을 표시했다.
-- 현재 브랜치는 `feature/Shotgun`이다. 2026-08-02 자동 연사·샷건·빈손 플레이어 주먹 공격과 무기별 결정적 좌우 탄도 산포 구현은 코드, 씬, 프리팹, ScriptableObject와 문서를 함께 갱신한 작업 트리를 기준으로 기록한다.
+- 현재 브랜치는 `feature/Shotgun`이다. 2026-08-02 자동 연사·샷건·빈손 플레이어 주먹 공격과 무기별 결정적 수평·수직 탄도 산포 구현은 코드, 씬, 프리팹, ScriptableObject와 문서를 함께 갱신한 작업 트리를 기준으로 기록한다.
 - 기존 `README`, 기획 문서, `AGENTS.md`는 분석 시작 시 없었다. `Assets/_Project/Tests` 폴더는 비어 있고 `.asmdef` 및 Unity Test Framework 테스트 어셈블리는 없다.
 - 비생성 스크립트에서 `TODO`, `FIXME`, `HACK` 표식과 설명 주석은 확인되지 않았다.
 
@@ -37,6 +37,10 @@
 - 정식 Unity Test Framework 어셈블리는 없으며 `DEADLINE` 발동/행동 준비와 실제 입력 기반 공중 가로채기는 여전히 직접 검증하지 않는다.
 - 2026-08-02 자동소총 홀드 연사·샷건·빈손 플레이어 주먹 공격은 Unity 6000.1.13f1 배치 컴파일의 `Tundra build success`, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`, `ValidateSavedPrototypeRoom`의 Stage1/Stage2 정적 검증을 종료 코드 0으로 완료했다. 권총/자동소총/샷건 발사 모드와 산탄 수치, Stage1/Stage2의 무기별 픽업 프리팹 및 샷건 정의 GUID, 기존 LMB 바인딩과 생성 래퍼의 일치를 정적으로 확인했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했으므로, 실제 자동 연사·산탄 명중·주먹 적중·`DEADLINE` 준비/해제 연계는 **확인 불가**다.
 - 2026-08-02 무기별 결정적 좌우 탄도 산포는 `WeaponDefinition`의 `spreadJitterAngle`/`spreadSeed`와 공용 `WeaponController`의 발사 순번·펠릿 인덱스 기반 상태 없는 해시 계산을 정적으로 확인했다. 권총/자동소총은 각각 최대 ±1.5도(시드 101/211), 샷건은 기존 18도 대칭 팬의 각 펠릿에 최대 ±1도(시드 307)를 더한다. Unity 6000.1.13f1 배치 컴파일은 `Tundra build success`로 통과했고 `BuildAndValidateFromCommandLine`은 Stage1/Stage2 재생성과 저장 씬 검증을 종료 코드 0으로 완료했다. 샷건 에셋 GUID와 Stage1/Stage2의 픽업 프리팹 참조, 기존 LMB/`DEADLINE` 입력 분기 불변도 정적으로 확인했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했으므로 실제 탄도 체감·명중·적 AI 점사·`DEADLINE` 준비 발사 결과는 **확인 불가**다.
+- 2026-08-03 총구 기준 마우스 조준 보정은 `PlayerAim`의 가장 가까운 비트리거 물리 표면 Raycast(플레이어 자신 제외)와 `PlayerCombat`의 총구→조준점 수평 방향 계산으로 구현했다. 적·벽·바닥·엄폐물은 같은 거리 우선 규칙을 사용하며, 벽 뒤 적은 조준하지 않고 콜라이더가 없을 때만 기존 `y=0` 지면 투영을 fallback으로 사용한다. Unity 6000.1.13f1 배치 컴파일의 `Tundra build success`, `BuildAndValidateFromCommandLine`의 생성 씬 검증, `PrototypePlayModeSmokeTest.RunFromCommandLine`은 모두 통과했다. 생성기는 기존 저장 씬의 비관련 레이아웃·머티리얼까지 재작성하므로 그 산출물은 보존하지 않았으며, 기존 씬은 새 직렬화 필드가 없어도 코드 기본값 `~0`으로 동작한다. 스모크가 직접 클릭별 탄도를 대조하지 않으므로 실제 마우스 입력에 따른 바닥·벽·적·자기 자신 클릭 결과와 `DEADLINE` 준비 발사는 **확인 불가**다.
+- 2026-08-03 수평·수직 결정적 탄도 산포는 Unity 6000.1.13f1 배치 컴파일의 `Tundra build success`와 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 재생성·저장 씬 검증을 종료 코드 0으로 완료했다. 기존 권총·자동소총·샷건의 산포각과 시드, 픽업 GUID, LMB 바인딩과 `DEADLINE` Down 기반 준비 분기는 그대로이며, 공용 발사 경로가 수평·수직에 서로 다른 해시 채널 상수를 사용하고 Unity 전역 `Random`을 사용하지 않는 것을 정적으로 확인했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했으므로 실제 상하 탄도 체감·명중 분포·적 자동소총 점사와 `DEADLINE` 준비 발사 결과는 **확인 불가**다.
+
+- 2026-08-04 빈 탄약 총기 발사 시도 시간 활동은 `WeaponController.TryFire`의 기존 성공 bool과 별도 `fireAttempted` 결과를 통해 구현했다. 일반 플레이어 발사에서만 구성·참조가 유효하고 사용 간격이 지난 빈 탄약 시도에도 기존 `fireActivity: 0.9`, `fireActivityDuration: 0.16` 펄스를 적용하며, 투사체·탄약·발사 순번은 변경하지 않는다. 빈 자동소총 홀드는 무기 사용 간격마다 시도하도록 다음 사용 시각을 전진시킨다. `DEADLINE`은 기존 준비 발사 경로를 유지해 빈 탄약이면 행동을 준비하거나 슬롯을 소비하지 않는다. Unity 6000.1.13f1 배치 컴파일은 `Tundra build success`와 종료 코드 0으로 완료했지만, 정식 테스트와 실제 LMB 빈 탄약 입력을 대조하는 스모크가 없어 플레이 모드 결과는 **확인 불가**다.
 
 ## 2. 프로젝트 개요
 
@@ -84,7 +88,7 @@
 
 - 3D 물리 기반 전투 프로토타입으로 전환된 상태다. 씬 검증 코드도 `Rigidbody2D`가 없어야 하고 원근 카메라여야 한다고 검사한다.
 - Git 이력에는 `3D 프로토타입 제작`, `KillCam 구현`, `암흑시야와 Light 구현`이 기록되어 있다.
-- 현재 미커밋 변경에는 자동 발사/산탄 무기 정의, 무기별 결정적 좌우 탄도 산포, 빈손 플레이어 주먹 공격, 무기별 시작 픽업 프리팹과 재생성된 Stage1/Stage2가 포함된다.
+- 현재 미커밋 변경에는 자동 발사/산탄 무기 정의, 무기별 결정적 수평·수직 탄도 산포, 빈손 플레이어 주먹 공격, 무기별 시작 픽업 프리팹과 재생성된 Stage1/Stage2가 포함된다.
 - `Stage1`과 `Stage2`의 게임 오브젝트 구성은 동일하고 조명 프로필만 다르다. 두 씬을 별도 콘텐츠 단계로 사용할지, 밝기 비교용 변형으로 사용할지는 **확인 불가**다.
 
 ## 3. 현재 구현 현황
@@ -92,11 +96,11 @@
 | 기능 | 상태 | 설명 | 근거 파일 | 비고 |
 |---|---|---|---|---|
 | 3D 플레이어 이동 | 구현 완료 | `WASD` 입력을 동적 Rigidbody의 평면 속도로 변환하고 마지막 물리 스텝의 입력 방향 실제 변위를 공개하며 충돌과 하드 프리즈를 반영 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs` | 이동 속도 6, 실제 이동 최소 변위 0.001m, 벽 접촉 시 위치 강제 이동 없음 |
-| 마우스 조준 | 구현 완료 | 화면 포인터를 지면 평면에 투영하여 플레이어 회전과 조준선을 갱신 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs` | 마우스 전용 |
+| 마우스 조준 | 구현 완료 | 화면 포인터 광선에서 플레이어 자신을 제외한 가장 가까운 비트리거 콜라이더의 `RaycastHit.point`를 조준점으로 사용하고, 충돌 대상이 없을 때만 `y=0` 평면으로 fallback하여 플레이어 회전과 조준선을 갱신 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs` | 적·벽·바닥·엄폐물은 거리 우선이며 실제 마우스 입력 검증은 확인 불가 |
 | 대시 | 구현 완료 | 이동 방향으로 최대 3.5 거리, 0.03 스킨의 축소 캡슐 캐스트, 대시 중 무적, 0.8초 쿨다운 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerDash.cs` | 벽 0.01 겹침 시작 회귀 검사 포함 스모크 통과 |
 | 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간하며, 데드라인 전용 하드 프리즈 토큰은 조준 회전 중에만 최저 배율을 허용 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
 | `DEADLINE` | 부분 구현 | `Q` 키 Down 프레임에 탄환·이동 상태와 무관하게 하드 프리즈하고, 마우스 정지 시 0배·회전 시 최저 배율로 전환한다. 씬당 최대 2회 발동하며 사격·근접 공격·투척 중 최대 2개 행동을 준비해 이동 입력으로 해제한다 | `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 성공 발동에서만 충전 차감, 씬 재로드 시 회복, 리플레이 중 회복 없음. 씬 연결·컴파일·정적 검증은 확인, 최신 플레이 테스트와 전용 테스트 없음 |
-| 총기 사격 | 구현 완료 | 권총·샷건은 LMB Down 1회에 1회 발사하고 자동소총만 LMB 홀드 중 발사 간격마다 연사한다. 성공한 매 발사는 발사 순번·펠릿 인덱스·무기 시드로 결정한 좌우 탄도 산포를 적용하며, 샷건은 대칭 팬 패턴에 펠릿별 산포를 더한다 | `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset` | 조준점·플레이어 회전·카메라는 변경하지 않으며 적 자동소총의 기존 4발 점사에도 같은 규칙을 적용. 실제 탄도·명중은 플레이 테스트 **미실행**으로 확인 불가 |
+| 총기 사격 | 구현 완료 | 권총·샷건은 LMB Down 1회에 1회 발사하고 자동소총만 LMB 홀드 중 발사 간격마다 연사한다. 플레이어 총기와 투척은 총구에서 조준점의 `x/z`로 수평 발사하며, 성공한 매 발사는 발사 순번·펠릿 인덱스·무기 시드로 결정한 독립 수평·수직 탄도 산포를 적용한다. 일반 플레이어 발사에서는 유효한 빈 탄약 시도도 같은 시간 활동 펄스를 발생시키지만 투사체·탄약·발사 순번은 변경하지 않는다 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset` | 빈 자동소총 홀드도 무기 사용 간격마다만 시간 활동을 발생. `DEADLINE` 준비 발사·적 자동소총의 기존 4발 점사와 실제 조작 체감은 확인 불가 |
 | 근접 무기 공격 | 구현 완료 | 전방 반각 35도·거리 1.45 안에서 시야가 확보된 가장 가까운 적대 대상 하나에 피해 3을 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | 플레이어는 실제 시간 쿨다운, 적은 월드 시간 상태 머신 사용. 플레이 검증 미실행 |
 | 빈손 플레이어 주먹 | 구현 완료 | 빈손일 때 LMB Down으로 기존 `MeleeAttackResolver`에 거리 1.2, 반각 35도, 피해 1, 사용 간격 0.6초의 근접 공격을 요청한다. `DEADLINE`에서는 기존 행동 준비·이동 해제 경로를 재사용한다 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs` | 현재 적 체력 모델상 유효 피격 1회 처치. 실제 적중과 `DEADLINE` 연계는 플레이 테스트 **미실행**으로 확인 불가 |
 | 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 총기 피해 3은 플레이어 최대 체력과 같음 |
@@ -209,7 +213,7 @@ flowchart TD
 ### 5.2 이동 및 조작
 
 - **시스템 목적:** 키보드·마우스로 3D 평면 이동과 조준을 제공한다.
-- **현재 동작 방식:** Input System의 `Gameplay` 액션 맵을 매 프레임 폴링한다. 일반 이동은 동적 Rigidbody의 `linearVelocity`로 평면 속도를 지정하고, 사망·하드 프리즈·비활성화 시 평면 속도를 0으로 만든다. 대시는 축소한 월드 캡슐을 이동 방향으로 캐스트해 시작점이 벽에 맞닿거나 0.03 이내로 겹쳐도 안전 거리까지만 `MovePosition`한다. 조준은 카메라 Ray와 지면 Plane의 교차점으로 계산한다.
+- **현재 동작 방식:** Input System의 `Gameplay` 액션 맵을 매 프레임 폴링한다. 일반 이동은 동적 Rigidbody의 `linearVelocity`로 평면 속도를 지정하고, 사망·하드 프리즈·비활성화 시 평면 속도를 0으로 만든다. 대시는 축소한 월드 캡슐을 이동 방향으로 캐스트해 시작점이 벽에 맞닿거나 0.03 이내로 겹쳐도 안전 거리까지만 `MovePosition`한다. 조준은 카메라 Ray의 가장 가까운 비트리거 콜라이더 지점을 사용하고, 플레이어 자신의 콜라이더는 건너뛴다. 적·벽·바닥은 거리 순서로 같은 조준점 규칙을 사용하며, 충돌 대상이 없을 때만 지면 Plane 교차점으로 fallback한다.
 - **주요 클래스:** `PlayerControls`, `PlayerInputReader`, `PlayerMovement`, `PlayerAim`, `PlayerDash`
 - **데이터 흐름:** `PlayerControls.inputactions` → 생성된 `PlayerControls.cs` → `PlayerInputReader` → 이동/조준/대시
 - **다른 시스템과의 의존성:** 월드 활동량, 체력, 하드 프리즈, 카메라
@@ -229,7 +233,7 @@ flowchart TD
 ### 5.4 전투
 
 - **시스템 목적:** 팩션 기반 총기·근접 공격, 투사체 충돌, 무기 투척과 `DEADLINE` 준비 공격을 제공한다.
-- **현재 동작 방식:** `WeaponController`가 현재 `WeaponKind`, 탄약과 실제/월드 시간 사용 간격을 관리한다. 총기는 성공한 매 발사 때 발사 순번을 증가시키고, 무기 시드·발사 순번·펠릿 인덱스를 조합한 상태 없는 해시로 좌우 탄도 산포를 결정한 뒤 투사체를 만든다. 샷건은 기존 대칭 팬 각도에 펠릿별 산포를 더하며, 근접 무기는 공통 부채꼴 판정으로 시야가 확보된 가장 가까운 적대 대상 하나를 친다. 투척 무기는 장비를 즉시 해제하고 충돌 또는 최대 거리에서 픽업으로 변환된다.
+- **현재 동작 방식:** `WeaponController`가 현재 `WeaponKind`, 탄약과 실제/월드 시간 사용 간격을 관리한다. 플레이어 총기 일반 발사·`DEADLINE` 준비 발사·투척은 총구 위치에서 `PlayerAim.AimPoint`의 `x/z`로 수평 방향을 계산한다. 총기는 성공한 매 발사 때 발사 순번을 증가시키고, 무기 시드·발사 순번·펠릿 인덱스와 축별 채널 상수를 조합한 상태 없는 해시로 독립 수평·수직 탄도 산포를 결정한 뒤 투사체를 만든다. 샷건은 기존 대칭 수평 팬 각도에 펠릿별 수평·수직 산포를 더하며, 근접 무기는 공통 부채꼴 판정으로 시야가 확보된 가장 가까운 적대 대상 하나를 친다. 투척 무기는 장비를 즉시 해제하고 충돌 또는 최대 거리에서 픽업으로 변환된다.
 - **주요 클래스:** `WeaponController`, `MeleeAttackResolver`, `Projectile`, `ThrownWeapon`, `CombatQuery`, `DamageHit`, `StunHit`
 - **데이터 흐름:** 입력/AI → 무기 컨트롤러 → 투사체·근접 판정 또는 투척 무기 → `IDamageable`/`IStunnable` → 체력/AI/스테이지
 - **다른 시스템과의 의존성:** `WeaponDefinition`, 월드 시간, 프리팹, 팩션, 히트 플래시
@@ -319,7 +323,7 @@ flowchart TD
 ### 5.13 데이터 관리
 
 - **시스템 목적:** 무기 수치와 씬/프리팹 구성을 에셋으로 직렬화한다.
-- **현재 동작 방식:** 권총·자동소총·샷건·근접 무기 수치는 `WeaponDefinition` ScriptableObject에 종류별로 저장된다. 총기는 기본 팬 각도와 별도 결정적 좌우 산포 최대각·시드를 함께 저장한다. 자동소총만 자동 발사 모드이며, 샷건은 8펠릿·총 퍼짐 18도의 반자동 모드다. 적 행동 수치는 각 씬의 공통 `EnemyCombatant` 필드에 직렬화된다.
+- **현재 동작 방식:** 권총·자동소총·샷건·근접 무기 수치는 `WeaponDefinition` ScriptableObject에 종류별로 저장된다. 총기는 기본 수평 팬 각도와 별도 결정적 수평·수직 산포 최대각·시드를 함께 저장하며, 한 최대각을 두 축에 공통 적용한다. 자동소총만 자동 발사 모드이며, 샷건은 8펠릿·총 퍼짐 18도의 반자동 모드다. 적 행동 수치는 각 씬의 공통 `EnemyCombatant` 필드에 직렬화된다.
 - **주요 클래스:** `WeaponDefinition`, `PrototypeSceneBuilder`
 - **데이터 흐름:** `Pistol.asset`/`AutomaticRifle.asset`/`Shotgun.asset`/`MeleeWeapon.asset` → 플레이어·적 무기 컨트롤러/픽업/드롭. 에디터 빌더 상수 → 씬·프리팹·머티리얼 직렬화
 - **다른 시스템과의 의존성:** 전투 전반, 콘텐츠 생성 도구
@@ -416,9 +420,9 @@ flowchart LR
 
 | 에셋 | 타입 | 확인된 데이터 |
 |---|---|---|
-| `Pistol.asset` | `WeaponDefinition` | 반자동 총기, 탄창 8, 발사 간격 0.24초, 탄속 17, 피해 3, 1발, 총 퍼짐 0도, 결정적 좌우 산포 최대 ±1.5도(시드 101), 적 점사 1발, 투사체 반경 0.08 |
-| `AutomaticRifle.asset` | `WeaponDefinition` | 자동 발사 총기, 탄창 30, 발사 간격 0.12초, 탄속 16, 피해 3, 1발, 총 퍼짐 0도, 결정적 좌우 산포 최대 ±1.5도(시드 211), 적 점사 4발, 투사체 반경 0.075 |
-| `Shotgun.asset` | `WeaponDefinition` | 반자동 총기, 탄창 6, 발사 간격 0.75초, 탄속 16, 펠릿 피해 1, 8펠릿, 총 퍼짐 18도(좌우 ±9도), 펠릿별 결정적 좌우 산포 최대 ±1도(시드 307), 투사체 반경 0.075 |
+| `Pistol.asset` | `WeaponDefinition` | 반자동 총기, 탄창 8, 발사 간격 0.24초, 탄속 17, 피해 3, 1발, 총 퍼짐 0도, 결정적 수평·수직 산포 축당 최대 ±1.5도(시드 101), 적 점사 1발, 투사체 반경 0.08 |
+| `AutomaticRifle.asset` | `WeaponDefinition` | 자동 발사 총기, 탄창 30, 발사 간격 0.12초, 탄속 16, 피해 3, 1발, 총 퍼짐 0도, 결정적 수평·수직 산포 축당 최대 ±1.5도(시드 211), 적 점사 4발, 투사체 반경 0.075 |
+| `Shotgun.asset` | `WeaponDefinition` | 반자동 총기, 탄창 6, 발사 간격 0.75초, 탄속 16, 펠릿 피해 1, 8펠릿, 총 퍼짐 18도(좌우 ±9도), 펠릿별 결정적 수평·수직 산포 축당 최대 ±1도(시드 307), 투사체 반경 0.075 |
 | `MeleeWeapon.asset` | `WeaponDefinition` | 근접, 탄약 없음, 피해 3, 거리 1.45, 정면 반각 35도, 사용 간격 0.72초 |
 
 ### 6.6 현재 확인된 콘텐츠
@@ -641,7 +645,7 @@ Unity 버전: `6000.1.13f1`
 ### 8.9 기술 부채
 
 - 이번 기능의 `EnemyCombatant`, `MeleeAttackResolver`, `MeleeWeapon.asset`과 메타 파일은 작업 트리에서 미추적 상태이므로 변경 확정 시 함께 추적해야 한다.
-- 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없다. 커스텀 배치 스모크 코드는 컴파일되지만 이번 변경에서는 실행하지 않아 최신 통합 결과는 확인 불가다.
+- 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없다. 커스텀 배치 스모크는 2026-08-03에 통과했지만, 마우스 클릭별 조준점·총구 탄도 같은 입력 세부 조건을 직접 대조하는 테스트는 없다.
 - `StageReplayController`는 20Hz마다 전체 활성 GameObject의 렌더러를 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다. ViewCone 정점 샘플은 제거했지만 암흑 시야 리플레이의 매 프레임 Raycast·Normals 재계산 비용은 프로파일링이 필요하며, 동적 `VisionObstacle`이 추가되면 과거 상태와 달라질 수 있다. 일반 재질 색상·라인 배열은 변경 샘플마다 할당된다.
 - 리플레이가 시작되면 대부분의 `MonoBehaviour`를 끄며, 현재 반복 리플레이 구조에서는 복구 경로가 없다.
 - 플레이어/적/시간/스테이지 밸런스 수치가 씬 컴포넌트와 코드 기본값에 분산되어 있다.
@@ -673,18 +677,18 @@ Unity 버전: `6000.1.13f1`
 | 권총 발사 간격 | 0.24초 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 플레이어는 실제 시간, 적은 월드 시간 시계를 전달 |
 | 권총 탄속 | 17 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 월드 시간 기준 |
 | 권총 피해 | 3 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | 플레이어 최대 체력과 같아 적 사용 시 즉사 |
-| 권총 결정적 좌우 산포 | 최대 ±1.5도, 시드 101 | 같은 에셋 | 성공한 발사마다 새로 계산, 조준점 반동 없음 |
+| 권총 결정적 수평·수직 산포 | 축당 최대 ±1.5도, 시드 101 | 같은 에셋 | 축별 독립 해시로 성공한 발사마다 새로 계산, 조준점 반동 없음 |
 | 투사체 반경 | 0.08 | `ProjectDeltatime/Assets/_Project/Pistol.asset` | SphereCast 반경 |
 | 자동소총 탄창 | 30발 | `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 이동 연사형 시작 탄약 |
 | 자동소총 발사 간격 | 0.12 월드초 | 같은 에셋 | 적 4발 점사 내 발사 간격 |
 | 자동소총 탄속 | 16 | 같은 에셋 | 월드 시간 기준 |
 | 자동소총 피해 | 3 | 같은 에셋 | 플레이어 최대 체력과 같아 즉사 |
-| 자동소총 결정적 좌우 산포 | 최대 ±1.5도, 시드 211 | 같은 에셋 | 플레이어와 적 AI의 공용 발사 경로에 적용 |
+| 자동소총 결정적 수평·수직 산포 | 축당 최대 ±1.5도, 시드 211 | 같은 에셋 | 플레이어와 적 AI의 공용 발사 경로에 적용 |
 | 자동소총 투사체 반경 | 0.075 | 같은 에셋 | SphereCast 반경 |
 | 샷건 탄창 | 6발 | `ProjectDeltatime/Assets/_Project/Shotgun.asset` | Stage1/Stage2 시작 픽업 탄약도 6발 |
 | 샷건 발사 간격/탄속 | 0.75초 / 16 | 같은 에셋 | 반자동, 월드 시간 기준 투사체 이동 |
 | 샷건 펠릿 피해/수/총 퍼짐 | 1 / 8 / 18도 | 같은 에셋 | 좌우 ±9도의 대칭 팬 패턴 |
-| 샷건 펠릿 추가 결정적 좌우 산포 | 최대 ±1도, 시드 307 | 같은 에셋 | 각 펠릿의 팬 각도에 독립적으로 더함 |
+| 샷건 펠릿 추가 결정적 수평·수직 산포 | 축당 최대 ±1도, 시드 307 | 같은 에셋 | 각 펠릿의 수평 팬 각도에 독립적으로 더함 |
 | 플레이어 빈손 주먹 범위/반각/간격/피해 | 1.2 / 35도 / 0.6초 / 1 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 실제 시간 쿨다운, `DEADLINE`에서는 기존 준비/해제 경로 |
 | 투사체 최대 수명 | 4 월드초 | `ProjectDeltatime/Assets/_Project/Prefabs/Projectile.prefab` | 미충돌 시 제거 |
 | 투척 무기 속도 | 7 | `ProjectDeltatime/Assets/_Project/Prefabs/ThrownWeapon.prefab` | 월드 시간 기준 |
@@ -750,7 +754,7 @@ Unity 버전: `6000.1.13f1`
 
 | 과제 | 현재 상태 | 필요한 작업 | 관련 파일 | 우선순위 | 완료 조건 |
 |---|---|---|---|---|---|
-| 최신 작업 트리 통합 검증 | 2026-08-02 최신 Unity 컴파일 통과, 사용자 요청으로 플레이·스모크 미실행 | 리플레이 실시간 ViewCone 경계·프레임 비용과 `V` 조명·적 가시성 전환 및 무기 드롭·재무장·주먹·교차 무기·플레이어 근접/`DEADLINE` 시나리오를 후속 플레이 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/ReplayVisionRecomputeCompile.log` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
+| 최신 작업 트리 통합 검증 | 2026-08-03 Unity 컴파일·Stage1/Stage2 생성 검증·커스텀 플레이 모드 스모크 통과. 직접 클릭 기반 조준 탄도는 확인 불가 | 바닥·벽·적·플레이어 자신 클릭, 벽 뒤 적 가림, `DEADLINE` 준비 발사의 총구 탄도를 직접 입력으로 검증 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | P0 | 현재 파일 기준 핵심 런타임 시나리오가 재현 가능하게 통과하고 변경 이력에 결과 기록 |
 | 미추적 핵심 에셋 정리 | 공통 전투/근접 판정 스크립트와 근접 무기 에셋·메타가 미추적 상태 | 변경 확정 시 코드/에셋과 메타를 함께 추적하고 GUID 참조 재확인 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | P0 | `git status`에서 의도치 않은 누락이 없고 씬/에셋 참조 GUID가 정상 |
 | `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | Q 발동, 2개 제한, 해제, 쿨다운, 사망/대시·캐치 프리즈 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `PlayerInputReader.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
 | 공중 가로채기 자동 테스트 | 코드·프리팹·씬은 존재, 최신 플레이 결과 없음 | 입력 버퍼, 가장 가까운 무기, 교환 드롭, 장애물 착지, 프리즈 검증 | `InterceptableWeapon.cs`, `EnemyWeaponDrop.cs`, `PlayerCombat.cs` | P1 | 가로채기와 착지 흐름이 반복 가능한 테스트로 통과 |
@@ -778,7 +782,7 @@ Unity 버전: `6000.1.13f1`
 | NavMesh는 경로만 담당 | AI Navigation의 베이크된 경로를 사용하되 적 Transform 자동 이동은 사용하지 않고 `EnemyMotor`가 Kinematic Rigidbody를 `WorldDeltaTime`으로 이동 | `EnemyMotor.cs`, `StageNavigation.asset` |
 | 적 행동 수명주기 공통화 | 사격형과 근접형이 `EnemyBehavior`의 기절·무장 해제·사망 상태를 공유하고 `EnemyHealth`는 구체 적 유형에 의존하지 않음 | `EnemyBehavior.cs`, `EnemyHealth.cs` |
 | 직접 참조 기반 조립 | 싱글턴 없이 씬 직렬화 참조와 `Configure`로 시스템 연결 | 씬과 빌더 |
-| 무기 데이터 ScriptableObject화 | 권총·자동소총·샷건·근접 무기의 종류와 공격 수치, 발사 모드·펠릿 수·기본 팬 각도·결정적 좌우 산포 최대각/시드는 `WeaponDefinition` 에셋에 저장 | `WeaponDefinition.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `Shotgun.asset`, `MeleeWeapon.asset` |
+| 무기 데이터 ScriptableObject화 | 권총·자동소총·샷건·근접 무기의 종류와 공격 수치, 발사 모드·펠릿 수·기본 수평 팬 각도·결정적 수평·수직 산포 최대각/시드는 `WeaponDefinition` 에셋에 저장 | `WeaponDefinition.cs`, `Pistol.asset`, `AutomaticRifle.asset`, `Shotgun.asset`, `MeleeWeapon.asset` |
 | 팩션·인터페이스 기반 피해 | `CombatFaction`, `IDamageable`, `IStunnable`로 전투 대상 분리 | `CombatContracts.cs` |
 | 적 기절은 현재 장비 드롭 | 모든 적이 기절하면 현재 무기와 남은 탄약을 공중 드롭하고, 회복 뒤 빈손 전투/재무장 판단을 재개 | `EnemyHealth.cs`, `EnemyBehavior.cs`, `EnemyCombatant.cs`, `EnemyWeaponDrop.cs` |
 | 적 공격 방식은 현재 장비가 결정 | 시작 유형은 이동 속도와 시작 장비만 정하며 총기/근접 무기/빈손 공격은 공통 전투 컴포넌트가 선택 | `EnemyCombatant.cs`, `EnemyShooter.cs`, `EnemyChaser.cs` |
@@ -817,6 +821,9 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-04 | 1.3.4 | 일반 플레이어 총기 발사에서 빈 탄약 시도도 기존 발사와 같은 시간 활동을 발생시키고, 자동소총 홀드는 무기 사용 간격마다만 이를 반복하도록 보완 | 전투, 월드 시간, 입력, `DEADLINE` 분리 |
+| 2026-08-03 | 1.3.3 | 권총·자동소총·샷건의 공용 발사 경로를 수평·수직 독립 결정적 산포로 확장하고 샷건 수평 팬 패턴에 펠릿별 수직 산포를 결합 | 전투, 무기 데이터, 적 AI 사격, Stage1/Stage2 정적 검증 |
+| 2026-08-03 | 1.3.2 | 마우스 광선의 최근 물리 표면을 조준점으로 선택하고, 플레이어 총기·투척이 총구에서 그 조준점의 수평 좌표를 향하도록 보정 | 조준, 총기·투척 탄도, 벽 가림, `DEADLINE` 준비 발사 |
 | 2026-08-02 | 1.3.1 | 권총·자동소총·샷건에 무기 시드·발사 순번·펠릿 인덱스 기반의 결정적 좌우 탄도 산포를 추가하고, 샷건 대칭 팬 패턴에 펠릿별 산포를 결합 | 전투, 무기 데이터, 적 AI 사격, Stage1/Stage2 정적 검증 |
 | 2026-08-02 | 1.3.0 | 자동소총 LMB 홀드 연사, 8펠릿·18도 샷건, 빈손 플레이어 주먹, 무기별 시작 픽업과 정적 검증 범위를 반영 | 전투, 무기 데이터/픽업, 입력, HUD, Stage1/Stage2 |
 | 2026-08-02 | 1.2.9 | 일반 월드 시간 재생과 Deadline 전용 현실 시간 시네마틱을 분리하고, 해제 후 슬로모션·카메라 고정·HUD 단계 표시·집중 스모크 검증을 추가 | 리플레이, DEADLINE, HUD, 스모크 테스트 |

@@ -30,6 +30,9 @@ namespace Deltatime.Combat
             public float Interval { get; }
         }
 
+        private const uint HorizontalSpreadChannelSalt = 0x68BC21EBu;
+        private const uint VerticalSpreadChannelSalt = 0x165667B1u;
+
         [SerializeField] private WeaponDefinition startingDefinition;
         [SerializeField] private Transform muzzle;
         [SerializeField] private Renderer heldWeaponRenderer;
@@ -71,14 +74,36 @@ namespace Deltatime.Combat
             float clock,
             WorldTimeController worldTime)
         {
+            return TryFire(
+                faction,
+                direction,
+                clock,
+                worldTime,
+                out _);
+        }
+
+        public bool TryFire(
+            CombatFaction faction,
+            Vector3 direction,
+            float clock,
+            WorldTimeController worldTime,
+            out bool fireAttempted)
+        {
+            fireAttempted = false;
             if (Definition == null ||
                 !Definition.IsFirearm ||
-                Ammunition <= 0 ||
                 clock < nextUseTime ||
                 projectilePrefab == null ||
                 muzzle == null ||
                 worldTime == null)
             {
+                return false;
+            }
+
+            fireAttempted = true;
+            if (Ammunition <= 0)
+            {
+                nextUseTime = clock + Definition.UseInterval;
                 return false;
             }
 
@@ -353,13 +378,35 @@ namespace Deltatime.Combat
                     spreadT);
             }
 
-            float jitterAngle = GetDeterministicSpreadJitter(
+            float horizontalJitterAngle = GetDeterministicSpreadJitter(
                 maximumSpreadJitterAngle,
                 spreadSeed,
                 currentShotSequence,
-                projectileIndex);
-            return Quaternion.AngleAxis(fanAngle + jitterAngle, Vector3.up) *
-                   normalizedDirection;
+                projectileIndex,
+                HorizontalSpreadChannelSalt);
+            Vector3 horizontalDirection =
+                Quaternion.AngleAxis(
+                    fanAngle + horizontalJitterAngle,
+                    Vector3.up) * normalizedDirection;
+
+            float verticalJitterAngle = GetDeterministicSpreadJitter(
+                maximumSpreadJitterAngle,
+                spreadSeed,
+                currentShotSequence,
+                projectileIndex,
+                VerticalSpreadChannelSalt);
+            Vector3 pitchAxis = Vector3.Cross(Vector3.up, horizontalDirection);
+            if (pitchAxis.sqrMagnitude <= 0.000001f)
+            {
+                pitchAxis = Vector3.right;
+            }
+            else
+            {
+                pitchAxis.Normalize();
+            }
+
+            return Quaternion.AngleAxis(verticalJitterAngle, pitchAxis) *
+                   horizontalDirection;
         }
 
         private int ConsumeShotSequence()
@@ -373,7 +420,8 @@ namespace Deltatime.Combat
             float maximumAngle,
             int spreadSeed,
             int currentShotSequence,
-            int projectileIndex)
+            int projectileIndex,
+            uint channelSalt)
         {
             if (maximumAngle <= 0f)
             {
@@ -383,6 +431,7 @@ namespace Deltatime.Combat
             uint state = (uint)spreadSeed;
             state += (uint)currentShotSequence * 0x9E3779B9u;
             state += (uint)projectileIndex * 0x85EBCA6Bu;
+            state += channelSalt;
             state ^= state >> 16;
             state *= 0x7FEB352Du;
             state ^= state >> 15;

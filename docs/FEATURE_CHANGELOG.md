@@ -21,6 +21,36 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-04 - 빈 탄약 발사 시도의 시간 활동 반영
+
+- 변경 유형: 플레이어 총기 입력·월드 시간 활동 처리 보완, 컴파일 검증·문서 갱신
+- 변경 내용: **구현 완료**. 공용 `WeaponController`의 기존 `TryFire` 반환값은 실제 투사체 발사 성공 여부로 유지하고, `out bool fireAttempted` overload를 추가했다. 총기 구성과 참조가 유효하고 사용 간격이 지난 빈 탄약 발사 시도는 `fireAttempted`만 `true`로 반환하며, 탄약·투사체·발사 순번은 변경하지 않는다. 이때 다음 사용 시각을 무기 사용 간격만큼 전진시켜 자동소총 홀드 중에도 빈 발사 활동 펄스가 매 프레임이 아니라 발사 간격마다 한 번만 발생한다. `PlayerCombat`은 일반 발사에서 실제 발사 성공 또는 이 유효한 빈 탄약 발사 시도에 기존 `fireActivity`와 `fireActivityDuration`을 그대로 적용한다. 근접 무기·빈손 주먹의 성공 펄스는 유지하며, `DEADLINE`은 기존 `TryStageFire`를 사용하므로 탄약이 없으면 행동 준비·슬롯 소비·시간 활동이 발생하지 않는다.
+- 영향을 받은 시스템: 플레이어 반자동/자동 총기 입력, 월드 시간 활동 펄스, 빈 탄약 자동소총 홀드 간격, 기존 적 AI 사격·근접/빈손 공격·`DEADLINE` 준비 발사 보존
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.4로 갱신해 일반 총기 발사에서 빈 탄약 시도도 기존 발사와 같은 시간 활동을 발생시키되, 투사체·탄약·`DEADLINE` 준비 동작은 바꾸지 않는 규칙과 검증 범위를 기록했다.
+- 테스트 결과: **Unity 스크립트 배치 컴파일 통과**. Unity 6000.1.13f1 배치 모드에서 `Tundra build success (9.03 seconds), 6 items updated, 219 evaluated`와 종료 코드 0을 확인했다. 일반 `TryFire` 호출자는 기존 bool 반환 경로를 유지하고, 플레이어만 새 overload의 빈 탄약 시도 신호로 시간 활동 펄스를 호출하며 `TryStageFire`는 변경되지 않은 것을 정적으로 대조했다. 정식 Unity Test Framework가 없고 기존 `PrototypePlayModeSmokeTest`가 실제 LMB 빈 탄약 입력·활동 펄스 간격을 대조하지 않으므로, 해당 플레이 모드 시나리오는 **미실행**이다.
+- 남은 작업: **확인 불가**. 실제 조작으로 탄약 0인 권총/샷건 클릭 시 시간 배율 체감, 탄약 0인 자동소총 홀드의 발사 간격별 펄스, 빈 발사 직후 무기 교체 시 체감, 기존 `DEADLINE` 빈 탄약 거부 결과는 별도 플레이 모드 검증이 필요하다.
+
+## 2026-08-03 - 3축 결정적 탄도 산포 확장
+
+- 변경 유형: 총기 탄도 산포 확장, 정적 검증·문서 갱신
+- 변경 내용: **구현 완료**. 공용 `WeaponController`가 기존 대칭 수평 팬과 수평 산포를 적용한 뒤, 그 방향의 로컬 수직 축을 기준으로 추가 회전해 수직 산포를 적용한다. `spreadJitterAngle`은 새 직렬화 필드 없이 수평·수직 각각의 최대 산포각으로 재사용한다. 권총과 자동소총은 축당 최대 ±1.5도, 샷건은 기존 18도 수평 팬의 각 펠릿에 축당 최대 ±1도를 적용한다. 수평·수직 산포는 무기 시드·발사 순번·펠릿 인덱스에 서로 다른 채널 상수를 더한 독립 결정적 해시 결과이며, Unity 전역 `Random`을 사용하지 않는다. 일반 발사·`DEADLINE` 준비 발사·적 자동소총 점사는 같은 공용 발사 경로를 유지한다. 조준점·카메라·플레이어 회전·누적 반동과 무기 에셋 값/GUID는 변경하지 않았다.
+- 영향을 받은 시스템: 권총·자동소총·샷건 투사체 방향, 샷건 펠릿 패턴, 적 자동소총 점사, `DEADLINE` 준비 발사, 정적 씬 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.3으로 갱신해 수평 팬과 독립 수평·수직 결정적 산포, 무기별 축당 산포값, 적용 대상과 검증 한계를 반영했다.
+- 테스트 결과: **정적 검증 통과**. Unity 6000.1.13f1 배치 모드에서 `Tundra build success`를 확인했고, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`이 Stage1/Stage2를 재생성·검증한 뒤 종료 코드 0으로 완료했다. 기존 권총·자동소총·샷건의 발사 모드·펠릿 수·산포 수치·시드와 Stage1/Stage2 픽업 GUID 참조를 확인했고, 수평/수직 채널 상수의 분리, 기존 `<Mouse>/leftButton` 바인딩과 `DEADLINE`의 Down 기반 준비 분기, Unity 전역 `Random` 미사용을 정적으로 대조했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했다.
+- 남은 작업: **확인 불가**. 실제 상하 산포의 시각적 체감과 명중 분포, 샷건 펠릿 원형 분포, 적 자동소총 점사와 `DEADLINE` 준비 발사의 3축 탄도 결과는 플레이 모드 테스트를 생략했으므로 확인하지 않았다.
+
+## 2026-08-03 - 총구 기준 마우스 조준 보정
+
+- 변경 유형: 플레이어 조준·총기/투척 발사 방향 보정, 씬 빌더 정적 검증·문서 갱신
+- 변경 내용: **구현 완료**. `PlayerAim`은 마우스 광선에 맞은 가장 가까운 비트리거 콜라이더(플레이어 자신과 자식 콜라이더 제외)의 정확한 `RaycastHit.point`를 조준점으로 저장한다. 적·벽·바닥·엄폐물은 같은 거리 우선 규칙을 따르므로 벽이 먼저 맞으면 벽 뒤 적을 조준하지 않는다. 콜라이더가 없을 때만 기존 `y=0` 지면 평면 투영을 사용한다. `PlayerCombat`은 총기 일반 발사·`DEADLINE` 준비 발사·무기 투척에서 플레이어 중심 방향 대신 `WeaponController.Muzzle`에서 조준점까지의 `x/z` 방향을 사용하며, `y` 성분은 항상 0으로 유지한다. 근접 공격, 적 AI 사격, `WeaponController`의 쿨다운·무기별 산포, `Projectile`의 WorldTime SphereCast는 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 마우스 조준, 총기·투척 탄도, 벽 가림 판정, `DEADLINE` 준비 발사, Stage1/Stage2 생성 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.2로 갱신해 최근 물리 표면 조준점, 총구 기준 수평 발사, 벽 가림과 기존 산포 유지 정책을 반영했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 모드에서 `Tundra build success`를 확인했고, `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`이 생성 씬의 `aimCollisionMask: ~0`과 기존 무기 산포 설정을 포함해 Stage1/Stage2를 재생성·검증한 뒤 종료 코드 0으로 완료했다. 이어 `PrototypePlayModeSmokeTest.RunFromCommandLine`도 `Prototype play-mode smoke test passed.`로 완료했다. 생성기는 기존 저장 씬의 레이아웃·머티리얼까지 광범위하게 재작성하므로, 이번 기능과 무관한 생성 산출물은 보존하지 않았다. 기존 씬은 새 직렬화 필드가 없더라도 코드 기본값 `~0`으로 동작한다.
+- 남은 작업: **확인 불가**. 스모크는 일반 통합 흐름만 확인하므로, 실제 입력으로 바닥·벽·적 클릭의 시각적 조준점, 플레이어 자신 클릭 시 다음 표면 선택 또는 fallback, 벽 뒤 적 가림, 산포를 포함한 장거리 명중 감각과 `DEADLINE` 중 준비 발사의 탄도는 별도 확인이 필요하다.
+
 ## 2026-08-02 - 무기별 결정적 좌우 산포
 
 - 변경 유형: 총기 탄도 보정, 무기 데이터·씬 빌더 정적 검증·문서 갱신

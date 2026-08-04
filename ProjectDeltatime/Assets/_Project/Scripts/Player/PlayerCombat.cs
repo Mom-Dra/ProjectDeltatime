@@ -113,13 +113,23 @@ namespace Deltatime.Player
                 (input.FireHeld &&
                  weapon.Definition != null &&
                  weapon.Definition.IsAutomatic);
-            if (shouldUseWeapon && TryUseEquippedWeapon())
+            if (shouldUseWeapon)
             {
-                worldTimeActivity.Pulse(fireActivity, fireActivityDuration);
+                bool weaponUseSucceeded = TryUseEquippedWeapon(
+                    out bool firearmAttempted);
+                if (weaponUseSucceeded || firearmAttempted)
+                {
+                    worldTimeActivity.Pulse(
+                        fireActivity,
+                        fireActivityDuration);
+                }
             }
 
             if (input.ThrowPressed &&
-                weapon.Throw(CombatFaction.Player, aim.AimDirection, worldTime))
+                weapon.Throw(
+                    CombatFaction.Player,
+                    GetWeaponOriginAimDirection(),
+                    worldTime))
             {
                 worldTimeActivity.Pulse(throwActivity, throwActivityDuration);
             }
@@ -175,7 +185,7 @@ namespace Deltatime.Player
                 }
                 else if (weapon.Throw(
                              CombatFaction.Player,
-                             aim.AimDirection,
+                             GetWeaponOriginAimDirection(),
                              worldTime))
                 {
                     deadline.RegisterStagedAction();
@@ -226,8 +236,9 @@ namespace Deltatime.Player
             ClearStagedMeleeAttacks();
         }
 
-        private bool TryUseEquippedWeapon()
+        private bool TryUseEquippedWeapon(out bool firearmAttempted)
         {
+            firearmAttempted = false;
             if (weapon.Definition == null)
             {
                 return TryUseUnarmedPunch();
@@ -242,9 +253,10 @@ namespace Deltatime.Player
                     clock)
                 : weapon.TryFire(
                     CombatFaction.Player,
-                    aim.AimDirection,
+                    GetWeaponOriginAimDirection(),
                     clock,
-                    worldTime);
+                    worldTime,
+                    out firearmAttempted);
         }
 
         private bool TryStageEquippedAttack()
@@ -258,7 +270,7 @@ namespace Deltatime.Player
             {
                 return weapon.TryStageFire(
                     CombatFaction.Player,
-                    aim.AimDirection,
+                    GetWeaponOriginAimDirection(),
                     worldTime);
             }
 
@@ -273,6 +285,16 @@ namespace Deltatime.Player
             stagedMeleeAttacks[stagedMeleeAttackCount] = stagedAttack;
             stagedMeleeAttackCount++;
             return true;
+        }
+
+        private Vector3 GetWeaponOriginAimDirection()
+        {
+            if (weapon == null || weapon.Muzzle == null)
+            {
+                return aim.AimDirection;
+            }
+
+            return aim.GetPlanarDirectionFrom(weapon.Muzzle.position);
         }
 
         private void ClearStagedMeleeAttacks()
