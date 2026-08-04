@@ -1,5 +1,6 @@
 using System;
 using Deltatime.Core;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Player
@@ -8,6 +9,7 @@ namespace Deltatime.Player
     {
         [SerializeField, Min(1)] private int maximumHealth = 3;
         [SerializeField] private Renderer bodyRenderer;
+        [SerializeField] private CharacterVisualController characterVisual;
         [SerializeField] private Color aliveColor = new Color(0.1f, 0.95f, 1f, 1f);
         [SerializeField] private Color deadColor = new Color(0.35f, 0.4f, 0.45f, 1f);
 
@@ -55,6 +57,7 @@ namespace Deltatime.Player
             {
                 bodyRenderer.material.color = deadColor;
             }
+            characterVisual?.SetTint(deadColor);
 
             Died?.Invoke();
         }
@@ -73,6 +76,12 @@ namespace Deltatime.Player
             {
                 bodyRenderer.sharedMaterial.color = aliveColor;
             }
+        }
+
+        public void ConfigureVisual(CharacterVisualController visualController)
+        {
+            characterVisual = visualController;
+            characterVisual?.RestoreTint();
         }
     }
 }

@@ -6,9 +6,9 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-04 (KST) |
-| 문서 버전 | 1.3.4 |
-| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 물리 표면 조준점과 총구 기준 수평 발사, 결정적 수평·수직 탄도 산포와 빈 탄약 발사 시도 시간 활동이 있는 권총·자동소총·샷건, 빈손 플레이어 주먹, 현재 장비에 따른 공통 적 전투 AI, 적 무기 드롭·재무장, `DEADLINE`, 공중 무기 가로채기, 2개 조명 프로필 스테이지를 포함 |
+| 마지막 분석일 | 2026-08-05 (KST) |
+| 문서 버전 | 1.3.6 |
+| 현재 구현 상태 | 핵심 전투 루프가 부분 구현된 3D 프로토타입. 물리 표면 조준점과 총구 기준 수평 발사, 결정적 수평·수직 탄도 산포와 빈 탄약 발사 시도 시간 활동이 있는 권총·자동소총·샷건, 빈손 플레이어 주먹, 현재 장비에 따른 공통 적 전투 AI, 적 무기 드롭·재무장, `DEADLINE`, 공중 무기 가로채기, 2개 산업 전투 방 조명 프로필과 Synty 나이트클럽 테마의 독립 Stage3·Stage4를 포함 |
 
 ### 1.1 분석 기준과 범위
 
@@ -16,7 +16,7 @@
 - 실제 Unity 프로젝트 루트는 저장소 안의 `ProjectDeltatime/`이다. 따라서 Unity의 `Assets`, `Packages`, `ProjectSettings`는 각각 `ProjectDeltatime/Assets`, `ProjectDeltatime/Packages`, `ProjectDeltatime/ProjectSettings`에 있다.
 - 확정된 내용은 현재 파일, 직렬화된 씬/프리팹/데이터, 프로젝트 설정, Git 상태에서 직접 확인한 사실만 사용했다.
 - 의도나 장르처럼 파일만으로 확정할 수 없는 내용에는 **추정**을 표시했다.
-- 현재 브랜치는 `feature/Shotgun`이다. 2026-08-02 자동 연사·샷건·빈손 플레이어 주먹 공격과 무기별 결정적 수평·수직 탄도 산포 구현은 코드, 씬, 프리팹, ScriptableObject와 문서를 함께 갱신한 작업 트리를 기준으로 기록한다.
+- 2026-08-05 Stage3와 Stage4 구현은 각각 새 씬·전용 NavMesh·에디터 빌더·스모크 테스트·빌드 설정·문서를 함께 갱신한 작업 트리를 기준으로 기록한다. Stage4는 Stage3의 레이아웃을 복제하지 않고 Stage2의 공통 런타임 연결만 기반으로 새 콘텐츠를 생성한다.
 - 기존 `README`, 기획 문서, `AGENTS.md`는 분석 시작 시 없었다. `Assets/_Project/Tests` 폴더는 비어 있고 `.asmdef` 및 Unity Test Framework 테스트 어셈블리는 없다.
 - 비생성 스크립트에서 `TODO`, `FIXME`, `HACK` 표식과 설명 주석은 확인되지 않았다.
 
@@ -41,6 +41,8 @@
 - 2026-08-03 수평·수직 결정적 탄도 산포는 Unity 6000.1.13f1 배치 컴파일의 `Tundra build success`와 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`의 Stage1/Stage2 재생성·저장 씬 검증을 종료 코드 0으로 완료했다. 기존 권총·자동소총·샷건의 산포각과 시드, 픽업 GUID, LMB 바인딩과 `DEADLINE` Down 기반 준비 분기는 그대로이며, 공용 발사 경로가 수평·수직에 서로 다른 해시 채널 상수를 사용하고 Unity 전역 `Random`을 사용하지 않는 것을 정적으로 확인했다. 플레이 모드와 `PrototypePlayModeSmokeTest`는 사용자 요청에 따라 **미실행**했으므로 실제 상하 탄도 체감·명중 분포·적 자동소총 점사와 `DEADLINE` 준비 발사 결과는 **확인 불가**다.
 
 - 2026-08-04 빈 탄약 총기 발사 시도 시간 활동은 `WeaponController.TryFire`의 기존 성공 bool과 별도 `fireAttempted` 결과를 통해 구현했다. 일반 플레이어 발사에서만 구성·참조가 유효하고 사용 간격이 지난 빈 탄약 시도에도 기존 `fireActivity: 0.9`, `fireActivityDuration: 0.16` 펄스를 적용하며, 투사체·탄약·발사 순번은 변경하지 않는다. 빈 자동소총 홀드는 무기 사용 간격마다 시도하도록 다음 사용 시각을 전진시킨다. `DEADLINE`은 기존 준비 발사 경로를 유지해 빈 탄약이면 행동을 준비하거나 슬롯을 소비하지 않는다. Unity 6000.1.13f1 배치 컴파일은 `Tundra build success`와 종료 코드 0으로 완료했지만, 정식 테스트와 실제 LMB 빈 탄약 입력을 대조하는 스모크가 없어 플레이 모드 결과는 **확인 불가**다.
+- 2026-08-05 Stage3 `Afterimage Club`은 Unity 6000.1.13f1 배치 컴파일, `Stage3SceneBuilder.ValidateSavedStage3`, 기존 `PrototypeSceneBuilder.ValidateSavedPrototypeRoom`의 Stage1/Stage2 회귀 검증을 종료 코드 0으로 통과했다. `Stage3PlayModeSmokeTest`도 Stage3 활성화, 플레이어 생존·`DEADLINE` 2회, 적 3명과 모터 3개, 픽업 2개, 월드 시간·스테이지·리플레이 초기화, 전용 `Stage3Navigation.asset`, 리플레이 등록 시야 조명 2개, Synty 캐릭터 시각 4개, 플레이어·적 NavMesh 스폰을 검증해 **구현 완료** 상태다. 실제 키보드/마우스 전투, 적 전멸, 클리어 리플레이의 시각 품질과 정적 캐릭터 포즈 체감은 자동 검증 범위 밖이므로 **확인 불가**다.
+- 2026-08-05 Stage4 `Last Call Rooftop`은 Unity 6000.1.13f1 배치 모드의 `Stage4SceneBuilder.BuildAndValidateFromCommandLine`과 `Stage4PlayModeSmokeTest.RunFromCommandLine`을 종료 코드 0으로 통과해 **구현 완료** 상태다. 스모크는 플레이어 생존·`DEADLINE` 2회, 원거리형 3명/근접형 2명과 모터 5개, 픽업 2개, 월드 시간·스테이지·리플레이 초기화, 전용 `Stage4Navigation.asset`, 리플레이 시야 조명 2개, Synty 시각 6개, 플레이어·적 NavMesh 스폰, 정적 환경의 리플레이 추적 제외를 확인한다. 실제 키보드/마우스 전투와 옥상 엄폐·경로·클리어 리플레이의 시각 품질은 자동 검증 범위 밖이므로 **확인 불가**다. 스모크 종료 뒤 기존 `WorldTimeVisualFeedback.OnValidate`의 Map Fill Light 생성 중 Unity 진단이 출력되었으나, 스모크의 모든 어설션은 통과했다.
 
 ## 2. 프로젝트 개요
 
@@ -57,10 +59,12 @@
 - 플레이어가 이동하거나 조준 방향을 돌리거나 사격·투척·대시할 때 월드 시간이 빨라진다.
 - 플레이어는 실제 시간 기준으로 조작되며, 적·투사체·투척 무기 등 월드 객체는 별도의 `WorldDeltaTime`으로 진행된다.
 - 적은 베이크된 NavMesh 경로와 충돌 안전 캡슐 이동으로 엄폐물을 우회하며, 시작 유형과 무관하게 현재 장비에 따라 총기 거리 유지·근접 추격·빈손 주먹 및 무기 탐색을 선택한다.
-- 플레이어의 시야 부채꼴 또는 주변 원형 반경 4 안에 있고 장애물에 가리지 않은 적만 렌더링된다. 두 스테이지 모두 같은 반경을 밝히는 원형 Point Light를 사용하며, 어두운 Stage2에서는 부채꼴 손전등과 함께 가시성을 보조한다.
+- 플레이어의 시야 부채꼴 또는 주변 원형 반경 4 안에 있고 장애물에 가리지 않은 적만 렌더링된다. 네 스테이지 모두 같은 반경을 밝히는 원형 Point Light를 사용하며, 어두운 Stage2·Stage3·Stage4에서는 부채꼴 손전등과 함께 가시성을 보조한다.
 - `Q` 키를 누르면 탄환·이동 상태와 무관하게 `DEADLINE` 하드 프리즈가 발동하며 씬당 최대 2회 사용한다. 마우스를 멈추면 월드는 완전히 정지하고, 정지 중 마우스 회전은 최저 월드 배율로만 진행된다. 최대 2개의 사격·근접 공격·투척 행동을 준비한 뒤 이동으로 동시에 해제한다.
 - 무기는 종류에 따라 발사하거나 근접 공격에 사용하며, 던져 모든 적을 기절·무장 해제하거나, 플레이어와 적이 바닥 무기를 확보하고, 적에게서 날아온 무기를 플레이어가 공중에서 가로챌 수 있다.
 - 모든 적을 제거하면 실시간 시뮬레이션을 멈추고 기록된 시각 상태를 하이브리드 시간축으로 반복 재생한다. 일반 구간은 1.00배 월드 시간, `DEADLINE`은 현실 시간 기반 시네마틱 구간과 해제 후 0.50배 후속 구간으로 표시한다.
+- Stage3는 중앙 댄스 플로어의 개방 시야, 서쪽 바의 긴 교전선, 동쪽 라운지의 분절 엄폐를 결합해 제한 시야·월드 시간·대시·무기 투척을 서로 다른 거리에서 사용하도록 구성한다.
+- Stage4는 옥상 가장자리의 차단 난간, 서쪽 서비스 카운터, 동쪽 소파 라운지, 북쪽 바와 중앙 테이블 엄폐를 조합해 다섯 적을 짧은 교전선과 긴 사격선에 나눠 배치한다.
 
 근거 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`
 
@@ -76,20 +80,20 @@
 
 현재 구현 기준의 실제 흐름은 다음과 같다.
 
-1. 빌드 인덱스 0의 `Stage1` 또는 에디터에서 연 씬을 시작한다.
+1. 빌드 인덱스 0의 `Stage1` 또는 에디터/별도 로드로 `Stage2`, `Stage3`, `Stage4` 중 하나를 시작한다.
 2. 플레이어는 권총 8발을 장비한 상태로 시작한다.
-3. 이동·조준으로 월드 시간 속도를 조절하며 세 명의 적과 교전한다.
+3. 이동·조준으로 월드 시간 속도를 조절하며 Stage1~Stage3의 세 적 또는 Stage4의 다섯 적과 교전한다.
 4. 사격, 대시, `DEADLINE`, 무기 투척·회수·교환·가로채기를 사용한다.
-5. 적 세 명이 모두 사망하면 스테이지 상태가 `Replaying`으로 바뀌고 리플레이가 반복된다.
+5. 현재 스테이지의 모든 적이 사망하면 스테이지 상태가 `Replaying`으로 바뀌고 리플레이가 반복된다.
 6. 어느 시점이든 `R`을 누르면 현재 씬을 다시 불러온다.
-7. `Stage1`에서 `Stage2`로 자동 전환하거나 리플레이에서 빠져나가는 흐름은 **미구현**이다.
+7. `Stage1 → Stage2 → Stage3 → Stage4` 자동 전환이나 리플레이에서 빠져나가는 흐름은 **미구현**이다.
 
 ### 2.5 현재 확인된 프로젝트 방향
 
 - 3D 물리 기반 전투 프로토타입으로 전환된 상태다. 씬 검증 코드도 `Rigidbody2D`가 없어야 하고 원근 카메라여야 한다고 검사한다.
 - Git 이력에는 `3D 프로토타입 제작`, `KillCam 구현`, `암흑시야와 Light 구현`이 기록되어 있다.
-- 현재 미커밋 변경에는 자동 발사/산탄 무기 정의, 무기별 결정적 수평·수직 탄도 산포, 빈손 플레이어 주먹 공격, 무기별 시작 픽업 프리팹과 재생성된 Stage1/Stage2가 포함된다.
-- `Stage1`과 `Stage2`의 게임 오브젝트 구성은 동일하고 조명 프로필만 다르다. 두 씬을 별도 콘텐츠 단계로 사용할지, 밝기 비교용 변형으로 사용할지는 **확인 불가**다.
+- 현재 미커밋 변경에는 Stage3와 Stage4의 씬·전용 NavMesh·빌더·스모크·미리보기·빌드 설정·문서가 포함된다. 이 작업 이전부터 다수의 Synty 머티리얼 변경과 미추적 `ProjectDeltatime/ProjectSettings/ShaderGraphSettings.asset`이 존재하며, 의도는 **확인 불가**이므로 이번 Stage4 작업 파일과 분리해 보존했다.
+- `Stage1`과 `Stage2`의 게임 오브젝트 구성은 동일하고 조명 프로필만 다르다. `Stage3`와 `Stage4`는 `PolygonNightclubs` 건축·가구·캐릭터를 사용한 서로 다른 레이아웃으로 콘텐츠 차이를 만들지만, 네 씬의 자동 진행 순서는 **미구현**이다.
 
 ## 3. 현재 구현 현황
 
@@ -112,27 +116,29 @@
 | 적 이동·경로 탐색 | 구현 완료 | 외부 `StageNavigation.asset`의 NavMesh 경로를 사용하고 Kinematic Rigidbody 캡슐을 `WorldDeltaTime`만큼 이동. 벽 충돌과 적 간 분리를 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scenes/StageNavigation.asset` | 런타임 동적 NavMesh 재베이크는 없음 |
 | 장비 기반 공통 적 전투 AI | 구현 완료 | `EnemyCombatant`가 현재 장비에 따라 총기 거리 유지·후퇴 사격, 근접 무기 선딜 추격, 빈손 주먹/무기 탐색을 전환하며 `EnemyShooter`/`EnemyChaser`는 시작 유형 래퍼로 유지 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyShooter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyChaser.cs` | 시작 이동 속도는 유지하고 공격 방식은 현재 장비가 결정. 플레이 검증 미실행 |
 | 플레이어/적 체력 | 부분 구현 | 플레이어는 최대 체력 3과 현재 체력, 변경 이벤트를 가지며 주먹 피해 1은 세 번 누적되어 사망한다. 적은 기존처럼 유효 피해 한 번에 사망 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs` | 총기·근접 무기 피해 3은 플레이어 즉사 유지. 세 번 주먹 피격은 런타임 확인 불가 |
-| 시야 부채꼴·암흑 시야 | 구현 완료 | 장애물 Raycast로 메시를 갱신하고, 부채꼴 또는 지면 반경 4 원형 시야 안에서 가리지 않은 적의 몸체·장착 무기를 렌더링. 런타임 손전등과 밝기 4의 원형 Point Light를 생성하며 원형광은 Soft Shadow로 벽·엄폐물에 차단되도록 구성 | `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, 두 스테이지 씬 | 적 AI의 감지 여부와 플레이어 가시성은 별도. 실제 원형 경계·벽 차폐는 확인 불가 |
+| 시야 부채꼴·암흑 시야 | 구현 완료 | 장애물 Raycast로 메시를 갱신하고, 부채꼴 또는 지면 반경 4 원형 시야 안에서 가리지 않은 적의 몸체·장착 무기를 렌더링. 런타임 손전등과 밝기 4의 원형 Point Light를 생성하며 원형광은 Soft Shadow로 벽·엄폐물에 차단되도록 구성 | `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, 네 스테이지 씬 | 적 AI의 감지 여부와 플레이어 가시성은 별도. 실제 원형 경계·벽 차폐는 확인 불가 |
 | 탑다운 카메라 | 구현 완료 | 원근 카메라가 플레이어와 조준 선행 지점을 부드럽게 추적 | `ProjectDeltatime/Assets/_Project/Scripts/Player/TopDownCameraController.cs` | 카메라 1대 |
 | 스테이지 적 등록·클리어 | 구현 완료 | 생존 적을 등록하고 0명이 되면 전투를 막고 리플레이 요청 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 적 3명 고정 콘텐츠 |
 | 사망·재시작 | 구현 완료 | 플레이어 사망 시 전투를 막고 `R`로 현재 씬 재로드 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 체크포인트 없음 |
 | 스테이지 리플레이 | 부분 구현 | 카메라·렌더러·라인·등록 조명을 20Hz 현실 시간으로 기록하고, 일반 구간은 1.00배 월드 시간, `DEADLINE`은 0.8~2.0초 시네마틱과 해제 후 0.50배 후속 구간으로 매핑해 프록시 재생한다. ViewCone은 기록된 보간 포즈에서 매 렌더 프레임 재계산하며 `V`로 암흑/전체 시야를 전환 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | Deadline 중 카메라를 진입 포즈에 고정하고 해제 후 0.2초 동안 복귀. 종료/스킵/다음 씬 없음, 최신 수동 시각 품질·프레임 비용 확인 불가 |
 | HUD | 부분 구현 | IMGUI로 적 수, 체력 `HEALTH 3/3`, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 리플레이 `VIEW DARK`/`VIEW FULL`과 조작법 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 로컬라이징/해상도 대응 없음 |
 | Stage1/Stage2 콘텐츠 | 부분 구현 | 두 씬 모두 플레이어 1, 이동 연사형 2, 근접 추격형 1, 권총·샷건 픽업 2, Navigation 1을 같은 위치에 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab` | 조명만 밝음/어두움으로 다름 |
-| 씬 전환 | 미구현 | 현재 씬 재시작 외에 다른 씬을 로드하는 코드가 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | `Stage1 → Stage2` 흐름 필요 여부 확인 |
+| Stage3 `Afterimage Club` 콘텐츠 | 구현 완료 | Synty 나이트클럽 바·DJ 부스·라운지·댄스 플로어와 캐릭터 4종, 플레이어 1, 이동 연사형 2, 근접 추격형 1, 픽업 2, 전용 Navigation을 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs` | 정적 검증·전용 플레이 모드 스모크 통과. 실조작/클리어 시각 품질은 확인 불가 |
+| Stage4 `Last Call Rooftop` 콘텐츠 | 구현 완료 | Synty 옥상 바·난간·소파 라운지·야외 테이블·화분·화로와 캐릭터 6종, 플레이어 1, 이동 연사형 3, 근접 추격형 2, 픽업 2, 전용 Navigation을 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs` | 정적 검증·전용 플레이 모드 스모크 통과. 실조작/클리어 시각 품질은 확인 불가 |
+| 씬 전환 | 미구현 | 현재 씬 재시작 외에 다른 씬을 로드하는 코드가 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | `Stage1 → Stage2 → Stage3 → Stage4` 흐름 필요 여부 확인 |
 | 메인 메뉴·일시정지·설정 | 미구현 | 관련 씬, UI, 입력, 코드가 없음 | `ProjectDeltatime/Assets/_Project` | 계획 필요 |
 | 일반 아이템·인벤토리 | 미구현 | 무기 1개 즉시 장비/교환 외 슬롯·목록·소모품 시스템 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs` | 계획 필요 |
 | 퀘스트 | 미구현 | 관련 데이터와 코드가 없음 | `ProjectDeltatime/Assets/_Project` | 계획 필요 |
 | 세이브/로드 | 미구현 | 런타임 저장 API와 저장 데이터가 없음 | `ProjectDeltatime/Assets/_Project/Scripts` | 계획 필요 |
 | 사운드 | 미구현 | `AudioSource`, `AudioClip`, 오디오 에셋이 없고 `Audio` 폴더가 비어 있음 | `ProjectDeltatime/Assets/_Project/Audio` | 계획 필요 |
 | 게임패드·리바인딩 | 미구현 | `Keyboard&Mouse` 제어 스킴만 정의 | `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions` | 목표 플랫폼 확인 필요 |
-| 자동 테스트 | 부분 구현 | 커스텀 배치 스모크 코드를 공통 적 상태 API에 맞게 컴파일 가능하도록 갱신했으나 이번 기능 변경에서는 실행하지 않음 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs` | Unity 컴파일·씬 생성기 정적 검증만 통과, 런타임 결과 확인 불가 |
+| 자동 테스트 | 부분 구현 | 기존 프로토타입 스모크와 Stage3·Stage4 전용 초기화·NavMesh 스모크가 있으나 정식 Unity Test Framework 어셈블리는 없음 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4PlayModeSmokeTest.cs` | Stage3/Stage4 스모크 통과, 실입력 전투·클리어는 확인 불가 |
 
 ## 4. 핵심 게임 루프
 
 ```mermaid
 flowchart TD
-    A["Stage1 또는 Stage2 로드"] --> B["권총 8발·적 3명으로 시작"]
+    A["Stage1, Stage2, Stage3 또는 Stage4 로드"] --> B["권총 8발·스테이지별 적 구성으로 시작"]
     B --> C["이동·조준·대시로 위치와 월드 시간 조절"]
     C --> D["사격 / 무기 투척 / DEADLINE 행동 준비"]
     D --> E["적 공격 회피·기절·무장 해제"]
@@ -148,7 +154,7 @@ flowchart TD
 
 ### 4.1 게임 시작
 
-- `EditorBuildSettings.asset`의 활성 씬 순서는 `Stage1`, `Stage2`다.
+- `EditorBuildSettings.asset`의 활성 씬 순서는 `Stage1`, `Stage2`, `Stage3`, `Stage4`다.
 - 별도 부트스트랩이나 메인 메뉴는 없다.
 - 각 씬은 플레이어 1명, 권총 픽업 1개, 이동 연사형 2명, 지속 추격 근접형 1명, 엄폐물과 베이크된 NavMesh가 있는 방으로 시작한다.
 - 플레이어는 권총, 사격 시작 적 2명은 자동소총, 근접 시작 적 1명은 획득·투척 가능한 `MeleeWeapon.asset`을 장비하고 시작한다.
@@ -273,12 +279,12 @@ flowchart TD
 ### 5.8 스테이지 및 게임 진행 관리
 
 - **시스템 목적:** 생존 적 수, 플레이 시간, 클리어/사망 상태, 재시작을 관리한다.
-- **현재 동작 방식:** `EnemyHealth`가 활성화 시 자신을 등록하고 사망 시 제거한다. 생존 적 0명이 되면 전투를 비활성화하고 리플레이를 요청한다.
+- **현재 동작 방식:** `EnemyHealth`가 활성화 시 자신을 등록하고 사망 시 제거한다. 생존 적 0명이 되면 전투를 비활성화하고 리플레이를 요청한다. `Stage1`, `Stage2`, `Stage3`, `Stage4`는 빌드 설정에 순서대로 등록되어 있지만 현재 씬 외의 다음 단계는 자동으로 로드하지 않는다.
 - **주요 클래스:** `StageController`
 - **데이터 흐름:** 적 등록/사망 → 생존 집합 → 스테이지 상태 → 플레이어 전투 및 리플레이 → HUD
 - **다른 시스템과의 의존성:** 적 체력, 플레이어 체력/전투, 입력, 리플레이, SceneManager
 - **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`
-- **개선이 필요한 부분:** 다음 씬 전환, 결과 화면, 스테이지 데이터, 체크포인트, 스폰 웨이브가 없다.
+- **개선이 필요한 부분:** `Stage1 → Stage2 → Stage3 → Stage4` 전환, 결과 화면, 스테이지 데이터, 체크포인트, 스폰 웨이브가 없다.
 
 ### 5.9 리플레이
 
@@ -368,8 +374,10 @@ flowchart TD
 |---:|---|---|---|---|
 | 0 | `Stage1` | 밝은 조명 프로필의 전투 방 | Ambient 1.0, Directional 0.9, Map Fill 1.5, 안개 35~70 | 부분 구현 |
 | 1 | `Stage2` | 어두운 조명/암흑 시야 프로필의 동일 전투 방 | Ambient 0.35, Directional 0.06, Map Fill 0, 안개 19~42 | 부분 구현 |
+| 2 | `Stage3` | `Afterimage Club` 나이트클럽 전투 공간 | Synty 모듈형 클럽, 마젠타·시안·바이올렛·블루 정적 포인트 조명 4개, 전용 NavMesh | 구현 완료 |
+| 3 | `Stage4` | `Last Call Rooftop` 옥상 라운지 전투 공간 | Synty 옥상 바·난간·라운지·야외 테이블, 앰버·시안·마젠타·문라이트 정적 조명 4개, 전용 NavMesh | 구현 완료 |
 
-근거 파일: `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`
+근거 파일: `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4Navigation.asset`
 
 ### 6.2 씬 전환 흐름
 
@@ -384,23 +392,37 @@ flowchart LR
     H --> I["Stage2 리플레이 반복"]
     H --> J["R: Stage2 재로드"]
     D -. "자동 전환 미구현" .-> F
+    K["Stage3"] --> L["에디터 직접 실행 또는 별도 로드 필요"]
+    L --> M["Afterimage Club 전투"]
+    M --> N["Stage3 리플레이 반복"]
+    M --> O["R: Stage3 재로드"]
+    I -. "자동 전환 미구현" .-> K
+    P["Stage4"] --> Q["에디터 직접 실행 또는 별도 로드 필요"]
+    Q --> R["Last Call Rooftop 전투"]
+    R --> S["Stage4 리플레이 반복"]
+    R --> T["R: Stage4 재로드"]
+    N -. "자동 전환 미구현" .-> P
 ```
 
 ### 6.3 각 씬의 주요 오브젝트
 
-두 씬은 동일한 구성 요소 수를 가지며 권총과 샷건 픽업을 각각 하나씩 배치한다.
+네 씬은 공통 전투 시스템과 권총·샷건 픽업을 공유한다. Stage1/Stage2는 같은 산업 전투 방이며 Stage3와 Stage4는 별도 `PolygonNightclubs` 레이아웃과 전용 NavMesh를 사용한다.
 
 - `Systems`: `WorldTimeActivity`, `WorldTimeController`, `StageReplayController`, `StageController`
 - `Player`: 3D Rigidbody, 입력, 체력, 이동, 조준, 대시, 전투, `DEADLINE`, 무기
 - `Vision Cone`: 동적 메시, 시야 머티리얼, 런타임 조명 생성
 - `Main Camera`: 원근 카메라, 탑다운 추적, 월드 시간 시각 피드백
-- `Navigation`: `NavMeshSurface`와 외부 `StageNavigation.asset` 참조
+- `Navigation`: `NavMeshSurface`와 Stage1/Stage2의 `StageNavigation.asset`, Stage3의 `Stage3Navigation.asset`, Stage4의 `Stage4Navigation.asset` 참조
 - `Enemy West`, `Enemy East`: 거리 유지·4발 점사를 수행하는 이동 연사형 2명
 - `Enemy Center`: 플레이어 현재 위치를 계속 따라가는 근접 추격형 1명
 - `Pistol Pickup`: 탄약 8발 권총 픽업 1개
 - `Shotgun Pickup`: 탄약 6발 샷건 픽업 1개. `ShotgunPickup.prefab`이 `Shotgun.asset` GUID를 직접 참조한다.
-- `Industrial Room`: 바닥, 외벽 4개, 중앙 엄폐물 3개, 상자 더미 2개, 바닥 가이드
-- `Directional Key Light`, `Blue Bay Light`, `Red Alert Light`
+- `Industrial Room`(Stage1/Stage2): 바닥, 외벽 4개, 중앙 엄폐물 3개, 상자 더미 2개, 바닥 가이드
+- `Stage3 - Afterimage Club`: 6×6 Synty 바닥 모듈, 둘레 벽, 서쪽 바, 북쪽 DJ 부스·대형 스피커, 동쪽 소파·테이블 라운지, 중앙 댄스 플로어, Layer 8 `VisionObstacle` 엄폐 콜라이더
+- `Nightclub Characters`(Stage3): Party Female 01 플레이어, Bartender Male 원거리 적, Bouncer Male 근접 적, Party Male 02 원거리 적. 기존 캡슐 게임플레이 루트에 시각 프리팹을 자식으로 연결하고 원본 콜라이더와 루트 모션을 끈다.
+- `Stage4 - Last Call Rooftop`: 7×7 Synty 바닥 모듈, 옥상 난간, 서쪽 서비스 카운터, 북쪽 바, 동쪽 소파 라운지, 중앙 야외 테이블·화분·화로, Layer 8 `VisionObstacle` 엄폐 콜라이더 13개
+- `Rooftop Characters`(Stage4): 기존 캡슐 게임플레이 루트에 Synty 캐릭터 시각 6개를 자식으로 연결한다. 런타임 `CharacterVisualController`가 시야 가시성·피격·기절 색을 시각 자식에 반영한다.
+- Stage1/Stage2의 `Directional Key Light`, `Blue Bay Light`, `Red Alert Light`; Stage3의 방향/필 조명과 마젠타·시안·바이올렛·블루 포인트 조명 4개; Stage4의 앰버·시안·마젠타·문라이트 포인트/방향 조명 4개
 - `Debug HUD`
 
 ### 6.4 프리팹 구조
@@ -427,11 +449,14 @@ flowchart LR
 
 ### 6.6 현재 확인된 콘텐츠
 
-- 전투 방 레이아웃 1종
-- 조명 프로필 2종
+- 전투 레이아웃 3종: 산업 전투 방, `Afterimage Club`, `Last Call Rooftop`
+- 산업 전투 방 조명 프로필 2종과 Stage3 나이트클럽·Stage4 옥상 라운지 조명 2종
 - 적 유형 2종: 이동 연사형, 지속 추격 근접형
 - 무기 데이터 4종: 권총, 자동소총, 샷건, 근접 무기
 - 픽업/투척/공중 드롭 표현
+- `ProjectDeltatime/Assets/Synty/PolygonNightclubs`의 모듈형 건축·바·DJ·라운지·옥상 가구 프리팹과 캐릭터를 Stage3/Stage4에서 사용
+- Stage3 생성 미리보기 `ProjectDeltatime/Assets/_Project/Art/Generated/Stage3Preview.png`
+- Stage4 생성 미리보기 `ProjectDeltatime/Assets/_Project/Art/Generated/Stage4Preview.png`
 - 프로토타입 머티리얼 14개, 커스텀 시야 셰이더 3개
 - `VisionAlwaysVisible`, `VisionHiddenArea`, `VisionStencilWriter` 머티리얼과 셰이더는 현재 씬/프리팹에서 직접 참조되지 않는다.
 - `Circle.png`, `Square.png`, `PrototypeRoom3DPreview.png`도 현재 씬/프리팹에서 직접 참조되지 않는다.
@@ -571,9 +596,15 @@ flowchart TD
 | `EnemyShooter` | 자동소총 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
 | `EnemyChaser` | 근접 무기 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
 | `StageController` | 적 생존 집합과 스테이지 상태 |
-| `StageReplayController` | 카메라/렌더러/라인/조명 샘플 기록과 프록시 재생 |
+| `StageReplayController` | 카메라/렌더러/라인/조명 샘플 기록과 프록시 재생. `ReplayExcluded` 부모 아래 정적 렌더러는 추적에서 제외 |
+| `ReplayExcluded` | 리플레이 프록시로 복제하지 않을 정적 환경 루트를 표시 |
+| `CharacterVisualController` | Synty 시각 자식의 렌더러 가시성·런타임 피격/기절 색을 게임플레이 루트와 동기화 |
 | `VisionCone` | 시야 메시, 가시성 판정, 런타임 시야 조명 |
 | `PrototypeSceneBuilder` | 두 씬, NavMeshData, 프리팹, 머티리얼, 권총/자동소총/샷건/근접 무기 데이터와 무기별 시작 픽업 재생성 및 검증 |
+| `Stage3SceneBuilder` | Stage1/Stage2를 재생성하지 않고 Stage3 나이트클럽 레이아웃·Synty 시각·전용 NavMesh·미리보기·빌드 설정을 생성하고 정적으로 검증 |
+| `Stage3PlayModeSmokeTest` | Stage3 공통 시스템·콘텐츠 수·리플레이 시야 조명·Synty 캐릭터·NavMesh 스폰을 배치 플레이 모드에서 검증 |
+| `Stage4SceneBuilder` | Stage3를 변경하지 않고 Stage2의 공통 런타임 연결을 기반으로 Stage4 옥상 레이아웃·Synty 시각·전용 NavMesh·미리보기·빌드 설정을 생성하고 정적으로 검증 |
+| `Stage4PlayModeSmokeTest` | Stage4 공통 시스템·5적 구성·리플레이 제외 정적 환경·시야 조명·Synty 캐릭터·NavMesh 스폰을 배치 플레이 모드에서 검증 |
 
 ### 8.3 싱글턴 사용 여부
 
@@ -617,11 +648,11 @@ Unity 버전: `6000.1.13f1`
 
 - 사용자 정의 Tag: 없음
 - 사용자 정의 Layer: 인덱스 8 `VisionObstacle`
-- 씬의 Layer 사용: 각 씬에서 Default 30개, `VisionObstacle` 13개 GameObject
+- 씬의 Layer 사용: Stage1/Stage2는 각각 Default 30개와 `VisionObstacle` 13개, Stage3는 Default 32개와 `VisionObstacle` 10개, Stage4는 `VisionObstacle` 13개 GameObject
 - Sorting Layer: `Default`만 존재
 - 활성 Input Handler: 새 Input System
 - 레거시 `InputManager.asset`에는 기본 축 18개가 남아 있으나 런타임 입력 코드는 새 Input System을 사용한다.
-- 빌드 씬: `Stage1`, `Stage2`
+- 빌드 씬: `Stage1`, `Stage2`, `Stage3`, `Stage4`
 - 에디터 직렬화: Force Text
 - 제품명/회사명: `Deltatime` / `DefaultCompany`
 - 기본 화면 크기: 1920×1080, 창 크기 조절 비활성, 백그라운드 실행 비활성
@@ -635,18 +666,20 @@ Unity 버전: `6000.1.13f1`
 - 월드 객체의 시간 진행에는 `UnityEngine.Time.deltaTime` 대신 `WorldTimeController.WorldDeltaTime`을 사용해야 현재 콘셉트가 유지된다.
 - 플레이어 조작은 의도적으로 `unscaledDeltaTime`을 사용한다. 신규 플레이어 행동이 월드 시간에 종속되어야 하는지는 별도 결정이 필요하다.
 - `PrototypeSceneBuilder`를 재실행하면 두 씬, `StageNavigation.asset`, 핵심 프리팹/머티리얼과 권총/자동소총/근접 무기 수치를 다시 생성 또는 갱신한다. 수동 씬·NavMesh 수정과 빌더 상수의 소유권을 분리해야 한다.
+- `Stage3SceneBuilder`는 Stage2를 임시 기반으로 열어 공통 시스템을 보존한 뒤 Stage3만 저장하고, 전용 `Stage3Navigation.asset`을 베이크한다. Stage1/Stage2나 공유 `StageNavigation.asset`을 재생성하지 않으므로 Stage3 변경은 이 독립 빌더에서 관리한다.
+- `Stage4SceneBuilder`는 Stage3를 열거나 수정하지 않고 Stage2의 공통 런타임 연결만 임시 기반으로 사용한 뒤 Stage4만 저장하고, 전용 `Stage4Navigation.asset`을 베이크한다. Stage1/Stage2/Stage3나 기존 NavMesh 에셋을 재생성하지 않으므로 Stage4 변경은 이 독립 빌더에서 관리한다.
 - 적의 실제 이동량과 상태 타이머는 `WorldDeltaTime`을 사용해야 하며, NavMesh는 경로만 제공하고 Transform을 자동 이동시키지 않는다.
 - 신규 가시성 장애물은 Layer 8 `VisionObstacle`에 배치해야 시야 메시와 공중 드롭 충돌 예측에 반영된다.
 - 새 런타임 조명은 리플레이에 보여야 한다면 `StageReplayController.RegisterLight`로 등록해야 한다.
-- 새 렌더러 타입은 현재 리플레이가 지원하는 `MeshRenderer`, `SkinnedMeshRenderer`, `LineRenderer`인지 확인해야 한다.
+- 새 렌더러 타입은 현재 리플레이가 지원하는 `MeshRenderer`, `SkinnedMeshRenderer`, `LineRenderer`인지 확인해야 한다. 정적 환경은 `ReplayExcluded`로 표시할지 검토해야 한다.
 - 전체 시야에서 별도 가시성 규칙이 필요한 적 시각 요소는 `EnemyCombatant.TryGetReplayVisibility`와 녹화 정책을 함께 갱신해야 하며, 경고선·일반 이펙트는 자동으로 강제 표시되지 않는다.
 - 새 무기는 `WeaponDefinition`만 추가하는 것으로 끝나지 않고 투사체/투척 프리팹과 HUD 표현 호환성을 검토해야 한다.
 
 ### 8.9 기술 부채
 
-- 이번 기능의 `EnemyCombatant`, `MeleeAttackResolver`, `MeleeWeapon.asset`과 메타 파일은 작업 트리에서 미추적 상태이므로 변경 확정 시 함께 추적해야 한다.
-- 정식 테스트 어셈블리와 단위/플레이 모드 테스트는 없다. 커스텀 배치 스모크는 2026-08-03에 통과했지만, 마우스 클릭별 조준점·총구 탄도 같은 입력 세부 조건을 직접 대조하는 테스트는 없다.
-- `StageReplayController`는 20Hz마다 전체 활성 GameObject의 렌더러를 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다. ViewCone 정점 샘플은 제거했지만 암흑 시야 리플레이의 매 프레임 Raycast·Normals 재계산 비용은 프로파일링이 필요하며, 동적 `VisionObstacle`이 추가되면 과거 상태와 달라질 수 있다. 일반 재질 색상·라인 배열은 변경 샘플마다 할당된다.
+- 다수의 Synty 머티리얼 변경과 미추적 `ProjectDeltatime/ProjectSettings/ShaderGraphSettings.asset`은 Stage3 작업 전에 존재해 의도가 **확인 불가**다. 후속 커밋에서는 이번 신규 파일과 섞이지 않도록 소유권을 확인해야 한다.
+- 정식 테스트 어셈블리와 단위 테스트는 없다. 커스텀 Stage3·Stage4 플레이 모드 스모크는 2026-08-05에 통과했지만, 마우스 클릭별 조준점·총구 탄도, 실제 전투·클리어 같은 입력 세부 조건을 직접 대조하지 않는다.
+- `StageReplayController`는 Stage4 정적 환경을 `ReplayExcluded`로 제외하지만, 나머지 활성 GameObject의 렌더러를 20Hz마다 검색하고 기록 길이에 상한이 없어 긴 플레이에서 비용이 증가한다. ViewCone 정점 샘플은 제거했지만 암흑 시야 리플레이의 매 프레임 Raycast·Normals 재계산 비용은 프로파일링이 필요하며, 동적 `VisionObstacle`이 추가되면 과거 상태와 달라질 수 있다. 일반 재질 색상·라인 배열은 변경 샘플마다 할당된다.
 - 리플레이가 시작되면 대부분의 `MonoBehaviour`를 끄며, 현재 반복 리플레이 구조에서는 복구 경로가 없다.
 - 플레이어/적/시간/스테이지 밸런스 수치가 씬 컴포넌트와 코드 기본값에 분산되어 있다.
 - 런타임 코드는 단일 기본 어셈블리에 있고 `.asmdef` 경계가 없다.
@@ -654,6 +687,7 @@ Unity 버전: `6000.1.13f1`
 - 사용되지 않는 것으로 확인된 시야 스텐실 머티리얼/셰이더와 생성 이미지가 남아 있다.
 - `Assets/_Project/Tests` 폴더는 비어 있다.
 - `Stage1`과 `Stage2`가 조명 외에는 동일하여 콘텐츠 중복 관리 위험이 있다.
+- Stage3·Stage4 Synty 캐릭터는 게임플레이 캡슐의 시각 자식이며 원본 Animator를 비활성화한 완화 정적 포즈다. Stage4는 가시성·피격·기절 색을 `CharacterVisualController`로 연결했지만, 이동·사격·피격 애니메이션과 무기 손 부착은 **부분 구현** 상태다.
 - `DamageHit.Damage`가 현재 생명력 계산에 사용되지 않는다.
 - `TopDownCameraController`의 `input` 참조는 설정 검증에 사용되지만 추적 로직에서는 직접 사용하지 않는다.
 
@@ -746,9 +780,18 @@ Unity 버전: `6000.1.13f1`
 | 적 수 | 3명 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 이동 연사형 2명, 근접 추격형 1명 |
 | 방 크기 | 20 × 18 | `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs` | 바닥 스케일 |
 | 카메라 FOV | 49도 | 같은 빌더/씬 | 원근 카메라 |
+| Stage3 적/픽업/`DEADLINE` | 3명 / 2개 / 2회 | `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity` | 이동 연사형 2명, 근접 추격형 1명, 권총·샷건 픽업 |
+| Stage3 플레이어/적 스폰 | `(0, -7.1)` / `(-6.5, 3.3)`, `(0, 5.2)`, `(6.2, 2.6)` | `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity` | 표기는 직렬화된 월드 X/Z, 네 지점 모두 전용 NavMesh 샘플 통과 |
+| Stage3 카메라 FOV | 52도 | 같은 씬 | 넓어진 클럽 전투 폭을 표시 |
+| Stage3 정적 테마 조명 | 4개 | 같은 씬 | 서쪽 바 마젠타, 동쪽 라운지 시안, 중앙 바이올렛, 남쪽 입구 블루 |
+| Stage4 적/픽업/`DEADLINE` | 5명 / 2개 / 2회 | `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity` | 이동 연사형 3명, 근접 추격형 2명, 권총·샷건 픽업 |
+| Stage4 플레이어/적 스폰 | `(0, -7.6)` / `(-8, 3.7)`, `(0.4, 5.5)`, `(8, 3.4)`, `(-1.8, 7.3)`, `(4.6, -2.8)` | 같은 씬 | 표기는 직렬화된 월드 X/Z, 여섯 지점 모두 전용 NavMesh 샘플 통과 |
+| Stage4 카메라 FOV | 56도 | 같은 씬 | 넓은 옥상 테라스와 양측 엄폐를 표시 |
+| Stage4 정적 테마 조명 | 4개 | 같은 씬 | 북쪽 바 앰버, 동쪽 라운지 시안, 서쪽 카운터 마젠타, 테라스 문라이트 |
+| Stage4 정적 환경 리플레이 추적 | 제외 | 같은 씬의 `ReplayExcluded` | 정적 환경의 프록시 중복 생성을 막고, 플레이어·적·픽업은 계속 기록 |
 | 카메라 조준 선행 | 2.25 | 같은 씬의 `TopDownCameraController` | 조준 방향 거리 |
 
-두 씬에서 공통 시스템 수치는 동일하다. `Stage2`의 차이는 조명/안개 수치뿐이다.
+네 씬의 공통 전투 시스템 수치는 동일하다. `Stage2`는 Stage1과 조명/안개만 다르고, Stage3와 Stage4는 레이아웃·시각 프리팹·전용 NavMesh·카메라 FOV와 환경 조명이 다르다.
 
 ## 10. 미구현 및 개선 과제
 
@@ -758,8 +801,9 @@ Unity 버전: `6000.1.13f1`
 | 미추적 핵심 에셋 정리 | 공통 전투/근접 판정 스크립트와 근접 무기 에셋·메타가 미추적 상태 | 변경 확정 시 코드/에셋과 메타를 함께 추적하고 GUID 참조 재확인 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | P0 | `git status`에서 의도치 않은 누락이 없고 씬/에셋 참조 GUID가 정상 |
 | `DEADLINE` 자동 테스트 | 씬 연결만 확인, 전용 테스트 없음 | Q 발동, 2개 제한, 해제, 쿨다운, 사망/대시·캐치 프리즈 중 중단 테스트 | `DeadlineController.cs`, `PlayerCombat.cs`, `PlayerInputReader.cs` | P1 | 정상/경계/실패 경로가 자동화되고 최신 테스트 통과 |
 | 공중 가로채기 자동 테스트 | 코드·프리팹·씬은 존재, 최신 플레이 결과 없음 | 입력 버퍼, 가장 가까운 무기, 교환 드롭, 장애물 착지, 프리즈 검증 | `InterceptableWeapon.cs`, `EnemyWeaponDrop.cs`, `PlayerCombat.cs` | P1 | 가로채기와 착지 흐름이 반복 가능한 테스트로 통과 |
-| 스테이지 전환/종료 흐름 | 현재 리플레이 무한 반복과 현재 씬 재시작만 가능 | `Stage1 → Stage2`, 결과 화면, 리플레이 스킵/다음 단계 정책 결정 및 구현 | `StageController.cs`, `StageReplayController.cs`, `EditorBuildSettings.asset` | P1 | 클리어 후 사용자가 정의된 다음 상태로 이동 가능 |
+| 스테이지 전환/종료 흐름 | 현재 리플레이 무한 반복과 현재 씬 재시작만 가능 | `Stage1 → Stage2 → Stage3 → Stage4`, 결과 화면, 리플레이 스킵/다음 단계 정책 결정 및 구현 | `StageController.cs`, `StageReplayController.cs`, `EditorBuildSettings.asset` | P1 | 클리어 후 사용자가 정의된 다음 상태로 이동 가능 |
 | Stage1/Stage2 역할 차별화 | 조명 외 동일 콘텐츠 | 학습/도전 역할 확정, 적·배치·규칙·목표 차별화 또는 단일 씬+프로필화 | 두 씬, `PrototypeSceneBuilder.cs` | P1 | 두 씬의 존재 이유가 기획과 데이터에서 명확하거나 중복이 제거됨 |
+| Stage3/Stage4 캐릭터 애니메이션 | Synty 캐릭터는 정적 완화 포즈로 표시되는 **부분 구현**이며 Stage4만 가시성·피격·기절 색 연동이 있음 | 이동·조준·사격·근접·피격·사망 애니메이터와 손 무기 부착 정책 구현 | `Stage3.unity`, `Stage4.unity`, `CharacterVisualController.cs`, `Assets/Synty/PolygonNightclubs/Prefabs/Characters` | P2 | 게임플레이 상태와 캐릭터/무기 포즈가 일치하고 리플레이에서도 재현 |
 | 핵심 규칙 온보딩 | 하단 조작 텍스트 외 튜토리얼 없음 | 시간 규칙, `DEADLINE`, 투척/가로채기를 단계적으로 설명 | `GameHud.cs`, 신규 튜토리얼 시스템 | P1 | 신규 플레이어가 외부 설명 없이 핵심 루프를 수행 가능 |
 | 체력 피드백 확장 | 플레이어 HP 3과 숫자 HUD, 적은 원힛 사망 | 피격 무적·체력 회복·시각/음향 피드백 및 적 HP 정책 설계 | `CombatContracts.cs`, `PlayerHealth.cs`, `EnemyHealth.cs`, `GameHud.cs` | P1 | 피해 종류와 누적 체력이 플레이·HUD·테스트에서 일관되게 확인 |
 | 제품용 UI | IMGUI 디버그 HUD | Canvas/UI Toolkit 전환, 반응형 배치, 상태 우선순위, 접근성 | `GameHud.cs` | P2 | 목표 해상도에서 겹침 없이 모든 상태와 입력 장치가 표시 |
@@ -793,16 +837,22 @@ Unity 버전: `6000.1.13f1`
 | 클리어 보상은 리플레이 | 적 0명 시 전투를 끄고 시각 리플레이를 반복 | `StageController.cs`, `StageReplayController.cs` |
 | 리플레이 전체 시야는 선택형 토글 | 리플레이는 기록된 암흑 시야로 시작하고 `V`로 ViewCone·동적 조명을 제거한 밝은 전체 시야를 전환한다. 반복 중 선택을 유지하고 씬 재시작 시 기본 암흑 시야로 초기화 | `PlayerControls.inputactions`, `StageController.cs`, `StageReplayController.cs`, `GameHud.cs` |
 | ViewCone은 리플레이 중 재계산 | 정점 배열을 20Hz로 저장하지 않고, 기록된 보간 포즈와 현재 정적 `VisionObstacle` Raycast로 프록시 메시를 매 렌더 프레임 계산한다. 전체 시야에서는 메시를 숨기고 계산하지 않는다 | `VisionCone.cs`, `StageReplayController.cs` |
-| 제한 시야와 조명 결합 | 동적 시야 메시와 60도 손전등, 양 스테이지 공통 지면 반경 4 원형광을 사용. 적 렌더러는 부채꼴·원형 시야의 합집합과 공통 장애물 Raycast로 토글하며, 원형광은 Point Light 거리 감쇠와 실시간 Soft Shadow로 부드러운 경계·장애물 차폐를 구성 | `VisionCone.cs`, `EnemyCombatant.cs`, 두 씬 |
+| 제한 시야와 조명 결합 | 동적 시야 메시와 60도 손전등, 네 스테이지 공통 지면 반경 4 원형광을 사용. 적 렌더러는 부채꼴·원형 시야의 합집합과 공통 장애물 Raycast로 토글하며, 원형광은 Point Light 거리 감쇠와 실시간 Soft Shadow로 부드러운 경계·장애물 차폐를 구성 | `VisionCone.cs`, `EnemyCombatant.cs`, 네 씬 |
 | 에디터 빌더가 프로토타입 콘텐츠 생성 | 메뉴/배치 메서드로 씬·프리팹·머티리얼·데이터·빌드 설정을 생성 | `PrototypeSceneBuilder.cs` |
 | 두 스테이지는 조명 프로필로 분리 | 동일 오브젝트/수치에 밝은 Stage1과 어두운 Stage2 프로필 적용 | 두 씬과 빌더 |
+| Stage3는 독립 나이트클럽 콘텐츠로 제작 | Stage1/Stage2의 산업 전투 방은 보존하고, 별도 빌더가 `PolygonNightclubs` 모듈·캐릭터로 바/댄스 플로어/라운지 레이아웃과 전용 NavMesh를 생성 | `Stage3SceneBuilder.cs`, `Stage3.unity`, `Stage3Navigation.asset` |
+| Stage3 Synty 시각과 게임플레이 충돌 분리 | 기존 검증된 플레이어/적 캡슐·Rigidbody·AI 루트를 유지하고 Synty 캐릭터를 렌더링 자식으로 연결한다. 프리팹 콜라이더·Animator 루트 모션은 끄고 완화 정적 포즈를 사용 | `Stage3SceneBuilder.cs`, `Stage3.unity` |
+| Stage3 환경 조명은 정적 테마 조명 | 나이트클럽 포인트 조명 4개는 환경 연출로 유지하고, 리플레이 등록은 기존 플레이어 시야 Spot/Point Light 2개만 사용 | `Stage3SceneBuilder.cs`, `VisionCone.cs`, `StageReplayController.cs` |
+| Stage4는 Stage3 비참조 옥상 콘텐츠로 제작 | Stage3 씬·NavMesh·빌더를 수정하지 않고, Stage2의 공통 런타임 연결만 임시 기반으로 사용해 `PolygonNightclubs` 옥상 바/난간/라운지/테라스와 전용 NavMesh를 생성 | `Stage4SceneBuilder.cs`, `Stage4.unity`, `Stage4Navigation.asset` |
+| Stage4 Synty 시각은 런타임 피드백을 연결 | 기존 캡슐 게임플레이·물리 충돌을 보존하고 Synty 렌더러에 시야 가시성, 피격/기절 색을 적용한다. 원본 Animator와 루트 모션은 끄고 정적 포즈를 유지한다 | `CharacterVisualController.cs`, `EnemyCombatant.cs`, `EnemyHealth.cs`, `PlayerHealth.cs`, `Stage4.unity` |
+| 정적 Stage4 환경은 리플레이 추적에서 제외 | 환경 루트에 `ReplayExcluded`를 두어 리플레이 프록시 중복 생성을 막는다. 동적 플레이어·적·픽업과 시야 조명 기록은 유지한다 | `ReplayExcluded.cs`, `StageReplayController.cs`, `Stage4.unity` |
 
 ## 12. 확인이 필요한 질문
 
 1. 공식 장르, 한 줄 소개, 세계관, 프로젝트의 최종 제품 범위는 무엇인가?
 2. `Deltatime`의 핵심은 “움직일 때 시간이 흐름”, `DEADLINE`, 무기 순환 중 무엇이 최우선 기둥인가?
-3. `Stage1`은 밝은 튜토리얼, `Stage2`는 암흑 시야 본편으로 의도된 것인가?
-4. `Stage1` 클리어 후 `Stage2`로 자동 전환해야 하는가, 아니면 두 씬은 비교용인가?
+3. `Stage1`은 밝은 튜토리얼, `Stage2`는 암흑 시야 본편, `Stage3`와 `Stage4`는 테마형 전투 스테이지로 의도된 것인가?
+4. `Stage1 → Stage2 → Stage3 → Stage4`로 자동 전환해야 하는가, 아니면 일부 스테이지를 독립 선택하는가?
 5. 리플레이는 자동 종료, 반복, 스킵, 속도 조절 중 어떤 정책이 필요한가?
 6. `DEADLINE`의 최대 준비 행동 2개와 재준비 0.35 월드초는 확정 수치인가?
 7. 플레이어 시야 밖의 적이 탐지·조준·발사할 수 있는 현재 동작이 의도인가?
@@ -821,6 +871,8 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-05 | 1.3.6 | Stage3를 참조하지 않는 독립 옥상 라운지 Stage4 `Last Call Rooftop`과 전용 NavMesh·빌더·미리보기·플레이 모드 스모크를 추가하고, Synty 시각의 가시성/피격 피드백과 정적 환경 리플레이 제외를 반영 | Stage4, Synty 환경/캐릭터, NavMesh, 리플레이, 시각 피드백, 빌드 설정, 자동 검증 |
+| 2026-08-05 | 1.3.5 | `PolygonNightclubs` 모델·캐릭터로 중앙 댄스 플로어, 서쪽 바, 북쪽 DJ 부스, 동쪽 라운지를 갖춘 Stage3 `Afterimage Club`과 전용 NavMesh·빌더·미리보기·플레이 모드 스모크를 추가 | Stage3, Synty 환경/캐릭터, NavMesh, 조명, 빌드 설정, 자동 검증 |
 | 2026-08-04 | 1.3.4 | 일반 플레이어 총기 발사에서 빈 탄약 시도도 기존 발사와 같은 시간 활동을 발생시키고, 자동소총 홀드는 무기 사용 간격마다만 이를 반복하도록 보완 | 전투, 월드 시간, 입력, `DEADLINE` 분리 |
 | 2026-08-03 | 1.3.3 | 권총·자동소총·샷건의 공용 발사 경로를 수평·수직 독립 결정적 산포로 확장하고 샷건 수평 팬 패턴에 펠릿별 수직 산포를 결합 | 전투, 무기 데이터, 적 AI 사격, Stage1/Stage2 정적 검증 |
 | 2026-08-03 | 1.3.2 | 마우스 광선의 최근 물리 표면을 조준점으로 선택하고, 플레이어 총기·투척이 총구에서 그 조준점의 수평 좌표를 향하도록 보정 | 조준, 총기·투척 탄도, 벽 가림, `DEADLINE` 준비 발사 |

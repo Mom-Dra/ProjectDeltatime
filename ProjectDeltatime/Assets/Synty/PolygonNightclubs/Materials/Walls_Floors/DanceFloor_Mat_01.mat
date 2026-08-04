@@ -80,7 +80,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BUILTIN_QueueControl: -1
+    - _BUILTIN_QueueControl: 0
     - _BUILTIN_QueueOffset: 0
     - _BumpScale: 1
     - _Columns: 2
@@ -120,3 +120,4 @@ Material:
     - _Speed: {r: 0.1, g: 0, b: 0, a: 0}
     - _Speed_Direction: {r: 0.1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1

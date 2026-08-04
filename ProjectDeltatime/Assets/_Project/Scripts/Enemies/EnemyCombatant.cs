@@ -2,6 +2,7 @@ using Deltatime.Combat;
 using Deltatime.Core;
 using Deltatime.TimeSystem;
 using Deltatime.Vision;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Enemies
@@ -50,6 +51,7 @@ namespace Deltatime.Enemies
         [SerializeField] private VisionCone playerVision;
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private Renderer weaponRenderer;
+        [SerializeField] private CharacterVisualController characterVisual;
 
         [Header("Firearm Engagement")]
         [SerializeField, Min(0.1f)] private float preferredMinimumRange = 6f;
@@ -230,6 +232,11 @@ namespace Deltatime.Enemies
             weaponPickupLayers = pickupLayers;
         }
 
+        public void ConfigureVisual(CharacterVisualController visualController)
+        {
+            characterVisual = visualController;
+        }
+
         public bool TryGetReplayVisibility(
             Renderer targetRenderer,
             out bool visible)
@@ -243,6 +250,13 @@ namespace Deltatime.Enemies
             if (targetRenderer == weaponRenderer)
             {
                 visible = !IsDead && weapon != null && weapon.HasWeapon;
+                return true;
+            }
+
+            if (characterVisual != null &&
+                characterVisual.ContainsRenderer(targetRenderer))
+            {
+                visible = !IsDead;
                 return true;
             }
 
@@ -868,6 +882,7 @@ namespace Deltatime.Enemies
             bool visible =
                 playerVision.ContainsWorldPoint(bodyRenderer.bounds.center);
             bodyRenderer.enabled = visible;
+            characterVisual?.SetVisible(visible && !IsDead);
             weaponRenderer.enabled = visible && weapon.HasWeapon;
             if (!visible)
             {

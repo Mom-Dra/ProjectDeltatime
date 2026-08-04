@@ -21,6 +21,26 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-05 - Stage4 `Last Call Rooftop`
+
+- 변경 유형: 신규 스테이지·Synty 환경/캐릭터 콘텐츠·NavMesh·리플레이 시각 최적화·빌드 설정·자동 검증·문서 갱신
+- 변경 내용: **구현 완료**. Stage3 씬·NavMesh·빌더를 참조하거나 변경하지 않고 Stage2의 공통 런타임 연결만 임시 기반으로 사용해 `Last Call Rooftop`을 추가했다. `ProjectDeltatime/Assets/Synty/PolygonNightclubs`의 바닥 모듈, 난간, 바, 소파, 야외 테이블, 화분, 화로와 조명을 사용해 7×7 옥상 테라스를 구성했다. 플레이어는 남쪽 입구에서 시작하며 서쪽 서비스 카운터·동쪽 라운지·북쪽 바·중앙 테이블 엄폐를 기준으로 이동 연사형 3명과 근접 추격형 2명을 배치했다. 권총·샷건 픽업 각 1개와 씬당 `DEADLINE` 2회를 유지했고, 카메라 FOV는 56도다. Synty 캐릭터 6개는 기존 검증된 게임플레이 캡슐의 시각 자식으로 두고 `CharacterVisualController`로 시야 가시성·피격·기절 색을 동기화했다. 정적 환경 루트에는 `ReplayExcluded`를 적용해 리플레이 프록시 추적에서 제외했으며, 플레이어·적·픽업·시야 조명 기록은 유지한다. 전용 `Stage4Navigation.asset`을 베이크하고 빌드 설정의 인덱스 3에 Stage4를 등록했다.
+- 영향을 받은 시스템: 씬/빌드 설정, NavMesh 경로 탐색, 플레이어·적 Synty 시각 피드백, 제한 시야 장애물, 환경 조명, 카메라, 픽업·`DEADLINE`·리플레이 초기화, 리플레이 렌더러 추적, 에디터 콘텐츠 빌드/검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4Navigation.asset`, `ProjectDeltatime/Assets/_Project/Art/Generated/Stage4Preview.png`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterVisualController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayExcluded.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerHealth.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.6으로 갱신해 Stage4의 독립 생성 원칙, 옥상 전투 공간 분석, 씬/오브젝트/콘텐츠 구조, 빌드 순서, Layer·NavMesh·리플레이 제외 정책, 실제 직렬화 수치, 구현 상태, 자동 전환 미구현, 시각 애니메이션 한계와 검증 근거를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 모드에서 `Stage4SceneBuilder.BuildAndValidateFromCommandLine`이 최신 스크립트 컴파일과 씬 루트·공통 시스템·적 5명(이동 연사형 3/근접형 2)·픽업 2개·`DEADLINE` 2회·전용 NavMesh·Synty 프리팹/시각 6개·환경 조명 4개·`VisionObstacle` 13개·빌드 순서를 정적으로 검증해 종료 코드 0으로 완료됐다. `Stage4PlayModeSmokeTest.RunFromCommandLine`은 플레이어 생존, 월드 시간/스테이지/리플레이 초기화, 적/모터 각 5개, 픽업 2개, 리플레이 등록 시야 조명 2개, 캐릭터 시각 6개, 플레이어와 적 5명의 NavMesh 스폰, 정적 환경의 리플레이 추적 제외를 확인하고 `Stage4 play-mode smoke test passed.`로 완료됐다. `Stage4Preview.png`는 생성 후 시각 검토했다.
+- 남은 작업: **부분 구현**. Synty 캐릭터는 정적 완화 포즈이며 이동·조준·사격·근접·피격·사망 애니메이션과 손 무기 부착이 없다. **미구현**. `Stage1 → Stage2 → Stage3 → Stage4` 자동 진행, 결과 화면, 리플레이 스킵/다음 단계가 없다. **확인 불가**. 실제 키보드/마우스 전투 감각, 옥상 난간·라운지 엄폐에서 적 경로/사격 압박, 적 전멸과 클리어 리플레이의 최종 시각 품질은 수동 플레이 검증이 필요하다. **확인 필요**. 배치 스모크 종료 뒤 기존 `WorldTimeVisualFeedback.OnValidate`의 Map Fill Light 생성 중 Unity 진단이 출력되었으나 스모크 어설션은 통과했으므로 별도 원인 확인이 필요하다.
+
+## 2026-08-05 - Stage3 `Afterimage Club`
+
+- 변경 유형: 신규 스테이지·Synty 환경/캐릭터 콘텐츠·NavMesh·빌드 설정·자동 검증·문서 갱신
+- 변경 내용: **구현 완료**. `ProjectDeltatime/Assets/Synty/PolygonNightclubs`의 모듈형 바닥·벽, 바, DJ 부스, 대형 스피커, 소파, 테이블, 의자, 디스코볼과 무대 조명을 사용해 `Stage3`를 추가했다. 게임의 제한 시야와 행동량 기반 월드 시간에 맞춰 중앙 댄스 플로어는 개방 교전 공간, 서쪽 바는 긴 사격선과 연속 엄폐, 동쪽 라운지는 짧게 끊기는 엄폐, 북쪽 DJ 부스는 근접 압박 지점으로 구성했다. 플레이어는 남쪽에서 시작하고 서쪽·동쪽에 이동 연사형 2명, 북쪽 중앙에 근접 추격형 1명을 배치했으며 권총·샷건 픽업 각 1개와 씬당 `DEADLINE` 2회를 유지했다. Synty Party Female 01, Bartender Male, Bouncer Male, Party Male 02를 기존 검증된 게임플레이 캡슐의 시각 자식으로 연결하고 프리팹 콜라이더·루트 모션을 비활성화했다. 마젠타·시안·바이올렛·블루 환경 포인트 조명 4개와 FOV 52 카메라를 적용했다. 독립 `Stage3SceneBuilder`가 Stage1/Stage2를 재생성하지 않고 Stage3와 전용 `Stage3Navigation.asset`만 관리하며, 빌드 설정에는 Stage1·Stage2 다음 순서로 Stage3를 등록한다.
+- 영향을 받은 시스템: 씬/빌드 설정, NavMesh 경로 탐색, 플레이어·적 시각, 제한 시야 장애물, 환경 조명, 카메라, 픽업·`DEADLINE`·리플레이 초기화, 에디터 콘텐츠 빌드/검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3Navigation.asset`, `ProjectDeltatime/Assets/_Project/Art/Generated/Stage3Preview.png`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3PlayModeSmokeTest.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.3.5로 갱신해 Stage3의 전투 공간 분석, 씬/오브젝트/콘텐츠 구조, 빌드 순서, Layer·NavMesh 정책, 실제 직렬화 수치, 구현 상태, 미구현 전환 흐름, 캐릭터 애니메이션 한계와 검증 근거를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 모드에서 최신 스크립트 컴파일과 `Stage3SceneBuilder.ValidateSavedStage3`가 종료 코드 0으로 완료됐고, 씬 루트·공통 시스템·적 3명(이동 연사형 2/근접형 1)·픽업 2개·`DEADLINE` 2회·전용 NavMesh·Synty 프리팹과 캐릭터 렌더러·환경 조명 4개를 정적으로 검증했다. `Stage3PlayModeSmokeTest`는 플레이어 생존, 월드 시간/스테이지/리플레이 초기화, 적/모터 각 3개, 픽업 2개, 리플레이 등록 시야 조명 2개, 캐릭터 시각 4개, 플레이어와 적 3명의 NavMesh 스폰을 확인하고 `Stage3 play-mode smoke test passed.`로 완료됐다. 기존 `PrototypeSceneBuilder.ValidateSavedPrototypeRoom`도 Stage1/Stage2를 재생성하지 않은 채 종료 코드 0과 `Stage1 and Stage2 validation passed.`를 확인했다. `Stage3Preview.png`는 생성 후 시각 검토했다.
+- 남은 작업: **부분 구현**. Synty 캐릭터는 정적 완화 포즈이며 이동·조준·사격·근접·피격·사망 애니메이션과 손 무기 부착이 없다. **미구현**. `Stage1 → Stage2 → Stage3` 자동 진행, 결과 화면, 리플레이 스킵/다음 단계가 없다. **확인 불가**. 실제 키보드/마우스 전투 감각, 바·라운지 엄폐에서 적 경로/사격 압박, 적 전멸과 클리어 리플레이의 최종 시각 품질은 수동 플레이 검증이 필요하다.
+
 ## 2026-08-04 - 빈 탄약 발사 시도의 시간 활동 반영
 
 - 변경 유형: 플레이어 총기 입력·월드 시간 활동 처리 보완, 컴파일 검증·문서 갱신

@@ -158,6 +158,23 @@ namespace Deltatime.Replay
             omniscientFillLight.enabled &&
             omniscientFillLight.gameObject.activeInHierarchy;
         public int TrackedLightCount => lightTracks.Count;
+        public int TrackedVisualCount => tracks.Count;
+        public int TrackedExcludedVisualCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < tracks.Count; i++)
+                {
+                    if (tracks[i].IsReplayExcluded)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
         public int ActiveReplayLightCount
         {
             get
@@ -423,6 +440,7 @@ namespace Deltatime.Replay
                 Renderer source = renderers[i];
                 if (source == null ||
                     source.transform.IsChildOf(replayRoot) ||
+                    source.GetComponentInParent<ReplayExcluded>() != null ||
                     !CanRecord(source))
                 {
                     continue;
@@ -1601,6 +1619,9 @@ namespace Deltatime.Replay
             public bool IsVisionCone => isVisionCone;
             public bool SupportsOmniscientVisibility =>
                 supportsOmniscientVisibility;
+            public bool IsReplayExcluded =>
+                source != null &&
+                source.GetComponentInParent<ReplayExcluded>() != null;
             public bool IsProxyActive =>
                 proxy != null &&
                 proxy.enabled &&

@@ -76,7 +76,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BUILTIN_QueueControl: -1
+    - _BUILTIN_QueueControl: 0
     - _BUILTIN_QueueOffset: 0
     - _Brightness: 5
     - _BumpScale: 10
@@ -109,6 +109,7 @@ Material:
     - _Window_Color: {r: 1, g: 1, b: 1, a: 1}
     - _Window_Colour: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &6408057938721250452
 MonoBehaviour:
   m_ObjectHideFlags: 11

@@ -1,6 +1,7 @@
 using Deltatime.Core;
 using Deltatime.Level;
 using Deltatime.Utilities;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Enemies
@@ -12,6 +13,7 @@ namespace Deltatime.Enemies
         [SerializeField] private StageController stage;
         [SerializeField] private Collider bodyCollider;
         [SerializeField] private Renderer bodyRenderer;
+        [SerializeField] private CharacterVisualController characterVisual;
         [SerializeField] private Color hitColor = new Color(1f, 0.25f, 0.2f, 1f);
         [SerializeField] private Color stunColor = new Color(1f, 0.78f, 0.15f, 1f);
 
@@ -45,7 +47,7 @@ namespace Deltatime.Enemies
             if (showingStunColor && !IsStunned)
             {
                 showingStunColor = false;
-                SetBodyColor(normalColor);
+                RestoreBodyColor();
             }
         }
 
@@ -125,8 +127,14 @@ namespace Deltatime.Enemies
             bodyRenderer = renderer;
         }
 
+        public void ConfigureVisual(CharacterVisualController visualController)
+        {
+            characterVisual = visualController;
+        }
+
         private void SetBodyColor(Color color)
         {
+            characterVisual?.SetTint(color);
             EnsureBodyMaterial();
             if (bodyMaterial == null)
             {
@@ -134,6 +142,16 @@ namespace Deltatime.Enemies
             }
 
             bodyMaterial.color = color;
+        }
+
+        private void RestoreBodyColor()
+        {
+            characterVisual?.RestoreTint();
+            EnsureBodyMaterial();
+            if (bodyMaterial != null)
+            {
+                bodyMaterial.color = normalColor;
+            }
         }
 
         private void EnsureBodyMaterial()
