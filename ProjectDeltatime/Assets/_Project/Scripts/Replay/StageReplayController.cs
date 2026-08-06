@@ -32,6 +32,15 @@ namespace Deltatime.Replay
         [SerializeField, Min(0f)] private float endHoldDuration = 0.65f;
         [SerializeField] private bool loop = true;
 
+        [Header("Renderer Discovery")]
+        [Tooltip("Optional dynamic gameplay roots captured every replay sample. " +
+                 "When empty, replay retains its legacy full-renderer scan.")]
+        [SerializeField] private Transform[] rendererDiscoveryRoots =
+            Array.Empty<Transform>();
+        [Tooltip("Full-scene fallback interval for transient renderers outside the " +
+                 "configured dynamic roots. Zero retains the legacy per-sample scan.")]
+        [SerializeField, Min(0f)] private float fallbackRendererDiscoveryInterval;
+
         [Header("Deadline Cinematic Replay")]
         [SerializeField, Range(0.05f, 1f)]
         private float deadlineCinematicPlaybackRate = 0.5f;
@@ -78,6 +87,10 @@ namespace Deltatime.Replay
             new Dictionary<int, LightTrack>();
         private readonly List<LightTrack> lightTracks = new List<LightTrack>();
         private readonly HashSet<int> visibleRendererIds = new HashSet<int>();
+        private readonly List<Renderer> rendererCandidates = new List<Renderer>();
+        private readonly HashSet<int> rendererCandidateIds = new HashSet<int>();
+        private readonly List<Renderer> fallbackRendererCandidates =
+            new List<Renderer>();
         private readonly List<MonoBehaviour> disabledBehaviours =
             new List<MonoBehaviour>();
 
@@ -94,6 +107,8 @@ namespace Deltatime.Replay
         private float captureAccumulator;
         private bool hasCapturedDeadlineState;
         private bool lastCapturedDeadlineState;
+        private float nextFallbackRendererDiscoveryTime;
+        private bool fallbackRendererDiscoveryInitialized;
 
         public bool IsReplaying { get; private set; }
         public bool IsOmniscientViewEnabled { get; private set; }
@@ -105,6 +120,49 @@ namespace Deltatime.Replay
         public float LongestDeadlineAftermathDuration { get; private set; }
         public float CaptureRate => captureRate;
         public int CapturedFrameCount => cameraSamples.Count;
+        public bool UsesOptimizedRendererDiscovery =>
+            rendererDiscoveryRoots != null && rendererDiscoveryRoots.Length > 0;
+        public int RendererDiscoveryRootCount
+        {
+            get
+            {
+                if (rendererDiscoveryRoots == null)
+                {
+                    return 0;
+                }
+
+                int count = 0;
+                for (int i = 0; i < rendererDiscoveryRoots.Length; i++)
+                {
+                    if (rendererDiscoveryRoots[i] != null)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+        public float FallbackRendererDiscoveryInterval =>
+            fallbackRendererDiscoveryInterval;
+
+        public bool HasRendererDiscoveryRoot(Transform root)
+        {
+            if (root == null || rendererDiscoveryRoots == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < rendererDiscoveryRoots.Length; i++)
+            {
+                if (rendererDiscoveryRoots[i] == root)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         public int TrackedReplayVisionConeCount
         {
             get
@@ -214,6 +272,21 @@ namespace Deltatime.Replay
             IsReplaying
                 ? Mathf.Max(0f, playbackTime - firstPresentationTime)
                 : 0f;
+
+        /// <summary>
+        /// Configures an opt-in hybrid renderer discovery path.  Gameplay roots are
+        /// inspected at the normal replay sample rate, while transient objects outside
+        /// them are found by a lower-frequency fallback scan.  Empty roots preserve
+        /// the legacy all-renderer scan used by stages 1 through 5.
+        /// </summary>
+        public void ConfigureRendererDiscovery(
+            Transform[] dynamicRoots,
+            float fallbackInterval)
+        {
+            rendererDiscoveryRoots = dynamicRoots ?? Array.Empty<Transform>();
+            fallbackRendererDiscoveryInterval = Mathf.Max(0f, fallbackInterval);
+            ResetRendererDiscoveryCache();
+        }
 
         private void Awake()
         {
@@ -430,21 +503,12 @@ namespace Deltatime.Replay
                 worldTime.WorldElapsedTime,
                 deadlineActive));
 
+            CollectRendererCandidates();
             visibleRendererIds.Clear();
-            Renderer[] renderers = FindObjectsByType<Renderer>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
 
-            for (int i = 0; i < renderers.Length; i++)
+            for (int i = 0; i < rendererCandidates.Count; i++)
             {
-                Renderer source = renderers[i];
-                if (source == null ||
-                    source.transform.IsChildOf(replayRoot) ||
-                    source.GetComponentInParent<ReplayExcluded>() != null ||
-                    !CanRecord(source))
-                {
-                    continue;
-                }
+                Renderer source = rendererCandidates[i];
 
                 int instanceId = source.GetInstanceID();
                 visibleRendererIds.Add(instanceId);
@@ -477,6 +541,137 @@ namespace Deltatime.Replay
             {
                 lightTracks[i].Capture(timestamp, forceKeyframe);
             }
+        }
+
+        private void CollectRendererCandidates()
+        {
+            rendererCandidates.Clear();
+            rendererCandidateIds.Clear();
+
+            if (!UsesOptimizedRendererDiscovery)
+            {
+                Renderer[] renderers = FindObjectsByType<Renderer>(
+                    FindObjectsInactive.Exclude,
+                    FindObjectsSortMode.None);
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    AddRendererCandidate(renderers[i]);
+                }
+
+                return;
+            }
+
+            CollectDynamicRootRenderers();
+            if (!fallbackRendererDiscoveryInitialized ||
+                fallbackRendererDiscoveryInterval <= 0f ||
+                recordingElapsedTime >= nextFallbackRendererDiscoveryTime)
+            {
+                RefreshFallbackRendererCandidates();
+            }
+
+            for (int i = fallbackRendererCandidates.Count - 1; i >= 0; i--)
+            {
+                Renderer candidate = fallbackRendererCandidates[i];
+                if (candidate == null)
+                {
+                    fallbackRendererCandidates.RemoveAt(i);
+                    continue;
+                }
+
+                AddRendererCandidate(candidate);
+            }
+        }
+
+        private void CollectDynamicRootRenderers()
+        {
+            for (int i = 0; i < rendererDiscoveryRoots.Length; i++)
+            {
+                Transform root = rendererDiscoveryRoots[i];
+                if (root == null || !root.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+                for (int j = 0; j < renderers.Length; j++)
+                {
+                    AddRendererCandidate(renderers[j]);
+                }
+            }
+        }
+
+        private void RefreshFallbackRendererCandidates()
+        {
+            fallbackRendererCandidates.Clear();
+            Renderer[] renderers = FindObjectsByType<Renderer>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer candidate = renderers[i];
+                if (IsUnderRendererDiscoveryRoot(candidate) ||
+                    !IsTrackableRenderer(candidate))
+                {
+                    continue;
+                }
+
+                fallbackRendererCandidates.Add(candidate);
+            }
+
+            fallbackRendererDiscoveryInitialized = true;
+            nextFallbackRendererDiscoveryTime = recordingElapsedTime +
+                fallbackRendererDiscoveryInterval;
+        }
+
+        private bool IsUnderRendererDiscoveryRoot(Renderer candidate)
+        {
+            if (candidate == null || rendererDiscoveryRoots == null)
+            {
+                return false;
+            }
+
+            Transform sourceTransform = candidate.transform;
+            for (int i = 0; i < rendererDiscoveryRoots.Length; i++)
+            {
+                Transform root = rendererDiscoveryRoots[i];
+                if (root != null && sourceTransform.IsChildOf(root))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void AddRendererCandidate(Renderer candidate)
+        {
+            if (!IsTrackableRenderer(candidate))
+            {
+                return;
+            }
+
+            int instanceId = candidate.GetInstanceID();
+            if (rendererCandidateIds.Add(instanceId))
+            {
+                rendererCandidates.Add(candidate);
+            }
+        }
+
+        private bool IsTrackableRenderer(Renderer candidate)
+        {
+            return candidate != null &&
+                   !candidate.transform.IsChildOf(replayRoot) &&
+                   candidate.GetComponentInParent<ReplayExcluded>() == null &&
+                   CanRecord(candidate);
+        }
+
+        private void ResetRendererDiscoveryCache()
+        {
+            fallbackRendererCandidates.Clear();
+            rendererCandidates.Clear();
+            rendererCandidateIds.Clear();
+            fallbackRendererDiscoveryInitialized = false;
+            nextFallbackRendererDiscoveryTime = 0f;
         }
 
         private void BuildPresentationTimeline()

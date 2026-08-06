@@ -10,6 +10,7 @@ namespace Deltatime.Player
         [SerializeField] private PlayerAim aim;
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 13.5f, -12.5f);
+        [SerializeField] private Vector3 cameraFocusOffset;
         [SerializeField, Min(0f)] private float aimLeadDistance = 2.25f;
         [SerializeField, Min(0.01f)] private float followSharpness = 8f;
         [SerializeField, Min(0.01f)] private float rotationSharpness = 12f;
@@ -42,7 +43,7 @@ namespace Deltatime.Player
             Vector3 aimLead = aim == null
                 ? Vector3.zero
                 : aim.AimDirection * aimLeadDistance;
-            Vector3 focus = target.position + aimLead;
+            Vector3 focus = target.position + cameraFocusOffset + aimLead;
             Vector3 desiredPosition = focus + cameraOffset;
             float positionBlend =
                 1f - Mathf.Exp(-followSharpness * UnityEngine.Time.unscaledDeltaTime);
@@ -81,7 +82,7 @@ namespace Deltatime.Player
                 return;
             }
 
-            Vector3 focus = target.position;
+            Vector3 focus = target.position + cameraFocusOffset;
             transform.position = focus + cameraOffset;
             transform.LookAt(focus + (Vector3.up * lookHeight), Vector3.up);
             initialized = true;

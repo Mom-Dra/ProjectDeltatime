@@ -10,6 +10,7 @@ namespace Deltatime.TimeSystem
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private Camera gameplayCamera;
         [SerializeField] private Light directionalKeyLight;
+        [SerializeField] private bool preserveSceneRenderSettings;
 
         [Header("Environment Lighting")]
         [SerializeField] private Color ambientSkyColor =
@@ -161,6 +162,11 @@ namespace Deltatime.TimeSystem
         {
             if (!Application.isPlaying &&
                 gameObject.scene != SceneManager.GetActiveScene())
+            {
+                return;
+            }
+
+            if (preserveSceneRenderSettings)
             {
                 return;
             }

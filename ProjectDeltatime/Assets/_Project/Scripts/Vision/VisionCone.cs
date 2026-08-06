@@ -40,6 +40,8 @@ namespace Deltatime.Vision
 
         public float ViewAngle => viewAngle;
         public float ViewDistance => viewDistance;
+        public Light RuntimeVisionSpotLight => spotLight;
+        public Light RuntimeNearWallLight => nearLight;
 
         private void Awake()
         {
