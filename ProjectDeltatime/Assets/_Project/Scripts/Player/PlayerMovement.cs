@@ -1,4 +1,5 @@
 using Deltatime.InputSystem;
+using Deltatime.Level;
 using Deltatime.TimeSystem;
 using UnityEngine;
 
@@ -17,6 +18,7 @@ namespace Deltatime.Player
         private float minimumPhysicalDisplacement = 0.001f;
 
         private Rigidbody body;
+        private NavMeshGroundMovement groundMovement;
         private Vector3 physicsStepStartPosition;
         private Vector3 physicsStepInputDirection;
         private uint physicsStepVersion;
@@ -28,6 +30,7 @@ namespace Deltatime.Player
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
+            groundMovement = GetComponent<NavMeshGroundMovement>();
             ResetPhysicalMovementSample();
             if (input == null ||
                 health == null ||
@@ -88,6 +91,16 @@ namespace Deltatime.Player
             }
 
             Vector3 currentVelocity = body.linearVelocity;
+            if (groundMovement != null)
+            {
+                groundMovement.TryMove(
+                    body,
+                    movementVelocity * UnityEngine.Time.fixedUnscaledDeltaTime,
+                    out _);
+                body.linearVelocity = Vector3.zero;
+                return;
+            }
+
             body.linearVelocity = new Vector3(
                 movementVelocity.x,
                 currentVelocity.y,

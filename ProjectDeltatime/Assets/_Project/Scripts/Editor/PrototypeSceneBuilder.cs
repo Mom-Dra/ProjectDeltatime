@@ -626,7 +626,7 @@ namespace Deltatime.EditorTools
                 0.045f);
 
             PlayerAim aim = root.AddComponent<PlayerAim>();
-            aim.Configure(input, activity, gameplayCamera, aimLine, ~0);
+            aim.Configure(input, activity, gameplayCamera, aimLine);
 
             Transform muzzle;
             Renderer heldWeaponRenderer;
@@ -1709,14 +1709,6 @@ namespace Deltatime.EditorTools
                 shotgunPickup != null &&
                 shotgunPickup.Definition == shotgunDefinition &&
                 shotgunPickup.Ammunition == 6;
-            SerializedObject playerAimSerialized = playerAim == null
-                ? null
-                : new SerializedObject(playerAim);
-            playerAimSerialized?.Update();
-            SerializedProperty playerAimCollisionMask =
-                playerAimSerialized == null
-                    ? null
-                    : playerAimSerialized.FindProperty("aimCollisionMask");
             SerializedObject deadlineSerialized = deadline == null
                 ? null
                 : new SerializedObject(deadline);
@@ -1828,8 +1820,6 @@ namespace Deltatime.EditorTools
                 navigationSurface.navMeshData == null ||
                 camera == null ||
                 camera.orthographic ||
-                playerAimCollisionMask == null ||
-                playerAimCollisionMask.intValue != ~0 ||
                 deadlineInput == null ||
                 deadlineInput.objectReferenceValue == null ||
                 deadlineCharges == null ||
@@ -1912,7 +1902,6 @@ namespace Deltatime.EditorTools
                     $"stages={stageCount}, replays={replayCount}, pickups={pickupCount}, cameras={cameraCount}, " +
                     $"cameraRigs={cameraRigCount}, rigidbodies2D={rigidbody2DCount}, " +
                     $"navData={navigationSurface != null && navigationSurface.navMeshData != null}, " +
-                    $"aimCollisionMask={playerAimCollisionMask?.intValue}, " +
                     $"perspective={camera != null && !camera.orthographic}.");
             }
 

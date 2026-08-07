@@ -49,21 +49,27 @@ namespace Deltatime.EditorTools
         private const int DeadlineCharges = 2;
         private const float ActorRootHeight = 0.75f;
         private const float PickupHeight = 0.18f;
-        private const float CombatCameraCoverageFraction = 0.42f;
-        private const float CombatCameraHorizontalCoverageMultiplier = 0.96f;
-        private const float CombatCameraHeightCoverageMultiplier = 1.45f;
-        private const float CombatCameraHeightElevationMultiplier = 1.2f;
-        private const float CombatCameraHeightBase = 4f;
-        private const float CombatCameraBackwardNavFraction = 0.2f;
-        private const float CombatCameraBackwardHeightFraction = 0.36f;
-        private const float CombatCameraMinimumFov = 50f;
-        private const float CombatCameraMaximumFov = 55f;
-        private const float CombatCameraFocusCenterWeight = 0.55f;
+        private const float Stage5StyleCameraHeight = 11.12f;
+        private const float Stage5StyleCameraBackwardDistance = 6.10f;
+        private const float Stage5StyleCameraFocusZ = 1.42f;
+        private const float Stage5StyleCameraFieldOfView = 48f;
+        private const float Stage5StyleCameraAimLeadDistance = 1.25f;
+        private const float GroundMovementSampleDistance = 1.25f;
+        private const float GroundMovementSegmentLength = 0.12f;
+        private const int NotWalkableNavMeshArea = 1;
+        private const int OffscreenBackgroundCarCount = 8;
         private const float Stage6ShadowDistance = 40f;
         private const int Stage6MaximumShadowCascades = 2;
         private const int Stage6MaximumShadowedEnvironmentPointLights = 2;
         private const float Stage6ShadowSelectionInterval = 0.25f;
         private const float Stage6FallbackRendererDiscoveryInterval = 0.25f;
+
+        private const string PlayerRingMaterialPath =
+            "Assets/_Project/Materials/PrototypeAccent3D.mat";
+        private const string RangedRingMaterialPath =
+            "Assets/_Project/Materials/PrototypeEnemy3D.mat";
+        private const string ChaserRingMaterialPath =
+            "Assets/_Project/Materials/PrototypeChaser3D.mat";
 
         private const string PlayerCharacterPath =
             CharacterRoot + "/SM_Chr_Party_Male_01.prefab";
@@ -175,6 +181,8 @@ namespace Deltatime.EditorTools
                 gameplayRoots,
                 out Bounds playableFloorBounds);
             NavMeshRegion combatRegion = FindLargestConnectedNavMeshRegion();
+            ConfigureStage6ElevationMovement(stage6, environmentRoot);
+            DisableOffscreenBackgroundCars(environmentRoot);
             EncounterLayout layout = PositionEncounterOnBakedNavigation(combatRegion);
             ConfigureCombatIdentityRings();
             ConfigureRooftopCamera(surface, combatRegion.Bounds);
@@ -944,6 +952,108 @@ namespace Deltatime.EditorTools
                    bounds.size.y < 0.8f;
         }
 
+        private static void ConfigureStage6ElevationMovement(
+            Scene scene,
+            GameObject environmentRoot)
+        {
+            int disabledTraversalColliders = DisableRuntimeTraversalColliders(environmentRoot);
+            PlayerHealth player = FindSceneComponent<PlayerHealth>(scene);
+            EnemyMotor[] motors = FindSceneComponents<EnemyMotor>(scene);
+            Require(player != null && motors.Length == 5,
+                "Stage6 elevation movement requires the player and five enemy motors.");
+
+            ConfigureActorGroundMovement(player.gameObject);
+            for (int i = 0; i < motors.Length; i++)
+            {
+                ConfigureActorGroundMovement(motors[i].gameObject);
+            }
+
+            Require(disabledTraversalColliders > 0,
+                "Stage6 did not disable any baked stair/step colliders for runtime traversal.");
+            Physics.SyncTransforms();
+            Debug.Log(
+                $"Stage6 elevation traversal: actors=6, runtime stair/step colliders disabled={disabledTraversalColliders}.");
+        }
+
+        private static void ConfigureActorGroundMovement(GameObject actor)
+        {
+            Rigidbody body = actor.GetComponent<Rigidbody>();
+            Require(body != null,
+                $"Stage6 elevation traversal actor has no Rigidbody: {actor.name}.");
+            body.useGravity = false;
+            body.constraints &= ~RigidbodyConstraints.FreezePositionY;
+            NavMeshGroundMovement movement = actor.GetComponent<NavMeshGroundMovement>();
+            if (movement == null)
+            {
+                movement = actor.AddComponent<NavMeshGroundMovement>();
+            }
+
+            movement.Configure(
+                GroundMovementSampleDistance,
+                GroundMovementSegmentLength);
+            EditorUtility.SetDirty(body);
+            EditorUtility.SetDirty(movement);
+        }
+
+        private static int DisableRuntimeTraversalColliders(GameObject environmentRoot)
+        {
+            int disabled = 0;
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !IsRuntimeTraversalCollider(collider))
+                {
+                    continue;
+                }
+
+                collider.enabled = false;
+                collider.gameObject.layer = 0;
+                EditorUtility.SetDirty(collider);
+                EditorUtility.SetDirty(collider.gameObject);
+                disabled++;
+            }
+
+            return disabled;
+        }
+
+        private static bool IsRuntimeTraversalCollider(Collider collider)
+        {
+            string lower = collider.name.ToLowerInvariant();
+            return (lower.Contains("stairs") || lower.Contains("steps")) &&
+                   !lower.Contains("railing") && !lower.Contains("rail");
+        }
+
+        private static void DisableOffscreenBackgroundCars(GameObject environmentRoot)
+        {
+            Transform backgroundFx = FindDescendant(
+                environmentRoot.transform,
+                "Background_FX");
+            Require(backgroundFx != null,
+                "Stage6 background vehicle culling requires Background_FX.");
+
+            Transform[] transforms = backgroundFx.GetComponentsInChildren<Transform>(true);
+            int disabled = 0;
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform transform = transforms[i];
+                if (!transform.name.StartsWith(
+                        "FX_Background_Cars_01",
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                transform.gameObject.SetActive(false);
+                EditorUtility.SetDirty(transform.gameObject);
+                disabled++;
+            }
+
+            Require(disabled == OffscreenBackgroundCarCount,
+                $"Stage6 disabled {disabled} offscreen background cars instead of " +
+                $"{OffscreenBackgroundCarCount}.");
+        }
+
         private static bool ShouldBlockVision(Collider collider)
         {
             string lower = collider.name.ToLowerInvariant();
@@ -1019,6 +1129,11 @@ namespace Deltatime.EditorTools
                 temporarilyDisabled.Add(root);
             }
 
+            List<NavMeshModifier> obstacleModifiers =
+                CreateFurnitureExclusionModifiers(
+                environmentRoot,
+                "Stage6");
+
             try
             {
                 Physics.SyncTransforms();
@@ -1029,6 +1144,11 @@ namespace Deltatime.EditorTools
                 for (int i = 0; i < temporarilyDisabled.Count; i++)
                 {
                     temporarilyDisabled[i].SetActive(true);
+                }
+
+                for (int i = 0; i < obstacleModifiers.Count; i++)
+                {
+                    UnityEngine.Object.DestroyImmediate(obstacleModifiers[i]);
                 }
             }
 
@@ -1057,6 +1177,73 @@ namespace Deltatime.EditorTools
             EditorUtility.SetDirty(surface);
             AssetDatabase.SaveAssets();
             return surface;
+        }
+
+        /// <summary>
+        /// Preserve environment Physics Colliders for movement and sight while
+        /// preventing furniture upper faces from becoming walkable NavMesh. The
+        /// temporary modifiers are removed after baking, leaving no generated
+        /// helper components in the saved scene hierarchy.
+        /// </summary>
+        private static List<NavMeshModifier> CreateFurnitureExclusionModifiers(
+            GameObject environmentRoot,
+            string stageName)
+        {
+            Collider[] colliders =
+                environmentRoot.GetComponentsInChildren<Collider>(true);
+            List<NavMeshModifier> modifiers = new List<NavMeshModifier>();
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !collider.gameObject.activeInHierarchy ||
+                    !ShouldExcludeColliderFromNavMesh(collider))
+                {
+                    continue;
+                }
+
+                NavMeshModifier existing =
+                    collider.GetComponent<NavMeshModifier>();
+                if (existing != null)
+                {
+                    continue;
+                }
+
+                NavMeshModifier modifier =
+                    collider.gameObject.AddComponent<NavMeshModifier>();
+                modifier.overrideArea = true;
+                modifier.area = NotWalkableNavMeshArea;
+                modifier.applyToChildren = false;
+                modifiers.Add(modifier);
+            }
+
+            Require(modifiers.Count > 0,
+                $"{stageName} found no non-ground collider to exclude from NavMesh.");
+            Debug.Log(
+                $"{stageName} NavMesh bake: {modifiers.Count} furniture collider sources " +
+                "marked Not Walkable.");
+            return modifiers;
+        }
+
+        private static bool IsWalkableNavigationGround(Collider collider)
+        {
+            string lower = collider.name.ToLowerInvariant();
+            return (lower.Contains("floor") || lower.Contains("stairs") ||
+                    lower.Contains("stair") || lower.Contains("steps")) &&
+                   !lower.Contains("ceiling") && !lower.Contains("roof");
+        }
+
+        private static bool ShouldExcludeColliderFromNavMesh(Collider collider)
+        {
+            if (IsWalkableNavigationGround(collider))
+            {
+                return false;
+            }
+
+            string lower = collider.name.ToLowerInvariant();
+            return ContainsAny(lower,
+                "table", "chair", "stool", "sofa", "booth", "lounge",
+                "bar_", "counter", "fridge", "shelf", "cabinet", "desk",
+                "planter", "pillar", "column", "prop_");
         }
 
         private static Bounds CalculatePlayableFloorBounds(GameObject environmentRoot)
@@ -1311,7 +1498,7 @@ namespace Deltatime.EditorTools
                     Normalized(p.y, bounds.min.y, spanY) * 1.5f +
                     Mathf.Abs(p.x - bounds.center.x) / spanX,
                 0f,
-                null,
+                p => IsCameraSafeEncounterEntry(p, bounds),
                 "Player south/lower entry");
             used.Add(player);
             Physics.SyncTransforms();
@@ -1414,6 +1601,21 @@ namespace Deltatime.EditorTools
         private static float Normalized(float value, float minimum, float span)
         {
             return Mathf.Clamp01((value - minimum) / span);
+        }
+
+        private static bool IsCameraSafeEncounterEntry(
+            Vector3 candidate,
+            Bounds bounds)
+        {
+            // The Stage5-scale camera must clamp near the outer NavMesh edge.
+            // Reserve an inset here so its initial target cannot place the
+            // player at the edge of the rendered combat frame.
+            float horizontalInset = Mathf.Min(3f, bounds.extents.x * 0.25f);
+            float depthInset = Mathf.Min(3f, bounds.extents.z * 0.25f);
+            return candidate.x >= bounds.min.x + horizontalInset &&
+                   candidate.x <= bounds.max.x - horizontalInset &&
+                   candidate.z >= bounds.min.z + depthInset &&
+                   candidate.z <= bounds.max.z - depthInset;
         }
 
         private static Vector3 ChooseCandidate(
@@ -1572,6 +1774,15 @@ namespace Deltatime.EditorTools
                 "Enemy North Gunner",
                 "Enemy South Chaser"
             };
+            Material[] materials =
+            {
+                AssetDatabase.LoadAssetAtPath<Material>(PlayerRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(ChaserRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(ChaserRingMaterialPath)
+            };
             Scene scene = SceneManager.GetActiveScene();
             for (int i = 0; i < owners.Length; i++)
             {
@@ -1581,10 +1792,23 @@ namespace Deltatime.EditorTools
                     : FindDirectChild(owner.transform, "Combat Identity Ring");
                 Require(owner != null && ring != null,
                     $"Stage6 combat identity ring is missing for {owners[i]}.");
+                Require(materials[i] != null,
+                    $"Stage6 combat identity material is missing for {owners[i]}.");
                 ring.position = new Vector3(
                     owner.transform.position.x,
                     owner.transform.position.y - ActorRootHeight + 0.025f,
                     owner.transform.position.z);
+                Renderer renderer = ring.GetComponent<Renderer>();
+                Require(renderer != null,
+                    $"Stage6 combat identity renderer is missing for {owners[i]}.");
+                renderer.sharedMaterial = materials[i];
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.BlendProbes;
+                renderer.motionVectorGenerationMode =
+                    MotionVectorGenerationMode.Object;
+                EditorUtility.SetDirty(renderer);
             }
         }
 
@@ -1614,7 +1838,9 @@ namespace Deltatime.EditorTools
             cameraSettings.FindProperty("cameraOffset").vector3Value = offset;
             cameraSettings.FindProperty("cameraFocusOffset").vector3Value = focusOffset;
             cameraSettings.FindProperty("aimLeadDistance").floatValue =
-                Mathf.Clamp(Mathf.Min(navBounds.size.x, navBounds.size.z) * 0.055f, 1.1f, 2f);
+                Stage5StyleCameraAimLeadDistance;
+            cameraSettings.FindProperty("constrainToBounds").boolValue = true;
+            cameraSettings.FindProperty("cameraBounds").boundsValue = navBounds;
             cameraSettings.ApplyModifiedPropertiesWithoutUndo();
             camera.fieldOfView = fieldOfView;
             camera.nearClipPlane = Mathf.Min(camera.nearClipPlane, 0.2f);
@@ -1631,8 +1857,9 @@ namespace Deltatime.EditorTools
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(surface);
             Debug.Log(
-                $"Stage6 camera derived from NavMesh bounds {navBounds}: " +
-                $"offset={offset}, focusOffset={focusOffset}, FOV={fieldOfView:0.0}.");
+                $"Stage6 Stage5-style camera from NavMesh bounds {navBounds}: " +
+                $"offset={offset}, focusOffset={focusOffset}, FOV={fieldOfView:0.0}, " +
+                "constrained=true.");
         }
 
         private static void CalculateCombatReadableCameraFraming(
@@ -1640,37 +1867,18 @@ namespace Deltatime.EditorTools
             out Vector3 offset,
             out float fieldOfView)
         {
-            const float aspect = 16f / 9f;
-            float halfVerticalCoverage = Mathf.Max(
-                navBounds.size.z * CombatCameraCoverageFraction,
-                navBounds.size.x / (2f * aspect) *
-                CombatCameraHorizontalCoverageMultiplier);
-            float elevationAllowance = Mathf.Max(0.5f, navBounds.size.y);
-            float height = halfVerticalCoverage * CombatCameraHeightCoverageMultiplier +
-                           elevationAllowance * CombatCameraHeightElevationMultiplier +
-                           CombatCameraHeightBase;
-            float backward = Mathf.Max(
-                navBounds.size.z * CombatCameraBackwardNavFraction,
-                height * CombatCameraBackwardHeightFraction);
-            offset = new Vector3(0f, height, -backward);
-            float cameraDistance = offset.magnitude;
-            fieldOfView = Mathf.Clamp(
-                2f * Mathf.Atan(
-                    (halfVerticalCoverage + elevationAllowance * 0.2f) /
-                    cameraDistance) * Mathf.Rad2Deg,
-                CombatCameraMinimumFov,
-                CombatCameraMaximumFov);
+            offset = new Vector3(
+                0f,
+                Stage5StyleCameraHeight,
+                -Stage5StyleCameraBackwardDistance);
+            fieldOfView = Stage5StyleCameraFieldOfView;
         }
 
         private static Vector3 CalculateCombatReadableFocusOffset(
             Bounds navBounds,
             Vector3 playerPosition)
         {
-            Vector3 centerDelta = navBounds.center - playerPosition;
-            return new Vector3(
-                centerDelta.x * CombatCameraFocusCenterWeight,
-                centerDelta.y + 0.2f,
-                centerDelta.z * CombatCameraFocusCenterWeight);
+            return new Vector3(0f, 0f, Stage5StyleCameraFocusZ);
         }
 
         private static void AddStage6ToBuildSettings()
@@ -1811,6 +2019,9 @@ namespace Deltatime.EditorTools
                     player.GetComponent<PlayerCombat>() != null,
                 "Stage6 player gameplay root did not initialize structurally.");
             ValidateCombatReadableCamera(scene, player.transform, combatRegion.Bounds);
+            ValidateStage6ElevationMovement(player, motors, environmentRoot, navBounds);
+            ValidateFurnitureNavMeshExclusion(environmentRoot, "Stage6");
+            ValidateOffscreenBackgroundCars(environmentRoot);
             Require(enemies.Length == 5 && motors.Length == 5,
                 $"Stage6 enemies={enemies.Length}, motors={motors.Length}; expected 5 each.");
             Require(shooters.Length == 3 && chasers.Length == 2,
@@ -1857,6 +2068,7 @@ namespace Deltatime.EditorTools
                 "Stage6 player cannot initially see any enemy through structural cover.");
             ValidateDistinctShooterLines(player.transform.position, shooters);
             ValidatePickupPlacement(pickups);
+            ValidateCombatIdentityRings(scene);
             ValidateVisualChildren(scene);
             ValidateBuildOrder();
 
@@ -1866,6 +2078,114 @@ namespace Deltatime.EditorTools
                 $"{sourceSnapshot.OutermostPrefabCount}, NavMesh vertices=" +
                 $"{triangulation.vertices.Length}, indices={triangulation.indices.Length}, " +
                 $"bounds={navBounds}, complete player paths=5/5.");
+        }
+
+        private static void ValidateStage6ElevationMovement(
+            PlayerHealth player,
+            EnemyMotor[] motors,
+            GameObject environmentRoot,
+            Bounds navBounds)
+        {
+            Require(navBounds.size.y >= 0.35f,
+                $"Stage6 baked NavMesh has no usable elevation span: {navBounds}");
+            Require(player != null && motors.Length == 5,
+                "Stage6 elevation validation requires the player and five enemy motors.");
+
+            ValidateActorGroundMovement(player.gameObject);
+            for (int i = 0; i < motors.Length; i++)
+            {
+                ValidateActorGroundMovement(motors[i].gameObject);
+            }
+
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            int disabledTraversalColliders = 0;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (!colliders[i].enabled && IsRuntimeTraversalCollider(colliders[i]))
+                {
+                    disabledTraversalColliders++;
+                }
+            }
+
+            Require(disabledTraversalColliders > 0,
+                "Stage6 did not preserve disabled runtime stair/step colliders.");
+        }
+
+        internal static void ValidateFurnitureNavMeshExclusion(
+            GameObject environmentRoot,
+            string stageName)
+        {
+            const float sampleDistance = 0.08f;
+            Collider[] colliders =
+                environmentRoot.GetComponentsInChildren<Collider>(true);
+            int validated = 0;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !collider.gameObject.activeInHierarchy ||
+                    !ShouldExcludeColliderFromNavMesh(collider))
+                {
+                    continue;
+                }
+
+                Bounds bounds = collider.bounds;
+                Vector3 topProbe = new Vector3(
+                    bounds.center.x,
+                    bounds.max.y,
+                    bounds.center.z);
+                // A hanging or open-bottom prop may validly have ground below
+                // it, but its upper surface must never be a NavMesh platform.
+                Require(!NavMesh.SamplePosition(
+                            topProbe,
+                            out _,
+                            sampleDistance,
+                            NavMesh.AllAreas),
+                    $"{stageName} NavMesh still enters furniture collider " +
+                    $"'{GetPath(collider.transform)}'.");
+                validated++;
+            }
+
+            Require(validated > 0,
+                $"{stageName} has no furniture collider to validate against NavMesh.");
+        }
+
+        private static void ValidateActorGroundMovement(GameObject actor)
+        {
+            Rigidbody body = actor.GetComponent<Rigidbody>();
+            NavMeshGroundMovement movement = actor.GetComponent<NavMeshGroundMovement>();
+            Require(body != null && movement != null && !body.useGravity &&
+                    (body.constraints & RigidbodyConstraints.FreezePositionY) == 0,
+                $"Stage6 actor is not configured for NavMesh height traversal: {actor.name}.");
+        }
+
+        private static void ValidateOffscreenBackgroundCars(GameObject environmentRoot)
+        {
+            Transform backgroundFx = FindDescendant(
+                environmentRoot.transform,
+                "Background_FX");
+            Require(backgroundFx != null,
+                "Stage6 background vehicle validation requires Background_FX.");
+
+            Transform[] transforms = backgroundFx.GetComponentsInChildren<Transform>(true);
+            int carCount = 0;
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform transform = transforms[i];
+                if (!transform.name.StartsWith(
+                        "FX_Background_Cars_01",
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                carCount++;
+                Require(!transform.gameObject.activeSelf,
+                    $"Stage6 offscreen background car remains active: {transform.name}.");
+            }
+
+            Require(carCount == OffscreenBackgroundCarCount,
+                $"Stage6 found {carCount} background cars instead of " +
+                $"{OffscreenBackgroundCarCount}.");
         }
 
         private static void ValidateRequiredEnvironmentHierarchy(
@@ -2027,22 +2347,29 @@ namespace Deltatime.EditorTools
             Vector3 actualOffset = settings.FindProperty("cameraOffset").vector3Value;
             Vector3 actualFocusOffset =
                 settings.FindProperty("cameraFocusOffset").vector3Value;
+            bool constrainToBounds =
+                settings.FindProperty("constrainToBounds").boolValue;
+            Bounds actualBounds = settings.FindProperty("cameraBounds").boundsValue;
             Require(Vector3.Distance(actualOffset, expectedOffset) < 0.01f &&
                     Vector3.Distance(actualFocusOffset, expectedFocusOffset) < 0.01f &&
                     Mathf.Abs(camera.fieldOfView - expectedFov) < 0.01f,
                 $"Stage6 camera framing regressed. offset={actualOffset}, " +
                 $"focusOffset={actualFocusOffset}, FOV={camera.fieldOfView:0.0}.");
-            Require(actualOffset.y < navBounds.size.z * 0.82f &&
-                    camera.fieldOfView <= CombatCameraMaximumFov + 0.01f,
-                "Stage6 camera is no longer using the close combat-readable framing.");
+            Require(Mathf.Abs(actualOffset.y - Stage5StyleCameraHeight) < 0.01f &&
+                    Mathf.Abs(camera.fieldOfView - Stage5StyleCameraFieldOfView) < 0.01f,
+                "Stage6 camera is no longer using the Stage5-scale framing.");
+            Require(constrainToBounds &&
+                    Vector3.Distance(actualBounds.center, navBounds.center) < 0.01f &&
+                    Vector3.Distance(actualBounds.size, navBounds.size) < 0.01f,
+                "Stage6 camera bounds do not match the playable NavMesh region.");
 
             controller.SnapToTarget();
             Vector3 playerViewport = camera.WorldToViewportPoint(
                 player.position + Vector3.up * ActorRootHeight);
             Require(playerViewport.z > 0f &&
-                    playerViewport.x >= 0.25f && playerViewport.x <= 0.65f &&
-                    playerViewport.y >= 0.1f && playerViewport.y <= 0.45f,
-                $"Stage6 player is not visible in the intended lower combat frame: " +
+                    playerViewport.x >= -0.01f && playerViewport.x <= 1.01f &&
+                    playerViewport.y >= -0.01f && playerViewport.y <= 1.01f,
+                $"Stage6 player is not visible in the Stage5-scale combat frame: " +
                 $"viewport={playerViewport}.");
         }
 
@@ -2171,6 +2498,47 @@ namespace Deltatime.EditorTools
                         $"Stage6 pickup '{pickups[i].name}' overlaps " +
                         $"'{GetPath(overlaps[j].transform)}'.");
                 }
+            }
+        }
+
+        private static void ValidateCombatIdentityRings(Scene scene)
+        {
+            string[] owners =
+            {
+                "Player",
+                "Enemy West",
+                "Enemy Center",
+                "Enemy East",
+                "Enemy North Gunner",
+                "Enemy South Chaser"
+            };
+            string[] expectedPaths =
+            {
+                PlayerRingMaterialPath,
+                RangedRingMaterialPath,
+                ChaserRingMaterialPath,
+                RangedRingMaterialPath,
+                RangedRingMaterialPath,
+                ChaserRingMaterialPath
+            };
+            for (int i = 0; i < owners.Length; i++)
+            {
+                GameObject owner = FindSceneRoot(scene, owners[i]);
+                Transform ring = owner == null
+                    ? null
+                    : FindDirectChild(owner.transform, "Combat Identity Ring");
+                Renderer renderer = ring == null ? null : ring.GetComponent<Renderer>();
+                Material material = renderer == null ? null : renderer.sharedMaterial;
+                Require(material != null &&
+                        AssetDatabase.GetAssetPath(material) == expectedPaths[i],
+                    $"Stage6 inherited a Stage5 identity material for {owners[i]}.");
+                Require(renderer.shadowCastingMode == ShadowCastingMode.Off &&
+                        !renderer.receiveShadows &&
+                        renderer.lightProbeUsage == LightProbeUsage.BlendProbes &&
+                        renderer.reflectionProbeUsage == ReflectionProbeUsage.BlendProbes &&
+                        renderer.motionVectorGenerationMode ==
+                            MotionVectorGenerationMode.Object,
+                    $"Stage6 identity renderer settings regressed for {owners[i]}.");
             }
         }
 

@@ -1,4 +1,5 @@
 using Deltatime.InputSystem;
+using Deltatime.Level;
 using Deltatime.TimeSystem;
 using UnityEngine;
 
@@ -28,6 +29,7 @@ namespace Deltatime.Player
 
         private Rigidbody body;
         private CapsuleCollider capsuleCollider;
+        private NavMeshGroundMovement groundMovement;
         private readonly RaycastHit[] dashHits = new RaycastHit[HitBufferSize];
         private Vector3 dashDirection;
         private float dashTimeRemaining;
@@ -44,6 +46,7 @@ namespace Deltatime.Player
         {
             body = GetComponent<Rigidbody>();
             capsuleCollider = GetComponent<CapsuleCollider>();
+            groundMovement = GetComponent<NavMeshGroundMovement>();
             ValidateConfiguration();
         }
 
@@ -77,7 +80,20 @@ namespace Deltatime.Player
 
             if (safeDistance > 0f)
             {
-                body.MovePosition(body.position + (dashDirection * safeDistance));
+                if (groundMovement != null)
+                {
+                    if (!groundMovement.TryMove(
+                            body,
+                            dashDirection * safeDistance,
+                            out safeDistance))
+                    {
+                        safeDistance = 0f;
+                    }
+                }
+                else
+                {
+                    body.MovePosition(body.position + (dashDirection * safeDistance));
+                }
             }
 
             dashDistanceRemaining -= safeDistance;

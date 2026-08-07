@@ -43,6 +43,51 @@ namespace Deltatime.EditorTools
         private const int DeadlineCharges = 2;
         private const float ActorRootHeight = 0.75f;
         private const float PickupHeight = 0.18f;
+        private const float CameraHeightDepthRatio = 0.47f;
+        private const float CameraDownwardAngle = 60f;
+        private const float CameraFieldOfView = 48f;
+        private const float CameraLookHeight = 0.55f;
+        private const float CameraFocusDepthRatio = 0.06f;
+        private const float CameraMaximumFocusOffset = 1.5f;
+        private const float CameraAimLeadDistance = 1.25f;
+        private const float RightAnnexBoundaryX = 5f;
+        private const float RightAnnexMinimumZ = -2.5f;
+        private const float AnnexBoundaryTolerance = 0.01f;
+        private const float SouthCutawayHideInset = 3f;
+        private const float SouthCutawayRestoreInset = 3.75f;
+        private const float SouthCutawayRendererBand = 1.25f;
+        private const float ForegroundCutawayRendererBand = 6f;
+        private const float GroundMovementSampleDistance = 1.25f;
+        private const float GroundMovementSegmentLength = 0.12f;
+        private const int NotWalkableNavMeshArea = 1;
+        private const float FurnitureTargetTolerance = 0.2f;
+        private const int SeatsPerRetainedTable = 2;
+        private const int RetainedBarSeatCount = 4;
+
+        private const string PlayerRingMaterialPath =
+            "Assets/_Project/Materials/Stage5PlayerMarker.mat";
+        private const string RangedRingMaterialPath =
+            "Assets/_Project/Materials/Stage5RangedEnemyMarker.mat";
+        private const string ChaserRingMaterialPath =
+            "Assets/_Project/Materials/Stage5ChaserEnemyMarker.mat";
+
+        private static readonly Color PlayerRingColor =
+            new Color(0.02f, 0.6f, 0.8f, 1f);
+        private static readonly Color RangedRingColor =
+            new Color(0.85f, 0.08f, 0.055f, 1f);
+        private static readonly Color ChaserRingColor =
+            new Color(1f, 0.38f, 0.035f, 1f);
+
+        private static readonly Vector2[] RetainedTablePositions =
+        {
+            new Vector2(-2.675f, -8.35f),
+            new Vector2(-4.375f, -4.875f),
+            new Vector2(-8.335f, -1.221f),
+            new Vector2(-5.3f, 2.115f),
+            new Vector2(-8.934f, 4.785f),
+            new Vector2(-4.279f, 5.083f),
+            new Vector2(0.5f, 9.5f)
+        };
 
         private const string PlayerCharacterPath =
             CharacterRoot + "/SM_Chr_Party_Female_03.prefab";
@@ -98,6 +143,7 @@ namespace Deltatime.EditorTools
         public static void BuildStage5()
         {
             RequireSourceAssets();
+            EnsureCombatIdentityRingMaterials();
 
             Scene demoScene = EditorSceneManager.OpenScene(
                 DiveBarScenePath,
@@ -119,6 +165,7 @@ namespace Deltatime.EditorTools
 
             CameraSettings demoCameraSettings = CaptureDemoCameraSettings(stage5);
             GameObject environmentRoot = PrepareDiveBarEnvironment(stage5);
+            CurateDiveBarEnvironment(environmentRoot);
             List<GameObject> gameplayRoots = MoveStage4GameplayRoots(stage5);
             AttachDiveBarCharacters(stage5);
             ConfigureDiveBarVisualFeedback(demoCameraSettings);
@@ -127,8 +174,10 @@ namespace Deltatime.EditorTools
             NavMeshSurface surface = BuildStage5Navigation(
                 environmentRoot,
                 gameplayRoots);
+            ConfigureStage5ElevationMovement(stage5, environmentRoot);
             PositionEncounterOnBakedNavigation();
             ConfigureCombatIdentityRings();
+            ConfigureSouthExteriorCutaway(environmentRoot);
             ConfigureDiveBarCamera(surface);
 
             EditorSceneManager.MarkSceneDirty(stage5);
@@ -329,6 +378,313 @@ namespace Deltatime.EditorTools
             }
 
             return root;
+        }
+
+        private static void CurateDiveBarEnvironment(GameObject environmentRoot)
+        {
+            DisableRightAnnex(environmentRoot);
+            CurateFurniture(environmentRoot);
+        }
+
+        private static void DisableRightAnnex(GameObject environmentRoot)
+        {
+            List<GameObject> prefabRoots = FindOutermostPrefabRoots(environmentRoot);
+            int disabledPrefabCount = 0;
+            for (int i = 0; i < prefabRoots.Count; i++)
+            {
+                GameObject prefabRoot = prefabRoots[i];
+                if (prefabRoot.activeSelf && ShouldExcludeRightAnnex(prefabRoot.transform))
+                {
+                    prefabRoot.SetActive(false);
+                    disabledPrefabCount++;
+                }
+            }
+
+            // Some demo lighting and rendered objects are scene objects rather
+            // than individual prefab instances. Disable their local children
+            // with the same boundary policy so they cannot remain visible.
+            Renderer[] renderers = environmentRoot.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer.gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(renderer.transform, renderer.bounds))
+                {
+                    renderer.gameObject.SetActive(false);
+                }
+            }
+
+            Light[] lights = environmentRoot.GetComponentsInChildren<Light>(true);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                Light light = lights[i];
+                if (light.gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(
+                        light.transform,
+                        new Bounds(light.transform.position, Vector3.zero)))
+                {
+                    light.gameObject.SetActive(false);
+                }
+            }
+
+            ReflectionProbe[] probes =
+                environmentRoot.GetComponentsInChildren<ReflectionProbe>(true);
+            for (int i = 0; i < probes.Length; i++)
+            {
+                ReflectionProbe probe = probes[i];
+                if (probe.gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(
+                        probe.transform,
+                        new Bounds(probe.transform.position, probe.size)))
+                {
+                    probe.gameObject.SetActive(false);
+                }
+            }
+
+            Debug.Log(
+                $"Stage5 excluded the right annex with {disabledPrefabCount} prefab roots.");
+        }
+
+        private static bool ShouldExcludeRightAnnex(Transform transform)
+        {
+            return IsRightAnnexContent(
+                transform,
+                new Bounds(transform.position, Vector3.zero));
+        }
+
+        private static bool IsRightAnnexContent(Transform transform, Bounds bounds)
+        {
+            if (bounds.center.z < RightAnnexMinimumZ - AnnexBoundaryTolerance ||
+                bounds.center.x < RightAnnexBoundaryX - AnnexBoundaryTolerance)
+            {
+                return false;
+            }
+
+            if (bounds.center.x > RightAnnexBoundaryX + AnnexBoundaryTolerance)
+            {
+                return true;
+            }
+
+            return !HasStructuralDividerName(transform, null);
+        }
+
+        private static bool HasStructuralDividerName(Transform transform, Transform stopAt)
+        {
+            Transform current = transform;
+            while (current != null && current != stopAt)
+            {
+                string lower = current.name.ToLowerInvariant();
+                if (lower.Contains("wall") || lower.Contains("door") ||
+                    lower.Contains("pillar"))
+                {
+                    return true;
+                }
+
+                current = current.parent;
+            }
+
+            return false;
+        }
+
+        private static void CurateFurniture(GameObject environmentRoot)
+        {
+            List<GameObject> tables = FindFurnitureRoots(
+                environmentRoot,
+                FurnitureKind.Table);
+            List<GameObject> seats = FindFurnitureRoots(
+                environmentRoot,
+                FurnitureKind.Seat);
+            List<GameObject> retainedTables = new List<GameObject>();
+
+            for (int i = 0; i < tables.Count; i++)
+            {
+                GameObject table = tables[i];
+                bool retain = table.activeInHierarchy &&
+                    IsRetainedTable(table.transform.position);
+                table.SetActive(retain);
+                if (retain)
+                {
+                    retainedTables.Add(table);
+                }
+            }
+
+            if (retainedTables.Count != RetainedTablePositions.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Stage5 retained {retainedTables.Count} tables instead of " +
+                    $"{RetainedTablePositions.Length}. The source layout changed.");
+            }
+
+            HashSet<GameObject> retainedSeats = new HashSet<GameObject>();
+            for (int i = 0; i < retainedTables.Count; i++)
+            {
+                RetainNearestSeats(
+                    retainedTables[i],
+                    seats,
+                    retainedSeats,
+                    SeatsPerRetainedTable);
+            }
+
+            int retainedBarSeats = 0;
+            for (int i = 0; i < seats.Count; i++)
+            {
+                GameObject seat = seats[i];
+                if (seat.activeInHierarchy && IsBarStool(seat))
+                {
+                    retainedSeats.Add(seat);
+                    retainedBarSeats++;
+                }
+            }
+
+            if (retainedBarSeats != RetainedBarSeatCount)
+            {
+                throw new InvalidOperationException(
+                    $"Stage5 retained {retainedBarSeats} bar stools instead of " +
+                    $"{RetainedBarSeatCount}. The source layout changed.");
+            }
+
+            for (int i = 0; i < seats.Count; i++)
+            {
+                GameObject seat = seats[i];
+                seat.SetActive(retainedSeats.Contains(seat));
+            }
+
+            int expectedSeatCount =
+                RetainedTablePositions.Length * SeatsPerRetainedTable +
+                RetainedBarSeatCount;
+            if (retainedSeats.Count != expectedSeatCount)
+            {
+                throw new InvalidOperationException(
+                    $"Stage5 retained {retainedSeats.Count} seats instead of " +
+                    $"{expectedSeatCount}.");
+            }
+        }
+
+        private static bool IsRetainedTable(Vector3 position)
+        {
+            Vector2 tablePosition = new Vector2(position.x, position.z);
+            for (int i = 0; i < RetainedTablePositions.Length; i++)
+            {
+                if (Vector2.Distance(tablePosition, RetainedTablePositions[i]) <=
+                    FurnitureTargetTolerance)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void RetainNearestSeats(
+            GameObject table,
+            List<GameObject> seats,
+            HashSet<GameObject> retainedSeats,
+            int count)
+        {
+            for (int selection = 0; selection < count; selection++)
+            {
+                GameObject nearest = null;
+                float nearestDistance = float.PositiveInfinity;
+                for (int i = 0; i < seats.Count; i++)
+                {
+                    GameObject candidate = seats[i];
+                    if (!candidate.activeInHierarchy || retainedSeats.Contains(candidate))
+                    {
+                        continue;
+                    }
+
+                    float distance = Vector2.SqrMagnitude(
+                        new Vector2(
+                            candidate.transform.position.x - table.transform.position.x,
+                            candidate.transform.position.z - table.transform.position.z));
+                    if (distance < nearestDistance - 0.0001f ||
+                        (Mathf.Abs(distance - nearestDistance) <= 0.0001f &&
+                         nearest != null &&
+                         string.CompareOrdinal(candidate.name, nearest.name) < 0))
+                    {
+                        nearest = candidate;
+                        nearestDistance = distance;
+                    }
+                }
+
+                if (nearest == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Stage5 could not retain {count} seats for {table.name}.");
+                }
+
+                retainedSeats.Add(nearest);
+            }
+        }
+
+        private static bool IsBarStool(GameObject seat)
+        {
+            return seat.name.StartsWith("SM_Prop_Stool_02", StringComparison.Ordinal) &&
+                   seat.transform.position.x < RightAnnexBoundaryX;
+        }
+
+        private static List<GameObject> FindFurnitureRoots(
+            GameObject environmentRoot,
+            FurnitureKind kind)
+        {
+            List<GameObject> result = new List<GameObject>();
+            HashSet<GameObject> seen = new HashSet<GameObject>();
+            Transform[] transforms =
+                environmentRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform transform = transforms[i];
+                if (!MatchesFurnitureKind(transform.name, kind))
+                {
+                    continue;
+                }
+
+                GameObject root = GetOutermostPrefabRoot(transform.gameObject);
+                if (root != null && seen.Add(root))
+                {
+                    result.Add(root);
+                }
+            }
+
+            return result;
+        }
+
+        private static bool MatchesFurnitureKind(string name, FurnitureKind kind)
+        {
+            string lower = name.ToLowerInvariant();
+            return kind == FurnitureKind.Table
+                ? lower.Contains("table_")
+                : lower.Contains("chair_") || lower.Contains("stool_");
+        }
+
+        private static List<GameObject> FindOutermostPrefabRoots(GameObject environmentRoot)
+        {
+            List<GameObject> result = new List<GameObject>();
+            HashSet<GameObject> seen = new HashSet<GameObject>();
+            Transform[] transforms =
+                environmentRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                GameObject root = GetOutermostPrefabRoot(transforms[i].gameObject);
+                if (root != null && root != environmentRoot && seen.Add(root))
+                {
+                    result.Add(root);
+                }
+            }
+
+            return result;
+        }
+
+        private static GameObject GetOutermostPrefabRoot(GameObject gameObject)
+        {
+            GameObject root = PrefabUtility.GetOutermostPrefabInstanceRoot(gameObject);
+            return root == null ? gameObject : root;
+        }
+
+        private enum FurnitureKind
+        {
+            Table,
+            Seat
         }
 
         private static void RemoveMissingScriptsFromCopiedEnvironment(GameObject root)
@@ -687,6 +1043,11 @@ namespace Deltatime.EditorTools
                 temporarilyDisabled.Add(root);
             }
 
+            List<NavMeshModifier> obstacleModifiers =
+                CreateFurnitureExclusionModifiers(
+                environmentRoot,
+                "Stage5");
+
             try
             {
                 Physics.SyncTransforms();
@@ -697,6 +1058,11 @@ namespace Deltatime.EditorTools
                 for (int i = 0; i < temporarilyDisabled.Count; i++)
                 {
                     temporarilyDisabled[i].SetActive(true);
+                }
+
+                for (int i = 0; i < obstacleModifiers.Count; i++)
+                {
+                    UnityEngine.Object.DestroyImmediate(obstacleModifiers[i]);
                 }
             }
 
@@ -728,6 +1094,82 @@ namespace Deltatime.EditorTools
             EditorUtility.SetDirty(surface);
             AssetDatabase.SaveAssets();
             return surface;
+        }
+
+        /// <summary>
+        /// Physics-collider baking otherwise treats a table, chair, counter, or
+        /// other furniture's horizontal faces as a second floor. Keep the
+        /// colliders for gameplay and line of sight, but temporarily mark their
+        /// own bake sources Not Walkable so no upper surface is added to NavMesh.
+        /// </summary>
+        private static List<NavMeshModifier> CreateFurnitureExclusionModifiers(
+            GameObject environmentRoot,
+            string stageName)
+        {
+            Collider[] colliders =
+                environmentRoot.GetComponentsInChildren<Collider>(true);
+            List<NavMeshModifier> modifiers = new List<NavMeshModifier>();
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !collider.gameObject.activeInHierarchy ||
+                    !ShouldExcludeColliderFromNavMesh(collider))
+                {
+                    continue;
+                }
+
+                NavMeshModifier existing =
+                    collider.GetComponent<NavMeshModifier>();
+                if (existing != null)
+                {
+                    continue;
+                }
+
+                NavMeshModifier modifier =
+                    collider.gameObject.AddComponent<NavMeshModifier>();
+                modifier.overrideArea = true;
+                modifier.area = NotWalkableNavMeshArea;
+                modifier.applyToChildren = false;
+                modifiers.Add(modifier);
+            }
+
+            if (modifiers.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"{stageName} found no non-ground collider to exclude from NavMesh.");
+            }
+
+            Debug.Log(
+                $"{stageName} NavMesh bake: {modifiers.Count} furniture collider sources " +
+                "marked Not Walkable.");
+            return modifiers;
+        }
+
+        private static bool IsWalkableNavigationGround(Collider collider)
+        {
+            string lower = collider.name.ToLowerInvariant();
+            return (lower.Contains("floor") || lower.Contains("stairs") ||
+                    lower.Contains("stair") || lower.Contains("steps")) &&
+                   !lower.Contains("ceiling") && !lower.Contains("roof");
+        }
+
+        private static bool ShouldExcludeColliderFromNavMesh(Collider collider)
+        {
+            if (IsWalkableNavigationGround(collider))
+            {
+                return false;
+            }
+
+            string lower = collider.name.ToLowerInvariant();
+            return lower.Contains("table") || lower.Contains("chair") ||
+                   lower.Contains("stool") || lower.Contains("sofa") ||
+                   lower.Contains("booth") || lower.Contains("lounge") ||
+                   lower.Contains("bar_") || lower.Contains("counter") ||
+                   lower.Contains("fridge") || lower.Contains("shelf") ||
+                   lower.Contains("cabinet") || lower.Contains("desk") ||
+                   lower.Contains("planter") || lower.Contains("pillar") ||
+                   lower.Contains("column") || lower.Contains("prop_") ||
+                   lower.Contains("mechanical_bull_pit");
         }
 
         private static Bounds CalculateInteriorFloorBounds(GameObject environmentRoot)
@@ -766,6 +1208,15 @@ namespace Deltatime.EditorTools
                 throw new InvalidOperationException(
                     $"Could not derive the dive-bar floor bounds: {result}");
             }
+
+            // NavMeshSurface's PhysicsCollider collection can retain collider
+            // bounds from disabled copied prefab children. Keep its collection
+            // volume on the playable side of the preserved east divider.
+            Vector3 clippedMaximum = result.max;
+            clippedMaximum.x = Mathf.Min(
+                clippedMaximum.x,
+                RightAnnexBoundaryX - AnnexBoundaryTolerance);
+            result.max = clippedMaximum;
 
             return result;
         }
@@ -874,6 +1325,42 @@ namespace Deltatime.EditorTools
                 $"Stage5 {subject} candidate is not on the baked NavMesh: {requested}");
         }
 
+        private static void EnsureCombatIdentityRingMaterials()
+        {
+            Shader shader = Shader.Find("Unlit/Color");
+            if (shader == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 requires the built-in Unlit/Color shader for identity markers.");
+            }
+
+            EnsureUnlitMaterial(PlayerRingMaterialPath, PlayerRingColor, shader);
+            EnsureUnlitMaterial(RangedRingMaterialPath, RangedRingColor, shader);
+            EnsureUnlitMaterial(ChaserRingMaterialPath, ChaserRingColor, shader);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void EnsureUnlitMaterial(
+            string path,
+            Color color,
+            Shader shader)
+        {
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader)
+                {
+                    name = Path.GetFileNameWithoutExtension(path)
+                };
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            material.shader = shader;
+            material.color = color;
+            material.renderQueue = -1;
+            EditorUtility.SetDirty(material);
+        }
+
         private static void ConfigureCombatIdentityRings()
         {
             string[] owners =
@@ -884,6 +1371,15 @@ namespace Deltatime.EditorTools
                 "Enemy East",
                 "Enemy North Gunner",
                 "Enemy South Chaser"
+            };
+            Material[] materials =
+            {
+                AssetDatabase.LoadAssetAtPath<Material>(PlayerRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(ChaserRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(RangedRingMaterialPath),
+                AssetDatabase.LoadAssetAtPath<Material>(ChaserRingMaterialPath)
             };
             Scene scene = SceneManager.GetActiveScene();
             for (int i = 0; i < owners.Length; i++)
@@ -898,11 +1394,254 @@ namespace Deltatime.EditorTools
                         $"Stage5 combat identity ring is missing for {owners[i]}.");
                 }
 
+                if (materials[i] == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Stage5 combat identity material is missing for {owners[i]}.");
+                }
+
                 ring.position = new Vector3(
                     owner.transform.position.x,
                     owner.transform.position.y - ActorRootHeight + 0.025f,
                     owner.transform.position.z);
+                Renderer renderer = ring.GetComponent<Renderer>();
+                if (renderer == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Stage5 combat identity renderer is missing for {owners[i]}.");
+                }
+
+                renderer.sharedMaterial = materials[i];
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                renderer.lightProbeUsage = LightProbeUsage.Off;
+                renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+                renderer.motionVectorGenerationMode =
+                    MotionVectorGenerationMode.ForceNoMotion;
+                EditorUtility.SetDirty(renderer);
             }
+        }
+
+        private static void ConfigureSouthExteriorCutaway(GameObject environmentRoot)
+        {
+            NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
+            if (triangulation.vertices.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 south cutaway requires the baked NavMesh bounds.");
+            }
+
+            Bounds navBounds = CalculateBounds(triangulation.vertices);
+            List<Renderer> southExterior = new List<Renderer>();
+            List<Renderer> foreground = new List<Renderer>();
+            Renderer[] renderers = environmentRoot.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (IsSouthExteriorOccluder(renderer, navBounds, environmentRoot.transform))
+                {
+                    southExterior.Add(renderer);
+                }
+                else if (IsForegroundCutawayOccluder(renderer, navBounds))
+                {
+                    foreground.Add(renderer);
+                }
+            }
+
+            if (southExterior.Count == 0 || foreground.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 could not find south exterior and foreground renderers for the cutaway.");
+            }
+
+            Transform player = FindSceneRoot(
+                SceneManager.GetActiveScene(),
+                "Player")?.transform;
+            if (player == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 south cutaway requires the player transform.");
+            }
+
+            Camera camera = FindActiveGameplayCamera(SceneManager.GetActiveScene());
+            if (camera == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 foreground cutaway requires the gameplay camera.");
+            }
+
+            Stage5SouthExteriorCutaway cutaway =
+                environmentRoot.GetComponent<Stage5SouthExteriorCutaway>();
+            if (cutaway == null)
+            {
+                cutaway = environmentRoot.AddComponent<Stage5SouthExteriorCutaway>();
+            }
+
+            cutaway.Configure(
+                player,
+                camera,
+                CombineRenderers(southExterior, foreground),
+                southExterior.Count,
+                navBounds.min.z + SouthCutawayHideInset,
+                navBounds.min.z + SouthCutawayRestoreInset,
+                0.45f);
+            EditorUtility.SetDirty(cutaway);
+        }
+
+        private static Renderer[] CombineRenderers(
+            List<Renderer> first,
+            List<Renderer> second)
+        {
+            List<Renderer> combined = new List<Renderer>(first.Count + second.Count);
+            HashSet<Renderer> seen = new HashSet<Renderer>();
+            for (int i = 0; i < first.Count; i++)
+            {
+                if (seen.Add(first[i]))
+                {
+                    combined.Add(first[i]);
+                }
+            }
+
+            for (int i = 0; i < second.Count; i++)
+            {
+                if (seen.Add(second[i]))
+                {
+                    combined.Add(second[i]);
+                }
+            }
+
+            return combined.ToArray();
+        }
+
+        private static bool IsSouthExteriorOccluder(
+            Renderer renderer,
+            Bounds navBounds,
+            Transform environmentRoot)
+        {
+            if (renderer == null || !renderer.gameObject.activeInHierarchy ||
+                renderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly)
+            {
+                return false;
+            }
+
+            Bounds bounds = renderer.bounds;
+            if (bounds.max.z > navBounds.min.z + SouthCutawayRendererBand ||
+                bounds.max.x < navBounds.min.x || bounds.min.x > navBounds.max.x ||
+                bounds.max.y <= navBounds.center.y + 0.25f)
+            {
+                return false;
+            }
+
+            return HasStructuralDividerName(renderer.transform, environmentRoot);
+        }
+
+        private static bool IsForegroundCutawayOccluder(
+            Renderer renderer,
+            Bounds navBounds)
+        {
+            if (renderer == null || !renderer.gameObject.activeInHierarchy ||
+                renderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly)
+            {
+                return false;
+            }
+
+            Bounds bounds = renderer.bounds;
+            if (bounds.max.z > navBounds.min.z + ForegroundCutawayRendererBand ||
+                bounds.max.x < navBounds.min.x || bounds.min.x > navBounds.max.x ||
+                bounds.max.y <= navBounds.center.y + 0.25f)
+            {
+                return false;
+            }
+
+            string lower = renderer.name.ToLowerInvariant();
+            return lower.Contains("table") || lower.Contains("chair") ||
+                   lower.Contains("stool") || lower.Contains("sofa") ||
+                   lower.Contains("plant") || lower.Contains("bar_") ||
+                   lower.Contains("counter") || lower.Contains("prop_");
+        }
+
+        private static void ConfigureStage5ElevationMovement(
+            Scene scene,
+            GameObject environmentRoot)
+        {
+            int disabledTraversalColliders = DisableRuntimeTraversalColliders(environmentRoot);
+            PlayerHealth player = UnityEngine.Object.FindFirstObjectByType<PlayerHealth>();
+            EnemyMotor[] motors = UnityEngine.Object.FindObjectsByType<EnemyMotor>(
+                FindObjectsSortMode.None);
+            if (player == null || motors.Length != 5)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 elevation movement requires the player and five enemy motors.");
+            }
+
+            ConfigureActorGroundMovement(player.gameObject);
+            for (int i = 0; i < motors.Length; i++)
+            {
+                ConfigureActorGroundMovement(motors[i].gameObject);
+            }
+
+            if (disabledTraversalColliders == 0)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 did not disable any baked stair/step colliders for runtime traversal.");
+            }
+
+            Physics.SyncTransforms();
+            Debug.Log(
+                $"Stage5 elevation traversal: actors=6, runtime stair/step colliders disabled={disabledTraversalColliders}.");
+        }
+
+        private static void ConfigureActorGroundMovement(GameObject actor)
+        {
+            Rigidbody body = actor.GetComponent<Rigidbody>();
+            if (body == null)
+            {
+                throw new InvalidOperationException(
+                    $"Stage5 elevation traversal actor has no Rigidbody: {actor.name}.");
+            }
+
+            body.useGravity = false;
+            body.constraints &= ~RigidbodyConstraints.FreezePositionY;
+            NavMeshGroundMovement movement = actor.GetComponent<NavMeshGroundMovement>();
+            if (movement == null)
+            {
+                movement = actor.AddComponent<NavMeshGroundMovement>();
+            }
+
+            movement.Configure(
+                GroundMovementSampleDistance,
+                GroundMovementSegmentLength);
+            EditorUtility.SetDirty(body);
+            EditorUtility.SetDirty(movement);
+        }
+
+        private static int DisableRuntimeTraversalColliders(GameObject environmentRoot)
+        {
+            int disabled = 0;
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !IsRuntimeTraversalCollider(collider))
+                {
+                    continue;
+                }
+
+                collider.enabled = false;
+                collider.gameObject.layer = 0;
+                EditorUtility.SetDirty(collider);
+                EditorUtility.SetDirty(collider.gameObject);
+                disabled++;
+            }
+
+            return disabled;
+        }
+
+        private static bool IsRuntimeTraversalCollider(Collider collider)
+        {
+            string lower = collider.name.ToLowerInvariant();
+            return (lower.Contains("stairs") || lower.Contains("steps")) &&
+                   !lower.Contains("railing") && !lower.Contains("rail");
         }
 
         private static void ConfigureDiveBarCamera(NavMeshSurface surface)
@@ -930,34 +1669,52 @@ namespace Deltatime.EditorTools
                 navBounds.Encapsulate(triangulation.vertices[i]);
             }
 
-            // The measured interior is about 18.7 by 24.3 metres. Derive the
-            // overview offset from those saved NavMesh bounds instead of a
-            // Stage3/Stage4 camera profile.
-            Vector3 offset = new Vector3(
-                0f,
-                Mathf.Max(
-                    13f,
-                    Mathf.Max(
-                        navBounds.size.x * 0.8f,
-                        navBounds.size.z * 0.72f)),
-                -Mathf.Max(3f, navBounds.size.z * 0.16f));
-            Transform player = FindSceneRoot(
-                SceneManager.GetActiveScene(),
-                "Player").transform;
-            Vector3 focusOffset = new Vector3(
-                navBounds.center.x - player.position.x,
-                0f,
-                navBounds.center.z - player.position.z);
+            CalculateDiveBarCameraFraming(
+                navBounds,
+                out Vector3 offset,
+                out Vector3 focusOffset);
+            Bounds cameraBounds = CalculateCameraBounds(navBounds);
             SerializedObject cameraSettings = new SerializedObject(controller);
             cameraSettings.FindProperty("cameraOffset").vector3Value = offset;
             cameraSettings.FindProperty("cameraFocusOffset").vector3Value = focusOffset;
-            cameraSettings.FindProperty("aimLeadDistance").floatValue = 1.25f;
+            cameraSettings.FindProperty("aimLeadDistance").floatValue =
+                CameraAimLeadDistance;
+            cameraSettings.FindProperty("constrainToBounds").boolValue = true;
+            cameraSettings.FindProperty("cameraBounds").boundsValue = cameraBounds;
             cameraSettings.ApplyModifiedPropertiesWithoutUndo();
-            camera.fieldOfView = 58f;
+            camera.fieldOfView = CameraFieldOfView;
             controller.SnapToTarget();
             EditorUtility.SetDirty(camera);
             EditorUtility.SetDirty(controller);
             EditorUtility.SetDirty(surface);
+            Debug.Log(
+                $"Stage5 camera derived from NavMesh bounds {navBounds}: " +
+                $"offset={offset}, focusOffset={focusOffset}, " +
+                $"FOV={CameraFieldOfView:0.0}, cameraBounds={cameraBounds}, " +
+                "constrained=true.");
+        }
+
+        private static void CalculateDiveBarCameraFraming(
+            Bounds navBounds,
+            out Vector3 offset,
+            out Vector3 focusOffset)
+        {
+            float height = navBounds.size.z * CameraHeightDepthRatio;
+            float backward =
+                (height - CameraLookHeight) /
+                Mathf.Tan(CameraDownwardAngle * Mathf.Deg2Rad);
+            offset = new Vector3(0f, height, -backward);
+            focusOffset = new Vector3(
+                0f,
+                0f,
+                Mathf.Min(
+                    navBounds.size.z * CameraFocusDepthRatio,
+                    CameraMaximumFocusOffset));
+        }
+
+        private static Bounds CalculateCameraBounds(Bounds navBounds)
+        {
+            return navBounds;
         }
 
         private static void AddStage5ToBuildSettings()
@@ -1039,6 +1796,9 @@ namespace Deltatime.EditorTools
                 ? string.Empty
                 : AssetDatabase.GetAssetPath(surface.navMeshData);
             NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
+            Bounds navBounds = triangulation.vertices.Length == 0
+                ? default
+                : CalculateBounds(triangulation.vertices);
             int activeCameraCount = CountActiveCameras(scene);
             int diveBarVisualCount = CountNamedDiveBarVisuals(scene);
             int visionObstacleCount = environmentRoot == null
@@ -1048,7 +1808,7 @@ namespace Deltatime.EditorTools
                     VisionObstacleLayer);
             int environmentRendererCount = environmentRoot == null
                 ? 0
-                : environmentRoot.GetComponentsInChildren<Renderer>(true).Length;
+                : CountActiveRenderers(environmentRoot.transform);
             string missingReference = FindFirstMissingReference(scene);
 
             Require(scene.path == Stage5ScenePath,
@@ -1058,8 +1818,8 @@ namespace Deltatime.EditorTools
             Require(environmentRoot != null &&
                     environmentRoot.GetComponent<ReplayExcluded>() != null,
                 "Stage5 static environment is not excluded from replay tracks.");
-            Require(environmentRendererCount >= 1400,
-                $"Stage5 preserved only {environmentRendererCount} demo renderers.");
+            Require(environmentRendererCount >= 1000,
+                $"Stage5 preserved only {environmentRendererCount} active demo renderers.");
             Require(activeCameraCount == 1,
                 $"Stage5 has {activeCameraCount} active cameras instead of one.");
             Require(player != null &&
@@ -1095,6 +1855,10 @@ namespace Deltatime.EditorTools
             Require(string.IsNullOrEmpty(missingReference),
                 "Stage5 contains a missing script or object reference: " + missingReference);
 
+            ValidateEnvironmentCuration(environmentRoot, navBounds);
+            ValidateStage5ElevationMovement(player, motors, environmentRoot, navBounds);
+            ValidateFurnitureNavMeshExclusion(environmentRoot, "Stage5");
+
             RequireOnNavMesh(player.transform.position, "Player");
             for (int i = 0; i < enemies.Length; i++)
             {
@@ -1107,8 +1871,460 @@ namespace Deltatime.EditorTools
 
             Require(HasClearInitialSight(player.gameObject, enemies),
                 "Stage5 player cannot initially see any enemy through the dive-bar structures.");
+            ValidateDiveBarCamera(scene, player.transform, navBounds);
+            ValidateCombatIdentityRings(scene);
             ValidateVisualChildren(scene);
             ValidateBuildOrder();
+        }
+
+        private static void ValidateEnvironmentCuration(
+            GameObject environmentRoot,
+            Bounds navBounds)
+        {
+            List<GameObject> tables = FindFurnitureRoots(
+                environmentRoot,
+                FurnitureKind.Table);
+            List<GameObject> seats = FindFurnitureRoots(
+                environmentRoot,
+                FurnitureKind.Seat);
+            int activeTableCount = CountActiveObjects(tables);
+            int activeSeatCount = CountActiveObjects(seats);
+
+            Require(activeTableCount == RetainedTablePositions.Length,
+                $"Stage5 has {activeTableCount} active tables instead of " +
+                $"{RetainedTablePositions.Length}.");
+            Require(activeSeatCount ==
+                    RetainedTablePositions.Length * SeatsPerRetainedTable +
+                    RetainedBarSeatCount,
+                $"Stage5 has {activeSeatCount} active seats instead of 18.");
+
+            for (int i = 0; i < tables.Count; i++)
+            {
+                GameObject table = tables[i];
+                if (table.activeInHierarchy)
+                {
+                    Require(IsRetainedTable(table.transform.position),
+                        $"Stage5 retained an unexpected table: {table.name} at " +
+                        table.transform.position);
+                }
+            }
+
+            int annexRendererCount = CountActiveAnnexRenderers(environmentRoot);
+            int annexLightCount = CountActiveAnnexLights(environmentRoot);
+            int annexColliderCount = CountActiveAnnexColliders(environmentRoot);
+            Require(annexRendererCount == 0 && annexLightCount == 0 &&
+                    annexColliderCount == 0,
+                $"Stage5 right annex remains active: renderers={annexRendererCount}, " +
+                $"lights={annexLightCount}, colliders={annexColliderCount}.");
+            Require(HasActiveEastDivider(environmentRoot),
+                "Stage5 removed the east divider wall while excluding the right annex.");
+            Require(navBounds.max.x <= RightAnnexBoundaryX + 0.1f,
+                $"Stage5 NavMesh still enters the excluded right annex: {navBounds}.");
+
+            Stage5SouthExteriorCutaway cutaway =
+                environmentRoot.GetComponent<Stage5SouthExteriorCutaway>();
+            Require(cutaway != null && cutaway.Occluders != null &&
+                    cutaway.Occluders.Length > cutaway.SouthExteriorOccluderCount &&
+                    cutaway.SouthExteriorOccluderCount > 0,
+                "Stage5 foreground cutaway is not configured.");
+            Require(Mathf.Abs(cutaway.HideBelowZ -
+                              (navBounds.min.z + SouthCutawayHideInset)) < 0.01f &&
+                    Mathf.Abs(cutaway.RestoreAboveZ -
+                              (navBounds.min.z + SouthCutawayRestoreInset)) < 0.01f,
+                "Stage5 south exterior cutaway thresholds do not match the NavMesh.");
+            for (int i = 0; i < cutaway.Occluders.Length; i++)
+            {
+                Renderer renderer = cutaway.Occluders[i];
+                Require(renderer != null && renderer.gameObject.activeInHierarchy &&
+                        renderer.shadowCastingMode != ShadowCastingMode.ShadowsOnly,
+                    "Stage5 south exterior cutaway renderer is invalid in edit mode.");
+            }
+        }
+
+        private static void ValidateStage5ElevationMovement(
+            PlayerHealth player,
+            EnemyMotor[] motors,
+            GameObject environmentRoot,
+            Bounds navBounds)
+        {
+            Require(navBounds.size.y >= 0.35f,
+                $"Stage5 baked NavMesh has no usable elevation span: {navBounds}");
+            Require(player != null && motors.Length == 5,
+                "Stage5 elevation validation requires the player and five enemy motors.");
+
+            ValidateActorGroundMovement(player.gameObject);
+            for (int i = 0; i < motors.Length; i++)
+            {
+                ValidateActorGroundMovement(motors[i].gameObject);
+            }
+
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            int disabledTraversalColliders = 0;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (!colliders[i].enabled && IsRuntimeTraversalCollider(colliders[i]))
+                {
+                    disabledTraversalColliders++;
+                }
+            }
+
+            Require(disabledTraversalColliders > 0,
+                "Stage5 did not preserve disabled runtime stair/step colliders.");
+        }
+
+        internal static void ValidateFurnitureNavMeshExclusion(
+            GameObject environmentRoot,
+            string stageName)
+        {
+            const float sampleDistance = 0.08f;
+            Collider[] colliders =
+                environmentRoot.GetComponentsInChildren<Collider>(true);
+            int validated = 0;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (!collider.enabled || !collider.gameObject.activeInHierarchy ||
+                    !ShouldExcludeColliderFromNavMesh(collider))
+                {
+                    continue;
+                }
+
+                Bounds bounds = collider.bounds;
+                Vector3 topProbe = new Vector3(
+                    bounds.center.x,
+                    bounds.max.y,
+                    bounds.center.z);
+                // A hanging or open-bottom prop may validly have ground below
+                // it, but its upper surface must never be a NavMesh platform.
+                Require(!NavMesh.SamplePosition(
+                            topProbe,
+                            out _,
+                            sampleDistance,
+                            NavMesh.AllAreas),
+                    $"{stageName} NavMesh still enters furniture collider " +
+                    $"'{GetPath(collider.transform)}'.");
+                validated++;
+            }
+
+            Require(validated > 0,
+                $"{stageName} has no furniture collider to validate against NavMesh.");
+        }
+
+        private static void ValidateActorGroundMovement(GameObject actor)
+        {
+            Rigidbody body = actor.GetComponent<Rigidbody>();
+            NavMeshGroundMovement movement = actor.GetComponent<NavMeshGroundMovement>();
+            Require(body != null && movement != null && !body.useGravity &&
+                    (body.constraints & RigidbodyConstraints.FreezePositionY) == 0,
+                $"Stage5 actor is not configured for NavMesh height traversal: {actor.name}.");
+        }
+
+        private static int CountActiveObjects(List<GameObject> objects)
+        {
+            int count = 0;
+            for (int i = 0; i < objects.Count; i++)
+            {
+                if (objects[i].activeInHierarchy)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountActiveAnnexRenderers(GameObject environmentRoot)
+        {
+            Renderer[] renderers = environmentRoot.GetComponentsInChildren<Renderer>(true);
+            int count = 0;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i].gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(renderers[i].transform, renderers[i].bounds))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountActiveAnnexLights(GameObject environmentRoot)
+        {
+            Light[] lights = environmentRoot.GetComponentsInChildren<Light>(true);
+            int count = 0;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i].gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(
+                        lights[i].transform,
+                        new Bounds(lights[i].transform.position, Vector3.zero)))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountActiveAnnexColliders(GameObject environmentRoot)
+        {
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            int count = 0;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i].enabled && colliders[i].gameObject.activeInHierarchy &&
+                    IsRightAnnexContent(colliders[i].transform, colliders[i].bounds))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static bool HasActiveEastDivider(GameObject environmentRoot)
+        {
+            Renderer[] renderers = environmentRoot.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (!renderer.gameObject.activeInHierarchy ||
+                    Mathf.Abs(renderer.bounds.center.x - RightAnnexBoundaryX) > 0.25f ||
+                    renderer.bounds.center.z < RightAnnexMinimumZ ||
+                    !HasStructuralDividerName(renderer.transform, environmentRoot.transform))
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ValidateDiveBarCamera(
+            Scene scene,
+            Transform player,
+            Bounds navBounds)
+        {
+            Camera camera = FindActiveGameplayCamera(scene);
+            TopDownCameraController controller = camera == null
+                ? null
+                : camera.GetComponent<TopDownCameraController>();
+            Require(camera != null && controller != null,
+                "Stage5 constrained camera rig is missing.");
+
+            CalculateDiveBarCameraFraming(
+                navBounds,
+                out Vector3 expectedOffset,
+                out Vector3 expectedFocusOffset);
+            SerializedObject settings = new SerializedObject(controller);
+            settings.Update();
+            Vector3 actualOffset = settings.FindProperty("cameraOffset").vector3Value;
+            Vector3 actualFocusOffset =
+                settings.FindProperty("cameraFocusOffset").vector3Value;
+            float actualAimLead =
+                settings.FindProperty("aimLeadDistance").floatValue;
+            bool actualConstrain =
+                settings.FindProperty("constrainToBounds").boolValue;
+            Bounds actualBounds = settings.FindProperty("cameraBounds").boundsValue;
+            Bounds expectedBounds = CalculateCameraBounds(navBounds);
+
+            Require(Vector3.Distance(actualOffset, expectedOffset) < 0.01f &&
+                    Vector3.Distance(actualFocusOffset, expectedFocusOffset) < 0.01f &&
+                    Mathf.Abs(actualAimLead - CameraAimLeadDistance) < 0.01f &&
+                    Mathf.Abs(camera.fieldOfView - CameraFieldOfView) < 0.01f,
+                $"Stage5 camera framing regressed. offset={actualOffset}, " +
+                $"focusOffset={actualFocusOffset}, aimLead={actualAimLead:0.00}, " +
+                $"FOV={camera.fieldOfView:0.0}.");
+            Require(actualConstrain &&
+                    Vector3.Distance(actualBounds.center, expectedBounds.center) < 0.01f &&
+                    Vector3.Distance(actualBounds.size, expectedBounds.size) < 0.01f,
+                $"Stage5 camera bounds do not match the NavMesh AABB. " +
+                $"camera={actualBounds}, expected={expectedBounds}.");
+
+            Vector3 lookDirection =
+                -actualOffset + Vector3.up * CameraLookHeight;
+            float downwardAngle = Mathf.Atan2(
+                -lookDirection.y,
+                new Vector2(lookDirection.x, lookDirection.z).magnitude) *
+                Mathf.Rad2Deg;
+            Require(Mathf.Abs(downwardAngle - CameraDownwardAngle) < 0.1f,
+                $"Stage5 camera angle is {downwardAngle:0.0} instead of " +
+                $"{CameraDownwardAngle:0.0} degrees.");
+
+            float previousAspect = camera.aspect;
+            try
+            {
+                camera.aspect = 16f / 9f;
+                controller.SnapToTarget();
+                Require(TryCalculateCameraGroundBounds(
+                        camera,
+                        expectedBounds.center.y,
+                        out Bounds visibleBounds),
+                    "Stage5 camera viewport does not intersect the NavMesh ground plane.");
+                RequireFootprintConstrained(visibleBounds, expectedBounds, "initial");
+                Vector3 playerViewport = camera.WorldToViewportPoint(
+                    player.position + Vector3.up * ActorRootHeight);
+                Require(playerViewport.z > 0f &&
+                        playerViewport.x >= 0f && playerViewport.x <= 1f &&
+                        playerViewport.y >= 0f && playerViewport.y <= 1f,
+                    $"Stage5 player is outside the balanced camera frame: " +
+                    $"viewport={playerViewport}.");
+            }
+            finally
+            {
+                camera.aspect = previousAspect;
+                controller.SnapToTarget();
+            }
+        }
+
+        private static void ValidateCombatIdentityRings(Scene scene)
+        {
+            string[] owners =
+            {
+                "Player",
+                "Enemy West",
+                "Enemy Center",
+                "Enemy East",
+                "Enemy North Gunner",
+                "Enemy South Chaser"
+            };
+            string[] expectedPaths =
+            {
+                PlayerRingMaterialPath,
+                RangedRingMaterialPath,
+                ChaserRingMaterialPath,
+                RangedRingMaterialPath,
+                RangedRingMaterialPath,
+                ChaserRingMaterialPath
+            };
+            Color[] expectedColors =
+            {
+                PlayerRingColor,
+                RangedRingColor,
+                ChaserRingColor,
+                RangedRingColor,
+                RangedRingColor,
+                ChaserRingColor
+            };
+
+            for (int i = 0; i < owners.Length; i++)
+            {
+                GameObject owner = FindSceneRoot(scene, owners[i]);
+                Transform ring = owner == null
+                    ? null
+                    : FindDirectChild(owner.transform, "Combat Identity Ring");
+                Renderer renderer = ring == null ? null : ring.GetComponent<Renderer>();
+                Material material = renderer == null ? null : renderer.sharedMaterial;
+                Require(renderer != null && material != null,
+                    $"Stage5 combat identity marker is missing for {owners[i]}.");
+                Require(AssetDatabase.GetAssetPath(material) == expectedPaths[i] &&
+                        material.shader != null &&
+                        material.shader.name == "Unlit/Color" &&
+                        ColorsApproximatelyEqual(material.color, expectedColors[i]),
+                    $"Stage5 combat identity material regressed for {owners[i]}: " +
+                    $"{AssetDatabase.GetAssetPath(material)}.");
+                Require(renderer.shadowCastingMode == ShadowCastingMode.Off &&
+                        !renderer.receiveShadows &&
+                        renderer.lightProbeUsage == LightProbeUsage.Off &&
+                        renderer.reflectionProbeUsage == ReflectionProbeUsage.Off,
+                    $"Stage5 combat identity marker still receives scene lighting: " +
+                    owners[i]);
+            }
+        }
+
+        private static bool TryCalculateCameraGroundBounds(
+            Camera camera,
+            float groundHeight,
+            out Bounds bounds)
+        {
+            bounds = default;
+            bool found = false;
+            Plane ground = new Plane(Vector3.up, new Vector3(0f, groundHeight, 0f));
+            Vector2[] corners =
+            {
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f)
+            };
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Ray ray = camera.ViewportPointToRay(corners[i]);
+                if (!ground.Raycast(ray, out float distance))
+                {
+                    return false;
+                }
+
+                Vector3 point = ray.GetPoint(distance);
+                if (!found)
+                {
+                    bounds = new Bounds(point, Vector3.zero);
+                    found = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(point);
+                }
+            }
+
+            return found;
+        }
+
+        private static void RequireFootprintConstrained(
+            Bounds visibleBounds,
+            Bounds navBounds,
+            string sample)
+        {
+            const float tolerance = 0.05f;
+            if (visibleBounds.size.x <= navBounds.size.x + tolerance)
+            {
+                Require(visibleBounds.min.x >= navBounds.min.x - tolerance &&
+                        visibleBounds.max.x <= navBounds.max.x + tolerance,
+                    $"Stage5 camera escaped the horizontal map bounds at {sample}: " +
+                    visibleBounds);
+            }
+            else
+            {
+                Require(Mathf.Abs(visibleBounds.center.x - navBounds.center.x) <= tolerance,
+                    $"Stage5 oversized horizontal viewport is not centered at {sample}: " +
+                    visibleBounds);
+            }
+
+            if (visibleBounds.size.z <= navBounds.size.z + tolerance)
+            {
+                Require(visibleBounds.min.z >= navBounds.min.z - tolerance &&
+                        visibleBounds.max.z <= navBounds.max.z + tolerance,
+                    $"Stage5 camera escaped the vertical map bounds at {sample}: " +
+                    visibleBounds);
+            }
+            else
+            {
+                Require(Mathf.Abs(visibleBounds.center.z - navBounds.center.z) <= tolerance,
+                    $"Stage5 oversized vertical viewport is not centered at {sample}: " +
+                    visibleBounds);
+            }
+        }
+
+        private static Bounds CalculateBounds(Vector3[] points)
+        {
+            Bounds bounds = new Bounds(points[0], Vector3.zero);
+            for (int i = 1; i < points.Length; i++)
+            {
+                bounds.Encapsulate(points[i]);
+            }
+
+            return bounds;
+        }
+
+        private static bool ColorsApproximatelyEqual(Color first, Color second)
+        {
+            return Mathf.Abs(first.r - second.r) < 0.001f &&
+                   Mathf.Abs(first.g - second.g) < 0.001f &&
+                   Mathf.Abs(first.b - second.b) < 0.001f &&
+                   Mathf.Abs(first.a - second.a) < 0.001f;
         }
 
         private static void RequireOnNavMesh(Vector3 position, string subject)
@@ -1293,6 +2509,21 @@ namespace Deltatime.EditorTools
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (colliders[i].enabled && colliders[i].gameObject.layer == layer)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountActiveRenderers(Transform root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            int count = 0;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i].gameObject.activeInHierarchy)
                 {
                     count++;
                 }

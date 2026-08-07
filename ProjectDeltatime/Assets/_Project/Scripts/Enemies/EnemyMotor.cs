@@ -1,4 +1,5 @@
 using Deltatime.Core;
+using Deltatime.Level;
 using Deltatime.TimeSystem;
 using UnityEngine;
 using UnityEngine.AI;
@@ -30,6 +31,7 @@ namespace Deltatime.Enemies
 
         private Rigidbody body;
         private CapsuleCollider capsule;
+        private NavMeshGroundMovement groundMovement;
         private Vector3[] pathCorners = System.Array.Empty<Vector3>();
         private Vector3 lastPathDestination;
         private float nextRepathWorldTime;
@@ -46,6 +48,7 @@ namespace Deltatime.Enemies
         {
             body = GetComponent<Rigidbody>();
             capsule = GetComponent<CapsuleCollider>();
+            groundMovement = GetComponent<NavMeshGroundMovement>();
             path = new NavMeshPath();
             queryPath = new NavMeshPath();
             if (worldTime == null)
@@ -415,9 +418,21 @@ namespace Deltatime.Enemies
                 return 0f;
             }
 
-            body.MovePosition(
-                body.position +
-                (direction * safeDistance));
+            if (groundMovement != null)
+            {
+                if (!groundMovement.TryMove(
+                        body,
+                        direction * safeDistance,
+                        out float projectedDistance))
+                {
+                    return 0f;
+                }
+
+                TotalDistanceMoved += projectedDistance;
+                return projectedDistance;
+            }
+
+            body.MovePosition(body.position + (direction * safeDistance));
             TotalDistanceMoved += safeDistance;
             return safeDistance;
         }

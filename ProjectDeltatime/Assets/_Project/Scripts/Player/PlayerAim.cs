@@ -12,11 +12,9 @@ namespace Deltatime.Player
         [SerializeField] private WorldTimeActivity worldTimeActivity;
         [SerializeField] private Camera gameplayCamera;
         [SerializeField] private LineRenderer directionLine;
-        [SerializeField] private LayerMask aimCollisionMask = ~0;
         [SerializeField, Min(1f)] private float angularSpeedForFullActivity = 360f;
         [SerializeField, Min(0.1f)] private float directionLineLength = 1.2f;
 
-        private readonly RaycastHit[] aimHits = new RaycastHit[32];
         private Rigidbody body;
         private float previousAngle;
         private bool hasPreviousAngle;
@@ -77,52 +75,24 @@ namespace Deltatime.Player
             PlayerInputReader inputReader,
             WorldTimeActivity activity,
             Camera targetCamera,
-            LineRenderer debugLine,
-            LayerMask collisionMask)
+            LineRenderer debugLine)
         {
             input = inputReader;
             worldTimeActivity = activity;
             gameplayCamera = targetCamera;
             directionLine = debugLine;
-            aimCollisionMask = collisionMask;
         }
 
         private bool TryResolveAimPoint(Ray pointerRay, out Vector3 point)
         {
-            int hitCount = Physics.RaycastNonAlloc(
-                pointerRay,
-                aimHits,
-                gameplayCamera.farClipPlane,
-                aimCollisionMask,
-                QueryTriggerInteraction.Ignore);
-            float nearestDistance = float.PositiveInfinity;
-            point = default;
-
-            for (int i = 0; i < hitCount; i++)
+            // Aim must follow the cursor's position on the actor's traversal plane,
+            // not the first physics collider between the camera and that plane. In
+            // particular, Stage 5 hides foreground geometry visually while keeping
+            // its collision and vision blockers active.
+            Plane aimPlane = new Plane(Vector3.up, body.position);
+            if (!aimPlane.Raycast(pointerRay, out float hitDistance))
             {
-                RaycastHit hit = aimHits[i];
-                Collider collider = hit.collider;
-                if (collider == null ||
-                    collider.isTrigger ||
-                    collider.transform == transform ||
-                    collider.transform.IsChildOf(transform) ||
-                    hit.distance >= nearestDistance)
-                {
-                    continue;
-                }
-
-                nearestDistance = hit.distance;
-                point = hit.point;
-            }
-
-            if (nearestDistance < float.PositiveInfinity)
-            {
-                return true;
-            }
-
-            Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
-            if (!groundPlane.Raycast(pointerRay, out float hitDistance))
-            {
+                point = default;
                 return false;
             }
 
