@@ -1,3 +1,4 @@
+using System;
 using Deltatime.Combat;
 using Deltatime.Core;
 using Deltatime.InputSystem;
@@ -49,6 +50,7 @@ namespace Deltatime.Player
 
         public bool CombatEnabled { get; private set; } = true;
         public WeaponController Weapon => weapon;
+        public event Action UnarmedAttackPerformed;
 
         private void Awake()
         {
@@ -247,6 +249,7 @@ namespace Deltatime.Player
                 nextPunchTime = Mathf.Max(
                     nextPunchTime,
                     clock + punchInterval);
+                UnarmedAttackPerformed?.Invoke();
             }
 
             if (stagedMeleeAttackCount > 0)
@@ -355,6 +358,7 @@ namespace Deltatime.Player
                 punchRange,
                 punchHalfAngle,
                 punchDamage);
+            UnarmedAttackPerformed?.Invoke();
             return true;
         }
 

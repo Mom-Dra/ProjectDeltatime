@@ -7,6 +7,7 @@ using Deltatime.Level;
 using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
+using Deltatime.Visuals;
 using Deltatime.UI;
 using Deltatime.Vision;
 using Unity.AI.Navigation;
@@ -57,6 +58,16 @@ namespace Deltatime.EditorTools
         private const string ThrownWeaponPrefabPath = Prefabs + "/ThrownWeapon.prefab";
         private const string InterceptableWeaponPrefabPath =
             Prefabs + "/InterceptableWeapon.prefab";
+        private const string CharacterRoot =
+            "Assets/Synty/PolygonNightclubs/Prefabs/Characters";
+        private const string PlayerCharacterPath =
+            CharacterRoot + "/SM_Chr_Party_Female_01.prefab";
+        private const string WestEnemyCharacterPath =
+            CharacterRoot + "/SM_Chr_Bartender_Male_01.prefab";
+        private const string CenterEnemyCharacterPath =
+            CharacterRoot + "/SM_Chr_Bouncer_Male_01.prefab";
+        private const string EastEnemyCharacterPath =
+            CharacterRoot + "/SM_Chr_Party_Male_02.prefab";
         private const string VisionObstacleLayerName = "VisionObstacle";
         private const int VisionObstacleLayer = 8;
         private const int Stage1DeadlineCharges = 2;
@@ -311,6 +322,7 @@ namespace Deltatime.EditorTools
                 throw new InvalidOperationException($"Failed to save {Stage2ScenePath}.");
             }
 
+            ApplyStage1Characters();
             AddStageScenesToBuildSettings();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -327,6 +339,42 @@ namespace Deltatime.EditorTools
         public static void BuildAndValidateFromCommandLine()
         {
             BuildPrototypeRoom();
+        }
+
+        [MenuItem("Tools/Prototype/Animation/Apply Characters To Stage 1")]
+        public static void ApplyStage1Characters()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                Stage1ScenePath,
+                OpenSceneMode.Single);
+            AttachStage1Characters(scene);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, Stage1ScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save {Stage1ScenePath} with animated characters.");
+            }
+
+            ValidateScene(scene, Stage1DeadlineCharges);
+            ValidateStage1CharacterAnimations(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Stage1 animated characters applied and validated: 4/4 actors.");
+        }
+
+        public static void ApplyStage1CharactersFromCommandLine()
+        {
+            ApplyStage1Characters();
+        }
+
+        public static void ValidateStage1CharacterAnimationsFromCommandLine()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                Stage1ScenePath,
+                OpenSceneMode.Single);
+            ValidateScene(scene, Stage1DeadlineCharges);
+            ValidateStage1CharacterAnimations(scene);
+            Debug.Log("Stage1 character animation validation passed.");
         }
 
         public static void CapturePreviewFromCommandLine()
@@ -898,6 +946,153 @@ namespace Deltatime.EditorTools
                 bodyRenderer);
         }
 
+        private static void AttachStage1Characters(Scene scene)
+        {
+            AttachStage1Character(
+                scene,
+                "Player",
+                PlayerCharacterPath,
+                "Stage1 Character - Player",
+                AccentMaterialPath);
+            AttachStage1Character(
+                scene,
+                "Enemy West",
+                WestEnemyCharacterPath,
+                "Stage1 Character - West Gunner",
+                EnemyMaterialPath);
+            AttachStage1Character(
+                scene,
+                "Enemy Center",
+                CenterEnemyCharacterPath,
+                "Stage1 Character - Center Chaser",
+                ChaserMaterialPath);
+            AttachStage1Character(
+                scene,
+                "Enemy East",
+                EastEnemyCharacterPath,
+                "Stage1 Character - East Gunner",
+                EnemyMaterialPath);
+        }
+
+        private static void AttachStage1Character(
+            Scene scene,
+            string ownerName,
+            string prefabPath,
+            string visualName,
+            string identityMaterialPath)
+        {
+            GameObject owner = GameObject.Find(ownerName);
+            GameObject prefab =
+                AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (owner == null || prefab == null)
+            {
+                throw new InvalidOperationException(
+                    $"Stage1 character setup requires {ownerName} and {prefabPath}.");
+            }
+
+            Transform existingVisual = owner.transform.Find(visualName);
+            GameObject visual = existingVisual == null
+                ? PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject
+                : existingVisual.gameObject;
+            if (visual == null)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to attach {prefabPath} to {ownerName}.");
+            }
+
+            visual.name = visualName;
+            visual.transform.SetParent(owner.transform, false);
+            visual.transform.localPosition = new Vector3(0f, -1f, 0f);
+            visual.transform.localRotation = Quaternion.identity;
+            Vector3 ownerScale = owner.transform.localScale;
+            visual.transform.localScale = new Vector3(
+                1f / ownerScale.x,
+                1f / ownerScale.y,
+                1f / ownerScale.z);
+            DisableCharacterColliders(visual);
+
+            Renderer proxyRenderer = owner.GetComponent<Renderer>();
+            if (proxyRenderer != null)
+            {
+                proxyRenderer.shadowCastingMode =
+                    ShadowCastingMode.ShadowsOnly;
+            }
+
+            if (!CharacterAnimationEditorSetup.ConfigureCharacter(owner, visual))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to configure Stage1 Animator on {ownerName}. " +
+                    $"Build the character animation library first.");
+            }
+
+            CharacterVisualController visualController =
+                owner.GetComponent<CharacterVisualController>();
+            if (visualController == null)
+            {
+                visualController =
+                    owner.AddComponent<CharacterVisualController>();
+            }
+
+            visualController.Configure(visual.transform);
+            owner.GetComponent<EnemyCombatant>()?.ConfigureVisual(
+                visualController);
+            owner.GetComponent<EnemyHealth>()?.ConfigureVisual(
+                visualController);
+            owner.GetComponent<PlayerHealth>()?.ConfigureVisual(
+                visualController);
+
+            EnsureIdentityRing(owner.transform, identityMaterialPath);
+            EditorUtility.SetDirty(owner);
+            EditorUtility.SetDirty(visualController);
+        }
+
+        private static void DisableCharacterColliders(GameObject visual)
+        {
+            Collider[] colliders = visual.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                colliders[i].enabled = false;
+                EditorUtility.SetDirty(colliders[i]);
+            }
+        }
+
+        private static void EnsureIdentityRing(
+            Transform owner,
+            string materialPath)
+        {
+            Transform existingRing = owner.Find("Combat Identity Ring");
+            GameObject ring;
+            if (existingRing == null)
+            {
+                ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                ring.name = "Combat Identity Ring";
+                UnityEngine.Object.DestroyImmediate(
+                    ring.GetComponent<Collider>());
+                ring.transform.SetParent(owner, false);
+            }
+            else
+            {
+                ring = existingRing.gameObject;
+            }
+
+            ring.transform.localPosition = new Vector3(
+                0f,
+                (0.025f - owner.position.y) / owner.localScale.y,
+                0f);
+            ring.transform.localRotation = Quaternion.identity;
+            ring.transform.localScale = new Vector3(
+                0.72f / owner.localScale.x,
+                0.025f / owner.localScale.y,
+                0.72f / owner.localScale.z);
+
+            Renderer renderer = ring.GetComponent<Renderer>();
+            renderer.sharedMaterial =
+                AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            EditorUtility.SetDirty(renderer);
+        }
+
         private static void CreateNavigationSurface()
         {
             GameObject navigationObject = new GameObject("Navigation");
@@ -1369,7 +1564,8 @@ namespace Deltatime.EditorTools
                 1.5f,
                 101,
                 0f,
-                0f);
+                0f,
+                CharacterAnimationStyle.Pistol);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1634,6 +1830,107 @@ namespace Deltatime.EditorTools
             }
 
             EditorBuildSettings.scenes = stageScenes.ToArray();
+        }
+
+        private static void ValidateStage1CharacterAnimations(Scene scene)
+        {
+            string[] actorNames =
+            {
+                "Player",
+                "Enemy West",
+                "Enemy Center",
+                "Enemy East"
+            };
+            CharacterAnimationStyle[] expectedStyles =
+            {
+                CharacterAnimationStyle.Pistol,
+                CharacterAnimationStyle.Rifle,
+                CharacterAnimationStyle.Melee,
+                CharacterAnimationStyle.Rifle
+            };
+            CharacterAnimationLibrary library =
+                AssetDatabase.LoadAssetAtPath<CharacterAnimationLibrary>(
+                    CharacterAnimationEditorSetup.LibraryPath);
+
+            int animationControllerCount =
+                CountComponentsInScene<CharacterAnimationController>(scene);
+            int visualControllerCount =
+                CountComponentsInScene<CharacterVisualController>(scene);
+            if (animationControllerCount != actorNames.Length ||
+                visualControllerCount != actorNames.Length ||
+                library == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage1 animated character count is invalid: " +
+                    $"animationControllers={animationControllerCount}, " +
+                    $"visualControllers={visualControllerCount}, " +
+                    $"library={library != null}.");
+            }
+
+            for (int i = 0; i < actorNames.Length; i++)
+            {
+                GameObject owner = GameObject.Find(actorNames[i]);
+                CharacterAnimationController driver =
+                    owner == null
+                        ? null
+                        : owner.GetComponent<CharacterAnimationController>();
+                CharacterVisualController visual =
+                    owner == null
+                        ? null
+                        : owner.GetComponent<CharacterVisualController>();
+                Animator animator = driver == null ? null : driver.Animator;
+                Renderer proxyRenderer =
+                    owner == null ? null : owner.GetComponent<Renderer>();
+                Transform identityRing =
+                    owner == null
+                        ? null
+                        : owner.transform.Find("Combat Identity Ring");
+                bool hasEnabledVisualCollider = false;
+                if (visual != null && visual.VisualRoot != null)
+                {
+                    Collider[] colliders =
+                        visual.VisualRoot.GetComponentsInChildren<Collider>(true);
+                    for (int colliderIndex = 0;
+                         colliderIndex < colliders.Length;
+                         colliderIndex++)
+                    {
+                        hasEnabledVisualCollider |= colliders[colliderIndex].enabled;
+                    }
+                }
+
+                if (owner == null ||
+                    driver == null ||
+                    visual == null ||
+                    visual.VisualRoot == null ||
+                    animator == null ||
+                    !animator.enabled ||
+                    animator.avatar == null ||
+                    !animator.avatar.isValid ||
+                    !animator.avatar.isHuman ||
+                    animator.applyRootMotion ||
+                    animator.updateMode != AnimatorUpdateMode.UnscaledTime ||
+                    animator.runtimeAnimatorController == null ||
+                    animator.runtimeAnimatorController.animationClips.Length < 7 ||
+                    animator.runtimeAnimatorController !=
+                        library.GetController(expectedStyles[i]) ||
+                    driver.IsEnemy != (i > 0) ||
+                    proxyRenderer == null ||
+                    proxyRenderer.shadowCastingMode !=
+                        ShadowCastingMode.ShadowsOnly ||
+                    identityRing == null ||
+                    hasEnabledVisualCollider)
+                {
+                    throw new InvalidOperationException(
+                        $"Stage1 character animation validation failed on " +
+                        $"'{actorNames[i]}': animator={animator != null}, " +
+                        $"avatarValid={animator != null && animator.avatar != null && animator.avatar.isValid}, " +
+                        $"controller={animator?.runtimeAnimatorController != null}, " +
+                        $"expectedStyle={expectedStyles[i]}, " +
+                        $"visual={visual?.VisualRoot != null}, " +
+                        $"identityRing={identityRing != null}, " +
+                        $"visualCollider={hasEnabledVisualCollider}.");
+                }
+            }
         }
 
         private static void ValidateScene(

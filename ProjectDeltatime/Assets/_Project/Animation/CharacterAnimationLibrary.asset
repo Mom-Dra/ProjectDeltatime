@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ef705ffe85e1ae4cafcd1b46aa40d19, type: 3}
+  m_Name: CharacterAnimationLibrary
+  m_EditorClassIdentifier: 
+  unarmedController: {fileID: 9100000, guid: 0312d98178f8a9d4c91045f8580be951, type: 2}
+  pistolController: {fileID: 22100000, guid: 7b680f8352ae1d342ae2890925e7f91c, type: 2}
+  rifleController: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+  meleeController: {fileID: 22100000, guid: 4e1c70b8128ff6643b46f01bdeb3d1dd, type: 2}

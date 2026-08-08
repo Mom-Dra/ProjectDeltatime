@@ -37,6 +37,7 @@ namespace Deltatime.Player
         private float cooldownRemaining;
 
         public bool IsDashing { get; private set; }
+        public Vector3 DashDirection => dashDirection;
         public float CooldownRemaining => cooldownRemaining;
         public float CooldownDuration => dashCooldown;
         public float CooldownNormalized =>

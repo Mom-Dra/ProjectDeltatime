@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   kind: 0
   displayName: Shotgun
+  animationStyle: 2
   ammunitionCapacity: 6
   fireInterval: 0.75
   projectileSpeed: 16

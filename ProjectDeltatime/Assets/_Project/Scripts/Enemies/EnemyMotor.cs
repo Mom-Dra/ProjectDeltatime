@@ -40,6 +40,7 @@ namespace Deltatime.Enemies
         private bool warnedMissingNavMesh;
 
         public bool IsMoving { get; private set; }
+        public Vector3 MovementDirection { get; private set; }
         public bool HasNavigationPath => hasPath;
         public float MoveSpeed => moveSpeed;
         public float TotalDistanceMoved { get; private set; }
@@ -80,6 +81,7 @@ namespace Deltatime.Enemies
             bool rotateToMovement = true)
         {
             IsMoving = false;
+            MovementDirection = Vector3.zero;
             float effectiveMoveSpeed =
                 moveSpeed * Mathf.Max(0f, speedMultiplier);
             if (body == null ||
@@ -124,6 +126,10 @@ namespace Deltatime.Enemies
                 direction,
                 requestedDistance);
             IsMoving = movedDistance > 0.00001f;
+            if (IsMoving)
+            {
+                MovementDirection = direction;
+            }
             return destinationOffset.magnitude - movedDistance <=
                    Mathf.Max(0f, stoppingDistance);
         }
@@ -155,6 +161,7 @@ namespace Deltatime.Enemies
         public void Stop()
         {
             IsMoving = false;
+            MovementDirection = Vector3.zero;
         }
 
         public bool TryCalculatePathLength(

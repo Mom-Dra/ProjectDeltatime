@@ -42,6 +42,7 @@ namespace Deltatime.Combat
         private int shotSequence;
 
         public event Action EquipmentChanged;
+        public event Action UsePerformed;
 
         public WeaponDefinition Definition { get; private set; }
         public int Ammunition { get; private set; }
@@ -111,6 +112,7 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
+            UsePerformed?.Invoke();
             return true;
         }
 
@@ -136,6 +138,7 @@ namespace Deltatime.Combat
                 Definition.MeleeRange,
                 Definition.MeleeHalfAngle,
                 Definition.Damage);
+            UsePerformed?.Invoke();
             return true;
         }
 
@@ -161,6 +164,7 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
+            UsePerformed?.Invoke();
             return true;
         }
 
@@ -208,6 +212,7 @@ namespace Deltatime.Combat
                 stagedAttack.Range,
                 stagedAttack.HalfAngle,
                 stagedAttack.Damage);
+            UsePerformed?.Invoke();
             nextUseTime = Mathf.Max(
                 nextUseTime,
                 clock + stagedAttack.Interval);

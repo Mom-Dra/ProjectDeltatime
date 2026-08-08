@@ -687,14 +687,12 @@ namespace Deltatime.EditorTools
                 1f / ownerScale.z);
             DisableColliders(visual);
 
-            Animator[] animators = visual.GetComponentsInChildren<Animator>(true);
-            for (int i = 0; i < animators.Length; i++)
+            if (!CharacterAnimationEditorSetup.ConfigureCharacter(
+                    owner,
+                    visual))
             {
-                animators[i].applyRootMotion = false;
-                animators[i].enabled = false;
+                ApplyRelaxedArmPose(visual);
             }
-
-            ApplyRelaxedArmPose(visual);
         }
 
         private static void ApplyRelaxedArmPose(GameObject visual)

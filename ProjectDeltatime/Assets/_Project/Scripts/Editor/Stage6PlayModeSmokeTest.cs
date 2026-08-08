@@ -285,6 +285,7 @@ namespace Deltatime.EditorTools
                     GameObject.Find("Overlook Character - North Gunner") != null &&
                     GameObject.Find("Overlook Character - South Chaser") != null,
                 "Stage6 Polygon Nightclubs character visuals are missing.");
+            ValidateCharacterAnimations(player, enemies);
             Require(camera != null && cameraController != null,
                 "Stage6 constrained Stage5-style camera did not initialize.");
             ValidateElevationTraversal(player.GetComponent<NavMeshGroundMovement>(), "Stage6");
@@ -313,6 +314,107 @@ namespace Deltatime.EditorTools
                 $"indices={triangulation.indices.Length}, complete paths=5/5.");
 
             StartRigidbodyMovementProbe(player, "Stage6");
+        }
+
+        private static void ValidateCharacterAnimations(
+            PlayerHealth player,
+            EnemyHealth[] enemies)
+        {
+            CharacterAnimationController[] controllers =
+                UnityEngine.Object.FindObjectsByType<
+                    CharacterAnimationController>(
+                    FindObjectsSortMode.None);
+            Require(controllers.Length == enemies.Length + 1,
+                $"Stage6 has {controllers.Length} character animation " +
+                $"controllers instead of {enemies.Length + 1}.");
+
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                CharacterAnimationController controller = controllers[i];
+                Animator animator = controller.Animator;
+                Require(animator != null &&
+                        animator.enabled &&
+                        animator.isInitialized &&
+                        animator.avatar != null &&
+                        animator.avatar.isValid &&
+                        animator.avatar.isHuman &&
+                        !animator.applyRootMotion &&
+                        animator.updateMode == AnimatorUpdateMode.UnscaledTime &&
+                        animator.runtimeAnimatorController != null &&
+                        animator.runtimeAnimatorController.animationClips.Length >= 7,
+                    $"Stage6 Animator is not runtime-ready on " +
+                    $"{controller.name}.");
+                Require(HasAnimatorParameter(animator, "MoveX") &&
+                        HasAnimatorParameter(animator, "MoveY") &&
+                        HasAnimatorParameter(animator, "Roll") &&
+                        HasAnimatorParameter(animator, "AttackA") &&
+                        HasAnimatorParameter(animator, "AttackB"),
+                    $"Stage6 Animator parameters are incomplete on " +
+                    $"{controller.name}.");
+            }
+
+            CharacterAnimationController playerAnimation =
+                player.GetComponent<CharacterAnimationController>();
+            WeaponController playerWeapon =
+                player.GetComponent<WeaponController>();
+            Require(playerAnimation != null && playerWeapon != null,
+                "Stage6 player animation equipment probe is missing dependencies.");
+
+            WeaponDefinition originalDefinition = playerWeapon.Definition;
+            int originalAmmunition = playerWeapon.Ammunition;
+            WeaponDefinition pistol =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    "Assets/_Project/Pistol.asset");
+            WeaponDefinition rifle =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    "Assets/_Project/AutomaticRifle.asset");
+            WeaponDefinition melee =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    "Assets/_Project/MeleeWeapon.asset");
+            Require(pistol != null && rifle != null && melee != null,
+                "Stage6 animation equipment probe could not load weapon definitions.");
+
+            playerWeapon.Clear();
+            Require(playerAnimation.CurrentStyle ==
+                    CharacterAnimationStyle.Unarmed,
+                "Stage6 animation did not switch to the unarmed profile.");
+            playerWeapon.Equip(pistol, pistol.AmmunitionCapacity);
+            Require(playerAnimation.CurrentStyle ==
+                    CharacterAnimationStyle.Pistol,
+                "Stage6 animation did not switch to the pistol profile.");
+            playerWeapon.Equip(rifle, rifle.AmmunitionCapacity);
+            Require(playerAnimation.CurrentStyle ==
+                    CharacterAnimationStyle.Rifle,
+                "Stage6 animation did not switch to the rifle profile.");
+            playerWeapon.Equip(melee, 0);
+            Require(playerAnimation.CurrentStyle ==
+                    CharacterAnimationStyle.Melee,
+                "Stage6 animation did not switch to the melee profile.");
+
+            if (originalDefinition == null)
+            {
+                playerWeapon.Clear();
+            }
+            else
+            {
+                playerWeapon.Equip(originalDefinition, originalAmmunition);
+            }
+        }
+
+        private static bool HasAnimatorParameter(
+            Animator animator,
+            string parameterName)
+        {
+            AnimatorControllerParameter[] parameters = animator.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].name == parameterName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static int CountSoftVisionLights(out string state)

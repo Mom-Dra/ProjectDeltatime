@@ -1,3 +1,4 @@
+using System;
 using Deltatime.Combat;
 using Deltatime.Core;
 using Deltatime.TimeSystem;
@@ -104,6 +105,7 @@ namespace Deltatime.Enemies
         public MovementMode CurrentMovementMode { get; private set; } =
             MovementMode.Stopped;
         public WeaponPickup CurrentWeaponTarget => weaponTarget;
+        public event Action CloseAttackPerformed;
 
         protected virtual void Awake()
         {
@@ -618,6 +620,7 @@ namespace Deltatime.Enemies
                 return;
             }
 
+            CloseAttackPerformed?.Invoke();
             MeleeAttackResolver.TryHitNearest(
                 gameObject,
                 CombatFaction.Enemy,

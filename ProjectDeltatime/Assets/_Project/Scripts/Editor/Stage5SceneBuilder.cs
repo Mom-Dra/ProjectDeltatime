@@ -832,14 +832,12 @@ namespace Deltatime.EditorTools
                 colliders[i].enabled = false;
             }
 
-            Animator[] animators = visual.GetComponentsInChildren<Animator>(true);
-            for (int i = 0; i < animators.Length; i++)
+            if (!CharacterAnimationEditorSetup.ConfigureCharacter(
+                    owner,
+                    visual))
             {
-                animators[i].applyRootMotion = false;
-                animators[i].enabled = false;
+                ApplyRelaxedArmPose(visual);
             }
-
-            ApplyRelaxedArmPose(visual);
             CharacterVisualController visualController =
                 owner.GetComponent<CharacterVisualController>();
             if (visualController == null)
@@ -2432,9 +2430,15 @@ namespace Deltatime.EditorTools
                 Animator[] animators = visual.GetComponentsInChildren<Animator>(true);
                 for (int j = 0; j < animators.Length; j++)
                 {
-                    Require(!animators[j].applyRootMotion,
-                        $"Stage5 visual root motion is enabled: {animators[j].name}");
+                    Require(animators[j].enabled &&
+                            !animators[j].applyRootMotion &&
+                            animators[j].runtimeAnimatorController != null,
+                        $"Stage5 visual Animator is not configured: {animators[j].name}");
                 }
+
+                Require(
+                    visual.GetComponentInParent<CharacterAnimationController>() != null,
+                    $"Stage5 character animation driver is missing: {visual.name}");
             }
         }
 

@@ -8508,7 +8508,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5108887581844726934, guid: adc02df51739fd54db01e34cbb050ead, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5108887581844726934, guid: adc02df51739fd54db01e34cbb050ead, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: 7b680f8352ae1d342ae2890925e7f91c, type: 2}
+    - target: {fileID: 5108887581844726934, guid: adc02df51739fd54db01e34cbb050ead, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5108887581844726934, guid: adc02df51739fd54db01e34cbb050ead, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -18513,7 +18521,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+    - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -22796,6 +22812,7 @@ GameObject:
   - component: {fileID: 343663600}
   - component: {fileID: 343663612}
   - component: {fileID: 343663613}
+  - component: {fileID: 343663614}
   m_Layer: 0
   m_Name: Enemy Center
   m_TagString: Untagged
@@ -22821,6 +22838,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 343663609}
   bodyRenderer: {fileID: 343663608}
   characterVisual: {fileID: 343663612}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &343663601
@@ -23216,6 +23234,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &343663614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343663599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 1153732734}
+  visualRoot: {fileID: 1417823066}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 343663606}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 343663603}
+  enemyCombatant: {fileID: 343663601}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &343803674
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -40404,6 +40447,7 @@ GameObject:
   - component: {fileID: 604727840}
   - component: {fileID: 604727852}
   - component: {fileID: 604727853}
+  - component: {fileID: 604727854}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -40483,6 +40527,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   input: {fileID: 604727845}
   aim: {fileID: 604727842}
+  movement: {fileID: 0}
   health: {fileID: 604727847}
   weapon: {fileID: 604727838}
   worldTime: {fileID: 593267852}
@@ -40519,9 +40564,6 @@ MonoBehaviour:
   worldTimeActivity: {fileID: 593267851}
   gameplayCamera: {fileID: 1220728250}
   directionLine: {fileID: 604727843}
-  aimCollisionMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
   angularSpeedForFullActivity: 360
   directionLineLength: 1.2
 --- !u!120 &604727843
@@ -40853,6 +40895,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &604727854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604727837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 918647066}
+  visualRoot: {fileID: 130565633}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 604727838}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 604727845}
+  playerMovement: {fileID: 604727844}
+  playerDash: {fileID: 604727846}
+  playerCombat: {fileID: 604727841}
+  enemyMotor: {fileID: 0}
+  enemyCombatant: {fileID: 0}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &605390495
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -60431,6 +60498,7 @@ GameObject:
   - component: {fileID: 872568110}
   - component: {fileID: 872568109}
   - component: {fileID: 872568122}
+  - component: {fileID: 872568123}
   m_Layer: 0
   m_Name: Enemy North Gunner
   m_TagString: Untagged
@@ -60480,6 +60548,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 872568119}
   bodyRenderer: {fileID: 872568118}
   characterVisual: {fileID: 872568109}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &872568111
@@ -60853,6 +60922,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &872568123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872568108}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 1505662193}
+  visualRoot: {fileID: 1704477785}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 872568116}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 872568113}
+  enemyCombatant: {fileID: 872568111}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &872710838
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -63825,6 +63919,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 5060767883619301405, guid: 7068f38c7fb6a364a85b7461318e0f7d, type: 3}
   m_PrefabInstance: {fileID: 918279727}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &918647066 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5108887581844726934, guid: adc02df51739fd54db01e34cbb050ead, type: 3}
+  m_PrefabInstance: {fileID: 130565632}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &918696204
 PrefabInstance:
@@ -67002,6 +67101,7 @@ GameObject:
   - component: {fileID: 960721828}
   - component: {fileID: 960721827}
   - component: {fileID: 960721840}
+  - component: {fileID: 960721841}
   m_Layer: 0
   m_Name: Enemy South Chaser
   m_TagString: Untagged
@@ -67050,6 +67150,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 960721837}
   bodyRenderer: {fileID: 960721836}
   characterVisual: {fileID: 960721827}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &960721829
@@ -67423,6 +67524,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &960721841
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 960721826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 1420639571}
+  visualRoot: {fileID: 1592315171}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 960721834}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 960721831}
+  enemyCombatant: {fileID: 960721829}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &963232565
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -79020,6 +79146,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7431860744919306537, guid: 6243356dce23b5a439ceb14fba1c175d, type: 3}
   m_PrefabInstance: {fileID: 1152194854}
   m_PrefabAsset: {fileID: 0}
+--- !u!95 &1153732734 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+  m_PrefabInstance: {fileID: 1417823065}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1153836665
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -88500,7 +88631,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8358829637548140816, guid: e3189eb0dd642cb49b64d12c65e4437e, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8358829637548140816, guid: e3189eb0dd642cb49b64d12c65e4437e, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+    - target: {fileID: 8358829637548140816, guid: e3189eb0dd642cb49b64d12c65e4437e, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8358829637548140816, guid: e3189eb0dd642cb49b64d12c65e4437e, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -93841,6 +93980,7 @@ GameObject:
   - component: {fileID: 1359110429}
   - component: {fileID: 1359110441}
   - component: {fileID: 1359110442}
+  - component: {fileID: 1359110443}
   m_Layer: 0
   m_Name: Enemy West
   m_TagString: Untagged
@@ -93866,6 +94006,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 1359110438}
   bodyRenderer: {fileID: 1359110437}
   characterVisual: {fileID: 1359110441}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &1359110430
@@ -94262,6 +94403,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &1359110443
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1359110428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 2042522128}
+  visualRoot: {fileID: 1285227831}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 1359110435}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 1359110432}
+  enemyCombatant: {fileID: 1359110430}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &1359353243
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -98830,7 +98996,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: 4e1c70b8128ff6643b46f01bdeb3d1dd, type: 2}
+    - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -99105,6 +99279,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 5446569283397205967, guid: 0b68fd10848acff4ca9ffecfadc3f558, type: 3}
   m_PrefabInstance: {fileID: 1419393199}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &1420639571 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+  m_PrefabInstance: {fileID: 1592315170}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1422984934
 PrefabInstance:
@@ -104630,6 +104809,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 5616149139946309746, guid: 54b3ba2b7b5eef445994a05755848f61, type: 3}
   m_PrefabInstance: {fileID: 1503267320}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &1505662193 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 263389791109518369, guid: b02d09f99cb3a564e93e6181f207bcb2, type: 3}
+  m_PrefabInstance: {fileID: 1704477784}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1505684350
 PrefabInstance:
@@ -110642,7 +110826,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: 4e1c70b8128ff6643b46f01bdeb3d1dd, type: 2}
+    - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -113899,6 +114091,7 @@ GameObject:
   - component: {fileID: 1635739186}
   - component: {fileID: 1635739198}
   - component: {fileID: 1635739199}
+  - component: {fileID: 1635739200}
   m_Layer: 0
   m_Name: Enemy East
   m_TagString: Untagged
@@ -113924,6 +114117,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 1635739195}
   bodyRenderer: {fileID: 1635739194}
   characterVisual: {fileID: 1635739198}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &1635739187
@@ -114322,6 +114516,31 @@ MonoBehaviour:
   sampleDistance: 1.25
   maximumSegmentLength: 0.12
   areaMask: -1
+--- !u!114 &1635739200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635739185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 2041604083}
+  visualRoot: {fileID: 297795369}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 1635739192}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 1635739189}
+  enemyCombatant: {fileID: 1635739187}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &1640125083
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -119524,7 +119743,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 263389791109518369, guid: b02d09f99cb3a564e93e6181f207bcb2, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 263389791109518369, guid: b02d09f99cb3a564e93e6181f207bcb2, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+    - target: {fileID: 263389791109518369, guid: b02d09f99cb3a564e93e6181f207bcb2, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 263389791109518369, guid: b02d09f99cb3a564e93e6181f207bcb2, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -131956,6 +132183,7 @@ MonoBehaviour:
     m_Bits: 256
   coneMaterial: {fileID: 2100000, guid: 03ffb8dbbaa37e9499c4511bf4b618a1, type: 2}
   replay: {fileID: 593267850}
+  unlimitedVision: 0
   visionLightColor: {r: 0.55, g: 0.78, b: 0.9, a: 1}
   visionLightIntensity: 7.5
   visionLightHeight: 0.7
@@ -142810,6 +143038,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5403289086220971051, guid: a6944578ce8214841a2e4e2ac0cf17ab, type: 3}
   m_PrefabInstance: {fileID: 2039168712}
   m_PrefabAsset: {fileID: 0}
+--- !u!95 &2041604083 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+  m_PrefabInstance: {fileID: 297795368}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2041946859
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -142875,6 +143108,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 1703546683087420720, guid: e290abcd3a4740a40949dbe3ee0b4da6, type: 3}
   m_PrefabInstance: {fileID: 2041946859}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &2042522128 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 8358829637548140816, guid: e3189eb0dd642cb49b64d12c65e4437e, type: 3}
+  m_PrefabInstance: {fileID: 1285227830}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2043906554
 PrefabInstance:

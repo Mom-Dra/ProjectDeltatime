@@ -1,3 +1,4 @@
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -21,6 +22,8 @@ namespace Deltatime.Combat
     {
         [SerializeField] private WeaponKind kind = WeaponKind.Firearm;
         [SerializeField] private string displayName = "Pistol";
+        [SerializeField] private CharacterAnimationStyle animationStyle =
+            CharacterAnimationStyle.Pistol;
         [SerializeField, Min(0)] private int ammunitionCapacity = 8;
         [SerializeField, Min(0.01f)] private float fireInterval = 0.24f;
         [SerializeField, Min(0.1f)] private float projectileSpeed = 17f;
@@ -56,6 +59,7 @@ namespace Deltatime.Combat
 
         public WeaponKind Kind => kind;
         public string DisplayName => displayName;
+        public CharacterAnimationStyle AnimationStyle => animationStyle;
         public int AmmunitionCapacity => ammunitionCapacity;
         public float FireInterval => fireInterval;
         public float UseInterval => fireInterval;
@@ -94,10 +98,13 @@ namespace Deltatime.Combat
             float maximumSpreadJitterAngle,
             int deterministicSpreadSeed,
             float recoilDistance,
-            float projectileMaximumDistance)
+            float projectileMaximumDistance,
+            CharacterAnimationStyle firearmAnimationStyle =
+                CharacterAnimationStyle.Rifle)
         {
             kind = WeaponKind.Firearm;
             displayName = weaponName;
+            animationStyle = firearmAnimationStyle;
             ammunitionCapacity = Mathf.Max(1, capacity);
             fireInterval = Mathf.Max(0.01f, interval);
             projectileSpeed = Mathf.Max(0.1f, speed);
@@ -130,6 +137,7 @@ namespace Deltatime.Combat
         {
             kind = WeaponKind.Melee;
             displayName = weaponName;
+            animationStyle = CharacterAnimationStyle.Melee;
             ammunitionCapacity = 0;
             fireInterval = Mathf.Max(0.01f, interval);
             damage = Mathf.Max(1, meleeDamage);

@@ -906,7 +906,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+    - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -920,6 +928,11 @@ PrefabInstance:
 --- !u!4 &230691894 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4108478994190209772, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
+  m_PrefabInstance: {fileID: 230691893}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &230691895 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 8062590347540252822, guid: 0b846f6e155cf62449dbad5f3c7f4877, type: 3}
   m_PrefabInstance: {fileID: 230691893}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &237205853
@@ -1358,6 +1371,7 @@ GameObject:
   - component: {fileID: 343663602}
   - component: {fileID: 343663601}
   - component: {fileID: 343663600}
+  - component: {fileID: 343663612}
   m_Layer: 0
   m_Name: Enemy Center
   m_TagString: Untagged
@@ -1382,6 +1396,8 @@ MonoBehaviour:
   stage: {fileID: 593267853}
   bodyCollider: {fileID: 343663609}
   bodyRenderer: {fileID: 343663608}
+  characterVisual: {fileID: 0}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &343663601
@@ -1405,6 +1421,7 @@ MonoBehaviour:
   playerVision: {fileID: 1884313317}
   bodyRenderer: {fileID: 343663608}
   weaponRenderer: {fileID: 246370752}
+  characterVisual: {fileID: 0}
   preferredMinimumRange: 6
   preferredMaximumRange: 9
   retreatStepDistance: 3
@@ -1739,6 +1756,31 @@ Transform:
   - {fileID: 504084341}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &343663612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343663599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 1763376946}
+  visualRoot: {fileID: 1763376945}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 343663606}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 343663603}
+  enemyCombatant: {fileID: 343663601}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1 &345008478
 GameObject:
   m_ObjectHideFlags: 0
@@ -2997,6 +3039,8 @@ MonoBehaviour:
   captureRate: 20
   endHoldDuration: 0.65
   loop: 1
+  rendererDiscoveryRoots: []
+  fallbackRendererDiscoveryInterval: 0
   deadlineCinematicPlaybackRate: 0.5
   minimumDeadlineCinematicDuration: 0.8
   maximumDeadlineCinematicDuration: 2
@@ -3150,6 +3194,7 @@ GameObject:
   - component: {fileID: 604727838}
   - component: {fileID: 604727841}
   - component: {fileID: 604727840}
+  - component: {fileID: 604727852}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -3229,6 +3274,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   input: {fileID: 604727845}
   aim: {fileID: 604727842}
+  movement: {fileID: 0}
   health: {fileID: 604727847}
   weapon: {fileID: 604727838}
   worldTime: {fileID: 593267852}
@@ -3265,9 +3311,6 @@ MonoBehaviour:
   worldTimeActivity: {fileID: 593267851}
   gameplayCamera: {fileID: 1220728250}
   directionLine: {fileID: 604727843}
-  aimCollisionMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
   angularSpeedForFullActivity: 360
   directionLineLength: 1.2
 --- !u!120 &604727843
@@ -3453,6 +3496,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maximumHealth: 3
   bodyRenderer: {fileID: 604727848}
+  characterVisual: {fileID: 0}
   aliveColor: {r: 0.1, g: 0.95, b: 1, a: 1}
   deadColor: {r: 0.35, g: 0.4, b: 0.45, a: 1}
 --- !u!23 &604727848
@@ -3558,6 +3602,31 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604727837}
   m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &604727852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604727837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 641992891}
+  visualRoot: {fileID: 641992890}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 604727838}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 604727845}
+  playerMovement: {fileID: 604727844}
+  playerDash: {fileID: 604727846}
+  playerCombat: {fileID: 604727841}
+  enemyMotor: {fileID: 0}
+  enemyCombatant: {fileID: 0}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &609671378
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3962,7 +4031,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: 7b680f8352ae1d342ae2890925e7f91c, type: 2}
+    - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -3976,6 +4053,11 @@ PrefabInstance:
 --- !u!4 &641992890 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4475512854234336766, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
+  m_PrefabInstance: {fileID: 641992889}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &641992891 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 7564952183312537476, guid: 49f6bb7c8ac8e914c957a5a89b465470, type: 3}
   m_PrefabInstance: {fileID: 641992889}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &646611370
@@ -4554,7 +4636,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7505469935389496157, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7505469935389496157, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: d06a66014c77dcf499cd02dc4b17183e, type: 2}
+    - target: {fileID: 7505469935389496157, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7505469935389496157, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -4568,6 +4658,11 @@ PrefabInstance:
 --- !u!4 &723752968 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4524118676831340839, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
+  m_PrefabInstance: {fileID: 723752967}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &723752969 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 7505469935389496157, guid: 4a1014b4627f8bf4aa552e3c6cb762c8, type: 3}
   m_PrefabInstance: {fileID: 723752967}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &740207082
@@ -5810,10 +5905,15 @@ MonoBehaviour:
   aim: {fileID: 604727842}
   input: {fileID: 604727845}
   cameraOffset: {x: 0, y: 13.5, z: -12.5}
+  cameraFocusOffset: {x: 0, y: 0, z: 0}
   aimLeadDistance: 2.25
   followSharpness: 8
   rotationSharpness: 12
   lookHeight: 0.55
+  constrainToBounds: 0
+  cameraBounds:
+    m_Center: {x: 0, y: 0, z: 0}
+    m_Extent: {x: 10, y: 0, z: 10}
 --- !u!114 &1220728252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5829,6 +5929,7 @@ MonoBehaviour:
   worldTime: {fileID: 593267852}
   gameplayCamera: {fileID: 1220728250}
   directionalKeyLight: {fileID: 2112741777}
+  preserveSceneRenderSettings: 0
   ambientSkyColor: {r: 0.07, g: 0.025, b: 0.12, a: 1}
   ambientEquatorColor: {r: 0.018, g: 0.06, b: 0.095, a: 1}
   ambientGroundColor: {r: 0.008, g: 0.012, b: 0.035, a: 1}
@@ -6433,6 +6534,7 @@ GameObject:
   - component: {fileID: 1359110431}
   - component: {fileID: 1359110430}
   - component: {fileID: 1359110429}
+  - component: {fileID: 1359110441}
   m_Layer: 0
   m_Name: Enemy West
   m_TagString: Untagged
@@ -6457,6 +6559,8 @@ MonoBehaviour:
   stage: {fileID: 593267853}
   bodyCollider: {fileID: 1359110438}
   bodyRenderer: {fileID: 1359110437}
+  characterVisual: {fileID: 0}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &1359110430
@@ -6480,6 +6584,7 @@ MonoBehaviour:
   playerVision: {fileID: 1884313317}
   bodyRenderer: {fileID: 1359110437}
   weaponRenderer: {fileID: 439194697}
+  characterVisual: {fileID: 0}
   preferredMinimumRange: 6
   preferredMaximumRange: 9
   retreatStepDistance: 3
@@ -6814,6 +6919,31 @@ Transform:
   - {fileID: 107269154}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1359110441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1359110428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 723752969}
+  visualRoot: {fileID: 723752968}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 1359110435}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 1359110432}
+  enemyCombatant: {fileID: 1359110430}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1 &1398029874
 GameObject:
   m_ObjectHideFlags: 0
@@ -7737,6 +7867,7 @@ GameObject:
   - component: {fileID: 1635739188}
   - component: {fileID: 1635739187}
   - component: {fileID: 1635739186}
+  - component: {fileID: 1635739198}
   m_Layer: 0
   m_Name: Enemy East
   m_TagString: Untagged
@@ -7761,6 +7892,8 @@ MonoBehaviour:
   stage: {fileID: 593267853}
   bodyCollider: {fileID: 1635739195}
   bodyRenderer: {fileID: 1635739194}
+  characterVisual: {fileID: 0}
+  damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
 --- !u!114 &1635739187
@@ -7784,6 +7917,7 @@ MonoBehaviour:
   playerVision: {fileID: 1884313317}
   bodyRenderer: {fileID: 1635739194}
   weaponRenderer: {fileID: 705416415}
+  characterVisual: {fileID: 0}
   preferredMinimumRange: 6
   preferredMaximumRange: 9
   retreatStepDistance: 3
@@ -8118,6 +8252,31 @@ Transform:
   - {fileID: 364253311}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1635739198
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635739185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2691bb684889cab4a8bb5126d1bd84a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 230691895}
+  visualRoot: {fileID: 230691894}
+  library: {fileID: 11400000, guid: 8a341577f44aae34fb46b11baf837e9b, type: 2}
+  weapon: {fileID: 1635739192}
+  worldTime: {fileID: 593267852}
+  playerInput: {fileID: 0}
+  playerMovement: {fileID: 0}
+  playerDash: {fileID: 0}
+  playerCombat: {fileID: 0}
+  enemyMotor: {fileID: 1635739189}
+  enemyCombatant: {fileID: 1635739187}
+  directionDamping: 0.08
+  rollVisualDuration: 0.5
 --- !u!1001 &1639300629
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8681,7 +8840,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 22100000, guid: 4e1c70b8128ff6643b46f01bdeb3d1dd, type: 2}
+    - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+      propertyPath: m_UpdateMode
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
       propertyPath: m_ApplyRootMotion
@@ -8783,6 +8950,11 @@ PrefabInstance:
 --- !u!4 &1763376945 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6139078091586122566, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
+  m_PrefabInstance: {fileID: 1763376944}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &1763376946 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 275368473882945852, guid: 27b674459ad85a34b9065c01a5c997c8, type: 3}
   m_PrefabInstance: {fileID: 1763376944}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1800492081
@@ -9117,6 +9289,7 @@ MonoBehaviour:
     m_Bits: 256
   coneMaterial: {fileID: 2100000, guid: 03ffb8dbbaa37e9499c4511bf4b618a1, type: 2}
   replay: {fileID: 593267850}
+  unlimitedVision: 0
   visionLightColor: {r: 0.55, g: 0.78, b: 0.9, a: 1}
   visionLightIntensity: 7.5
   visionLightHeight: 0.7
