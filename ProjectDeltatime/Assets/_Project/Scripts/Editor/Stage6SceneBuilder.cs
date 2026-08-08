@@ -1889,6 +1889,7 @@ namespace Deltatime.EditorTools
                 new List<EditorBuildSettingsScene>();
             string[] expected =
             {
+                "Assets/_Project/Scenes/Tutorial.unity",
                 "Assets/_Project/Scenes/Stage1.unity",
                 "Assets/_Project/Scenes/Stage2.unity",
                 "Assets/_Project/Scenes/Stage3.unity",
@@ -2593,6 +2594,7 @@ namespace Deltatime.EditorTools
         {
             string[] expected =
             {
+                "Assets/_Project/Scenes/Tutorial.unity",
                 "Assets/_Project/Scenes/Stage1.unity",
                 "Assets/_Project/Scenes/Stage2.unity",
                 "Assets/_Project/Scenes/Stage3.unity",
@@ -2602,7 +2604,7 @@ namespace Deltatime.EditorTools
             };
             EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
             Require(scenes.Length >= expected.Length,
-                "Build settings do not contain Stage1 through Stage6.");
+                "Build settings do not contain Tutorial through Stage6.");
             for (int i = 0; i < expected.Length; i++)
             {
                 Require(scenes[i].enabled && scenes[i].path == expected[i],

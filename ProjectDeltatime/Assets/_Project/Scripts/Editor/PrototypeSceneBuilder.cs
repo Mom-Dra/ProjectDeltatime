@@ -27,6 +27,7 @@ namespace Deltatime.EditorTools
         private const string Materials = Root + "/Materials";
         private const string Prefabs = Root + "/Prefabs";
         private const string Scenes = Root + "/Scenes";
+        private const string TutorialScenePath = Scenes + "/Tutorial.unity";
         private const string Stage1ScenePath = Scenes + "/Stage1.unity";
         private const string Stage2ScenePath = Scenes + "/Stage2.unity";
         private const string NavigationDataPath =
@@ -1599,17 +1600,25 @@ namespace Deltatime.EditorTools
             List<EditorBuildSettingsScene> existingScenes =
                 new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             List<EditorBuildSettingsScene> stageScenes =
-                new List<EditorBuildSettingsScene>
-                {
-                    new EditorBuildSettingsScene(Stage1ScenePath, true),
-                    new EditorBuildSettingsScene(Stage2ScenePath, true)
-                };
+                new List<EditorBuildSettingsScene>();
+
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(
+                    TutorialScenePath) != null)
+            {
+                stageScenes.Add(new EditorBuildSettingsScene(
+                    TutorialScenePath,
+                    true));
+            }
+
+            stageScenes.Add(new EditorBuildSettingsScene(Stage1ScenePath, true));
+            stageScenes.Add(new EditorBuildSettingsScene(Stage2ScenePath, true));
 
             for (int i = 0; i < existingScenes.Count; i++)
             {
                 string path = existingScenes[i].path;
                 if (path == Stage1ScenePath ||
                     path == Stage2ScenePath ||
+                    path == TutorialScenePath ||
                     path == Scenes + "/PrototypeRoom.unity")
                 {
                     continue;

@@ -14,6 +14,7 @@ namespace Deltatime.Enemies
         [SerializeField] private Collider bodyCollider;
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private CharacterVisualController characterVisual;
+        [SerializeField] private bool damageEnabled = true;
         [SerializeField] private Color hitColor = new Color(1f, 0.25f, 0.2f, 1f);
         [SerializeField] private Color stunColor = new Color(1f, 0.78f, 0.15f, 1f);
 
@@ -28,6 +29,7 @@ namespace Deltatime.Enemies
             IsAlive &&
             behavior != null &&
             behavior.IsStunned;
+        public bool DamageEnabled => damageEnabled;
 
         private void Awake()
         {
@@ -53,7 +55,7 @@ namespace Deltatime.Enemies
 
         public void ReceiveHit(DamageHit hit)
         {
-            if (!IsAlive)
+            if (!IsAlive || !damageEnabled)
             {
                 return;
             }
@@ -130,6 +132,11 @@ namespace Deltatime.Enemies
         public void ConfigureVisual(CharacterVisualController visualController)
         {
             characterVisual = visualController;
+        }
+
+        public void SetDamageEnabled(bool value)
+        {
+            damageEnabled = value;
         }
 
         private void SetBodyColor(Color color)

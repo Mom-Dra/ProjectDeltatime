@@ -73,6 +73,17 @@ namespace Deltatime.InputSystem
             worldTimeActivity = activity;
         }
 
+#if UNITY_EDITOR
+        public void SetValidationInputState(
+            Vector2 move,
+            bool deadlinePressed)
+        {
+            Move = Vector2.ClampMagnitude(move, 1f);
+            DeadlinePressed = deadlinePressed;
+            worldTimeActivity.SetMovement(Move.magnitude);
+        }
+#endif
+
         private void ResetState()
         {
             Move = Vector2.zero;

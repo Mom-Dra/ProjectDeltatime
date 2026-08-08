@@ -15,6 +15,7 @@ namespace Deltatime.Vision
         [SerializeField] private LayerMask occluderMask;
         [SerializeField] private Material coneMaterial;
         [SerializeField] private StageReplayController replay;
+        [SerializeField] private bool unlimitedVision;
 
         [Header("Dark Vision Lighting")]
         [SerializeField] private Color visionLightColor =
@@ -40,6 +41,7 @@ namespace Deltatime.Vision
 
         public float ViewAngle => viewAngle;
         public float ViewDistance => viewDistance;
+        public bool HasUnlimitedVision => unlimitedVision;
         public Light RuntimeVisionSpotLight => spotLight;
         public Light RuntimeNearWallLight => nearLight;
 
@@ -48,9 +50,16 @@ namespace Deltatime.Vision
             coneMesh = new Mesh { name = "Runtime 3D Vision Cone" };
             coneMesh.MarkDynamic();
             GetComponent<MeshFilter>().sharedMesh = coneMesh;
-            GetComponent<MeshRenderer>().sharedMaterial = coneMaterial;
+            MeshRenderer coneRenderer = GetComponent<MeshRenderer>();
+            coneRenderer.sharedMaterial = coneMaterial;
             AllocateGeometry();
             RebuildVisibilityMesh();
+
+            if (unlimitedVision)
+            {
+                coneRenderer.enabled = false;
+                return;
+            }
 
             if (occluderMask.value == 0 ||
                 coneMaterial == null ||
@@ -69,6 +78,11 @@ namespace Deltatime.Vision
 
         private void Start()
         {
+            if (unlimitedVision)
+            {
+                return;
+            }
+
             replay.RegisterLight(spotLight);
             replay.RegisterLight(nearLight);
         }
@@ -89,8 +103,29 @@ namespace Deltatime.Vision
             replay = replayController;
         }
 
+        public void SetUnlimitedVision(bool value)
+        {
+            unlimitedVision = value;
+            MeshRenderer coneRenderer = GetComponent<MeshRenderer>();
+            if (coneRenderer != null)
+            {
+                coneRenderer.enabled = !value;
+            }
+
+            if (value)
+            {
+                spotLightObject?.SetActive(false);
+                nearLightObject?.SetActive(false);
+            }
+        }
+
         public bool ContainsWorldPoint(Vector3 point)
         {
+            if (unlimitedVision)
+            {
+                return true;
+            }
+
             Vector3 offset = point - transform.position;
             offset.y = 0f;
             float distance = offset.magnitude;

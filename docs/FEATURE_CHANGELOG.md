@@ -21,6 +21,66 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-08 - Tutorial 공중 무기 회수 DEADLINE 진행·무제한 시야
+
+- 변경 유형: Tutorial 진행 조건·시야 정책 개선, HUD 안내·씬 구성·PlayMode 회귀 검사·문서 갱신
+- 변경 내용: **구현 완료**. 투척 수업 적의 기절·무장 해제·공중 드롭이 확인된 뒤 플레이어가 공중 `InterceptableWeapon`을 E로 잡아 어떤 무기든 보유하면, `TutorialDirector`가 즉시 `DeadlineApproach`로 진행하고 투척 수업 적을 비활성화한다. 따라서 DEADLINE 앞 Pistol 지급기는 무기를 놓친 경우의 보조 수단일 뿐 진행 필수 조건이 아니다. Tutorial의 `VisionCone`은 무제한 시야 모드로 설정되어 적 가시성 판정이 시야각·거리·장애물에 제한되지 않으며, 시야 부채꼴 오버레이와 런타임 시야 조명도 비활성화한다.
+- 영향을 받은 시스템: Tutorial 투척·공중 무기 회수·DEADLINE 진입, Tutorial HUD, 적 가시성, 시야 오버레이·조명, Tutorial 씬 빌더, PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.5`로 갱신해 공중 무기 회수 기반 DEADLINE 진행과 Tutorial 무제한 시야 정책을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 최신 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`과 `TutorialPlayModeSmokeTest.RunFromCommandLine`을 실행했다. 스모크는 적의 실제 공중 `InterceptableWeapon`을 회수한 뒤 `DeadlineApproach`로 진행하는지와 Tutorial 시야 오버레이 비활성·시야 제한 밖 점의 가시성을 확인했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: 실제 키보드/마우스로 적의 공중 무기를 E로 가로챈 직후 DEADLINE 안내·게이트가 진행되는지, 포위전 시작 전후에도 모든 적과 공간이 시야 제한 없이 보이는지 수동 확인해야 한다. 최종 입력·시각 체감은 **확인 불가**다.
+
+## 2026-08-08 - Tutorial DEADLINE 사망 체크포인트 재시작
+
+- 변경 유형: Tutorial 사망 재시작 흐름 개선, DEADLINE 전투 상태 복구, HUD·PlayMode 회귀 검사·문서 갱신
+- 변경 내용: **구현 완료**. `TutorialDirector`는 DEADLINE 단계에서 플레이어가 사망한 상태로 R을 누르면 체크포인트 요청을 유지한 채 Tutorial 씬을 다시 로드한다. 새 `TutorialDirector`는 요청을 한 번 소비해 DEADLINE 단계로 즉시 복귀시키고, 플레이어 기본 체력, 원래 위치의 적 4명, 최대 탄약 Pistol, 최대 DEADLINE 충전, 닫힌 출구 게이트를 복구한다. DEADLINE 이외 구간의 사망과 생존 중 R은 기존처럼 Tutorial 첫 단계부터 다시 시작한다. 사망 HUD도 DEADLINE 전용 재시작 문구로 바뀐다.
+- 영향을 받은 시스템: Tutorial 사망/R 재시작, DEADLINE 포위전 상태, 플레이어 무기·탄약, 적 배치, 게이트, Tutorial HUD, PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.4`로 갱신해 DEADLINE 사망 시 체크포인트 재시작 범위와 자동 검증 범위를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`과 `TutorialPlayModeSmokeTest.RunFromCommandLine`을 최신 코드 기준으로 실행했다. 스모크는 권총을 비운 상태에서 DEADLINE 체크포인트 복구를 호출하고 DEADLINE 단계, 최대 충전, 최대 탄약 Pistol, 리셋 지점, 닫힌 출구를 확인했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: **미실행**. 실제 플레이어 사망 뒤 R 입력이 씬을 다시 로드하고 해당 체크포인트를 소비하는 전체 입력 경로는 수동 확인이 필요하다. 따라서 실제 전투 체감과 사망 화면 전환은 **확인 불가**다.
+
+## 2026-08-08 - Tutorial 게이트 소거·투척 수업 사살 방지·Pistol 회수 경로 수정
+
+- 변경 유형: Tutorial 진행 막힘·가시성 버그 수정, 적 피해 정책 보강, PlayMode 회귀 검사 확장, 문서 갱신
+- 변경 내용: **구현 완료**. 열린 `TutorialGate`는 Collider가 즉시 꺼진 뒤 상승 애니메이션의 목적지에 도달하면 Renderer도 비활성화돼 화면에서 사라진다. `TutorialDirector`는 투척 수업 적의 `EnemyHealth` 피해를 비활성화하므로 LMB Pistol 사격으로 적이 파괴되어 수업이 막히지 않는다. 안내 문구는 LMB 사격 대신 RMB Pistol 투척을 명시한다. 무기 드롭 이벤트와 생존·기절·무장 해제·무기 없음 상태가 모두 확인되면 Gate 5 - Arena Entrance를 즉시 열어 Gate 너머 Pistol 지급기 때문에 발생하던 순환 진행 조건을 제거한다.
+- 영향을 받은 시스템: Tutorial 게이트 Renderer/Collider, 투척 수업 적 피해·기절·무장 해제, Pistol 회수 동선, Tutorial 안내 문구, PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialGate.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyHealth.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.3`으로 갱신해 게이트 소거, 투척 수업 사살 방지, Gate 5 즉시 개방 규칙과 검증 상태를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 최신 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`과 `TutorialPlayModeSmokeTest.RunFromCommandLine`을 실행했다. 스모크는 열린 Gate 6 Renderer 소거, 투척 수업 적의 사살 방지, 기절·무장 해제·드롭 뒤 Gate 5 개방을 확인했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: **미실행**. 실제 키보드/마우스로 열린 게이트의 시각적 소거, LMB 사격, RMB 투척 뒤 Gate 5 개방·Pistol 회수·DEADLINE 진입 체감을 확인하지 않았다. 최종 수동 진행 결과는 **확인 불가**다.
+
+## 2026-08-08 - Tutorial 게이트 초기화 순서·Pistol 경로 차단 수정
+
+- 변경 유형: 진행 경로 버그 수정, 런타임 게이트 위치 회귀 검사 추가, 문서 갱신
+- 변경 내용: **구현 완료**. `TutorialDirector`의 초기 상태 적용이 `TutorialGate.Awake`보다 먼저 실행될 수 있어, 게이트가 닫힌 기준 위치를 기록하기 전에 원점으로 이동하던 문제를 수정했다. `TutorialGate.SetOpen`은 최초 호출에서 현재 로컬 좌표를 닫힌 기준으로 먼저 저장한다. 따라서 Gate 3 - Melee(`z = -1`)를 포함한 여섯 게이트가 중앙 통로에 겹치지 않으며, 근접 표적 적중 후 열린 Gate 3을 지나 Pistol 지급 위치(`z = 3`)로 이동할 수 있다.
+- 영향을 받은 시스템: Tutorial 게이트 초기화, 근접→Pistol 진행 경로, 런타임 Collider 위치, Tutorial PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialGate.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.2`로 갱신해 게이트 좌표 보존 규칙과 여섯 게이트 Z 좌표 회귀 검증을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 최신 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`과 `TutorialPlayModeSmokeTest.RunFromCommandLine`을 실행했다. 스모크는 여섯 게이트의 원래 Z 좌표와 열린 Gate 6의 Renderer 소거를 확인했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: **미실행**. 실제 키보드/마우스로 Gate 3을 통과해 Pistol 지급 위치까지 이동하는 체감은 확인하지 않았다. 최종 수동 동선 결과는 **확인 불가**다.
+
+## 2026-08-08 - Tutorial 대시 출구 판정·Pistol 즉시 지급 보정
+
+- 변경 유형: 진행 판정 버그 수정, 무기 지급 안정화, HUD 피드백·PlayMode 자동 검증 보강, 문서 갱신
+- 변경 내용: **구현 완료**. 대시 출구는 조준 회전 목표를 채운 뒤 발생한 `PlayerDash.IsDashing`을 기록하고, 플레이어가 출구 트리거를 통과할 때 이 기록을 사용해 다음 단계로 진행한다. 대시가 0.16초 후 끝나 트리거 진입 프레임에는 `IsDashing == false`가 된 경우에도 이전 성공 대시가 무효화되지 않는다. `TutorialWeaponDispenser.SetAvailable(true)`는 다음 Update를 기다리지 않고 즉시 Pistol 픽업을 생성하며, Tutorial HUD 진행 문구는 `Pistol 생성됨`·`Pistol 장비 완료`를 표시한다.
+- 영향을 받은 시스템: Tutorial 조준/대시 게이트, 플레이어 트리거 진행, Pistol 지급·픽업, Tutorial HUD, PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialWeaponDispenser.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.1`로 갱신해 대시 기록 기반 출구 판정, Pistol 즉시 생성/HUD 상태, 자동 검증과 수동 확인 상태를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`과 `TutorialPlayModeSmokeTest.RunFromCommandLine`을 실행했다. PlayMode 스모크는 Pistol 지급기를 활성화한 직후 생성된 픽업이 Pistol 정의를 가지는지 확인하고, 기존 월드 시간·무기 타입·투척 기절/드롭·Q `DEADLINE` 행동 2개 제한·이동 해제 회귀도 통과했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: **미실행**. 실제 키보드/마우스로 대시 출구를 다양한 타이밍·방향에서 넘고, Pistol 생성 위치와 HUD 문구가 처음 플레이하는 사용자에게 충분히 눈에 띄는지 확인하지 않았다. 따라서 최종 입력 체감과 가시성은 **확인 불가**다.
+
+## 2026-08-08 - 핵심 메커니즘 순차 Tutorial 씬
+
+- 변경 유형: 신규 튜토리얼 씬·런타임 진행 시스템·HUD·전용 NavMesh·빌드 진입점·정적/PlayMode 자동 검증·기존 빌더 빌드 순서 호환·문서 갱신
+- 변경 내용: **구현 완료**. 빌드 인덱스 0의 `Tutorial` 씬을 추가했다. 7단계 직선형 코스가 실제 행동 결과를 기준으로 이동/정지 월드 시간, 마우스 조준/Space 대시, E 근접 무기/LMB 적중, E Pistol/LMB 적중, RMB 투척으로 적 기절·무장 해제·공중 드롭 후 Pistol 회복, 적 4명이 사방에서 포위한 Q `DEADLINE`의 원인 2개 준비와 이동 해제, 북쪽 출구 탈출을 순서대로 해제한다. 실패한 `DEADLINE` 시도는 적·플레이어 위치와 충전을 복구하고, 성공 출구 통과 후 전투를 잠근 뒤 2초 후 Stage1을 로드한다. 사망 시 R로 Tutorial을 재시작한다. 본편 전멸 리플레이가 자체 탈출 완료를 가로채지 않도록 Tutorial의 `StageController`와 레거시 `GameHud`는 제거하고 `VisionCone` 의존성용 리플레이 컴포넌트만 보존했다. `TutorialHud`는 한국어 단계 지시·판정 진행도·월드 배율·무기/탄약·충전을 표시한다. 전역 `Time.timeScale`은 변경하지 않으며 회전 프로브·적·투사체 등 월드 진행은 기존 `WorldDeltaTime` 정책을 유지한다. `EnemyWeaponDrop`에는 드롭 결과 이벤트, `DeadlineController`에는 비활성 상태의 튜토리얼 재시도용 충전 복구 API를 추가했다.
+- 영향을 받은 시스템: 플레이어 입력/이동/조준/대시/전투, 월드 시간, 무기 픽업·지급·투척, 적 기절·무장 해제·드롭, `DEADLINE`, 한국어 IMGUI HUD, 게이트/트리거 진행, NavMesh, 빌드 설정, Stage1 전환, Prototype 및 Stage3~Stage6 씬 빌더
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, 해당 `.meta`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/*`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage6SceneBuilder.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.0`으로 갱신해 Tutorial 구현/검증 상태, 7단계 진행, 4인 포위 `DEADLINE` 연출, 씬·전환 흐름, 조작/UI/기술 클래스, 빌드 순서, 남은 사용자 검증 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`으로 직접 참조, 게이트 6개, 트리거 3개, 타입 표적 2개, 지급기 3개, 적 5명, 전용 `TutorialNavigation.asset`, 활성 카메라 1대, Layer 8 장애물, 무장 없는 시작, `Tutorial → Stage1 → … → Stage6` 빌드 순서를 검증했다. `TutorialPlayModeSmokeTest.RunFromCommandLine`은 이동/정지 월드 배율과 `WorldDeltaTime` 프로브, 근접/총기 타입 판정, 투척 기절·무장 해제·드롭, Q 바인딩, `DEADLINE` 발동·행동 2개 제한·이동 해제, `Time.timeScale == 1`을 통과했다. `Stage6SceneBuilder.ValidateStage1Through5RegressionFromCommandLine`도 Stage1~Stage5 읽기 전용 회귀를 통과했다. 로그: `ProjectDeltatime/TutorialBuild.log`, `ProjectDeltatime/TutorialSmoke.log`, `ProjectDeltatime/TutorialStageRegression.log`.
+- 남은 작업: **미실행**. 사람이 처음부터 끝까지 키보드/마우스로 진행하며 각 게이트 판정 여유, 한국어 문구 가독성, 투척 무기 재획득 동선, 4인 포위전 난이도와 실패 재시도, 완료 후 Stage1 전환 연출을 확인하지 않았다. 따라서 최종 온보딩 난이도와 시각·조작 체감은 **확인 불가**다. 공중 가로채기는 안내 문구와 기존 시스템을 유지하지만 별도 필수 튜토리얼 판정 단계는 **미구현**이다.
+
 ## 2026-08-08 - Stage5 전경 Collider 조준 간섭 제거
 
 - 변경 유형: 플레이어 조준 버그 수정, Stage5 컷어웨이 상호작용 보정, PlayMode 스모크 회귀 검사, 문서 갱신

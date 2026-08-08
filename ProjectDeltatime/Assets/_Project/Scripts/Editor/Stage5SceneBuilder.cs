@@ -1723,6 +1723,7 @@ namespace Deltatime.EditorTools
                 new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             List<EditorBuildSettingsScene> ordered =
                 new List<EditorBuildSettingsScene>();
+            AddBuildSceneIfPresent(ordered, "Assets/_Project/Scenes/Tutorial.unity");
             AddBuildSceneIfPresent(ordered, "Assets/_Project/Scenes/Stage1.unity");
             AddBuildSceneIfPresent(ordered, "Assets/_Project/Scenes/Stage2.unity");
             AddBuildSceneIfPresent(ordered, "Assets/_Project/Scenes/Stage3.unity");
@@ -1732,7 +1733,8 @@ namespace Deltatime.EditorTools
             for (int i = 0; i < existing.Count; i++)
             {
                 string path = existing[i].path;
-                if (path == "Assets/_Project/Scenes/Stage1.unity" ||
+                if (path == "Assets/_Project/Scenes/Tutorial.unity" ||
+                    path == "Assets/_Project/Scenes/Stage1.unity" ||
                     path == "Assets/_Project/Scenes/Stage2.unity" ||
                     path == "Assets/_Project/Scenes/Stage3.unity" ||
                     path == "Assets/_Project/Scenes/Stage4.unity" ||
@@ -2440,6 +2442,7 @@ namespace Deltatime.EditorTools
         {
             string[] expected =
             {
+                "Assets/_Project/Scenes/Tutorial.unity",
                 "Assets/_Project/Scenes/Stage1.unity",
                 "Assets/_Project/Scenes/Stage2.unity",
                 "Assets/_Project/Scenes/Stage3.unity",
@@ -2448,7 +2451,7 @@ namespace Deltatime.EditorTools
             };
             EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
             Require(scenes.Length >= expected.Length,
-                "Build settings do not contain Stage1 through Stage5.");
+                "Build settings do not contain Tutorial through Stage5.");
             for (int i = 0; i < expected.Length; i++)
             {
                 Require(scenes[i].enabled && scenes[i].path == expected[i],

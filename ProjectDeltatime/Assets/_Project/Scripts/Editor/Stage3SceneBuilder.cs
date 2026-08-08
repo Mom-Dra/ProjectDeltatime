@@ -954,6 +954,9 @@ namespace Deltatime.EditorTools
                 new List<EditorBuildSettingsScene>();
             AddBuildSceneIfPresent(
                 ordered,
+                "Assets/_Project/Scenes/Tutorial.unity");
+            AddBuildSceneIfPresent(
+                ordered,
                 "Assets/_Project/Scenes/Stage1.unity");
             AddBuildSceneIfPresent(
                 ordered,
@@ -963,7 +966,8 @@ namespace Deltatime.EditorTools
             for (int i = 0; i < existing.Count; i++)
             {
                 string path = existing[i].path;
-                if (path == "Assets/_Project/Scenes/Stage1.unity" ||
+                if (path == "Assets/_Project/Scenes/Tutorial.unity" ||
+                    path == "Assets/_Project/Scenes/Stage1.unity" ||
                     path == "Assets/_Project/Scenes/Stage2.unity" ||
                     path == Stage3ScenePath)
                 {

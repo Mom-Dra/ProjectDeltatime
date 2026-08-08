@@ -138,6 +138,20 @@ namespace Deltatime.Player
             maximumCharges = Mathf.Max(1, deadlineMaximumCharges);
         }
 
+        public bool RefillCharges()
+        {
+            if (IsActive || worldTime == null)
+            {
+                return false;
+            }
+
+            chargesRemaining = maximumCharges;
+            nextReadyWorldTime = worldTime.WorldElapsedTime;
+            rejectedFeedbackRemaining = 0f;
+            stagedActionCount = 0;
+            return true;
+        }
+
         private void ActivateDeadline()
         {
             IsActive = true;

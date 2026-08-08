@@ -1,3 +1,4 @@
+using System;
 using Deltatime.Combat;
 using Deltatime.TimeSystem;
 using UnityEngine;
@@ -20,6 +21,8 @@ namespace Deltatime.Enemies
         private Vector3 previousPosition;
         private Vector3 lastMovementDirection;
         private float lastMovementWorldTime = float.NegativeInfinity;
+
+        public event Action WeaponDropped;
 
         private void OnEnable()
         {
@@ -82,6 +85,7 @@ namespace Deltatime.Enemies
                 definition,
                 ammunition,
                 ResolveDropDirection());
+            WeaponDropped?.Invoke();
             return true;
         }
 
@@ -103,6 +107,7 @@ namespace Deltatime.Enemies
                 pickupPosition,
                 Quaternion.identity);
             pickup.Initialize(definition, ammunition);
+            WeaponDropped?.Invoke();
             return true;
         }
 
