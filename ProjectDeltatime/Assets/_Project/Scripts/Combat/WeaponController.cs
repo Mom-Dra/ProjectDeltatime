@@ -349,7 +349,8 @@ namespace Deltatime.Combat
                         currentShotSequence),
                     Definition.ProjectileSpeed,
                     Definition.Damage,
-                    Definition.ProjectileRadius);
+                    Definition.ProjectileRadius,
+                    Definition.MaximumProjectileDistance);
             }
         }
 

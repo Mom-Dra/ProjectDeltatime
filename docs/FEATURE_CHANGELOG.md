@@ -21,6 +21,16 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-08 - 샷건 14m 최대 사거리
+
+- 변경 유형: 샷건 투사체 사거리 제한, 무기 데이터·정적 검증·문서 갱신
+- 변경 내용: **구현 완료**. `WeaponDefinition.maximumProjectileDistance`를 추가하고, `WeaponController`가 이를 펠릿별 `Projectile.Initialize`에 전달한다. `Projectile`은 매 프레임 남은 이동 가능 거리를 계산해 해당 프레임 이동과 SphereCast 거리를 모두 제한한다. 따라서 사거리 안의 벽·적 충돌은 기존처럼 먼저 명중·제거되고, 충돌이 없으면 샷건 펠릿은 총구 기준 이동거리 14m에서 명중 플래시 없이 제거된다. 권총·자동소총·근접 무기의 값은 0m이므로 기존 공용 `Projectile.prefab`의 4 월드초 수명 규칙을 유지한다.
+- 영향을 받은 시스템: 샷건 펠릿 이동·충돌·제거, 일반 발사·적 무기 재사용·`DEADLINE` 준비 발사, 무기 ScriptableObject, Stage1/Stage2 무기 정의 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.7`로 갱신해 샷건 14m 제한, 충돌 우선 순서, 다른 총기의 4 월드초 fallback, 자동 검증 범위와 수동 확인 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`을 실행해 `Tundra build success (9.81 seconds)`와 `Stage1 and Stage2 validation passed.`를 확인했다. 빌더는 샷건의 최대 사거리 14m와 권총·자동소총의 0m fallback 값을 검증한다. 이어 `PrototypePlayModeSmokeTest.RunFromCommandLine`은 `Prototype play-mode smoke test passed.`로 완료했다. 로그: `ProjectDeltatime/ShotgunRangeBuild.log`, `ProjectDeltatime/ShotgunRangeSmoke.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 정의값과 컴파일을 확인하지만, 실제 조작으로 14m 직전/직후 펠릿 제거, 원거리 벽 충돌 우선순위, `DEADLINE` 준비 발사와 적이 쏜 샷건의 사거리 체감은 별도 플레이 검증이 필요하다.
+
 ## 2026-08-08 - 샷건 원형 콘 산포·플레이어 반동 리팩터링
 
 - 변경 유형: 샷건 탄도 패턴·플레이어 이동 반동 리팩터링, 무기 데이터·빌더 검증·문서 갱신

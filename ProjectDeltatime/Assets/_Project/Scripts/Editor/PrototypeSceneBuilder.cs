@@ -1368,6 +1368,7 @@ namespace Deltatime.EditorTools
                 0f,
                 1.5f,
                 101,
+                0f,
                 0f);
             EditorUtility.SetDirty(definition);
             return definition;
@@ -1400,6 +1401,7 @@ namespace Deltatime.EditorTools
                 0f,
                 1.5f,
                 211,
+                0f,
                 0f);
             EditorUtility.SetDirty(definition);
             return definition;
@@ -1429,7 +1431,8 @@ namespace Deltatime.EditorTools
                 18f,
                 1f,
                 307,
-                0.35f);
+                0.35f,
+                14f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1695,6 +1698,9 @@ namespace Deltatime.EditorTools
                 Mathf.Approximately(pistolDefinition.SpreadJitterAngle, 1.5f) &&
                 pistolDefinition.SpreadSeed == 101 &&
                 Mathf.Approximately(pistolDefinition.PlayerRecoilDistance, 0f) &&
+                Mathf.Approximately(
+                    pistolDefinition.MaximumProjectileDistance,
+                    0f) &&
                 automaticRifleDefinition != null &&
                 automaticRifleDefinition.FireMode == WeaponFireMode.Automatic &&
                 automaticRifleDefinition.ProjectileCount == 1 &&
@@ -1708,6 +1714,9 @@ namespace Deltatime.EditorTools
                 Mathf.Approximately(
                     automaticRifleDefinition.PlayerRecoilDistance,
                     0f) &&
+                Mathf.Approximately(
+                    automaticRifleDefinition.MaximumProjectileDistance,
+                    0f) &&
                 shotgunDefinition != null &&
                 shotgunDefinition.FireMode == WeaponFireMode.SemiAutomatic &&
                 shotgunDefinition.AmmunitionCapacity == 6 &&
@@ -1720,7 +1729,10 @@ namespace Deltatime.EditorTools
                 shotgunDefinition.SpreadSeed == 307 &&
                 Mathf.Approximately(
                     shotgunDefinition.PlayerRecoilDistance,
-                    0.35f);
+                    0.35f) &&
+                Mathf.Approximately(
+                    shotgunDefinition.MaximumProjectileDistance,
+                    14f);
             bool hasCircularShotgunSpread =
                 HasCircularShotgunSpread(shotgunDefinition);
             bool hasConfiguredWeaponPickups =

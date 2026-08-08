@@ -36,6 +36,9 @@ namespace Deltatime.Combat
         [Header("Player Recoil")]
         [SerializeField, Min(0f)] private float playerRecoilDistance;
 
+        [Header("Projectile Range")]
+        [SerializeField, Min(0f)] private float maximumProjectileDistance;
+
         [Header("Enemy Firearm Use")]
         [SerializeField, Min(1)] private int enemyBurstShotCount = 1;
 
@@ -65,6 +68,7 @@ namespace Deltatime.Combat
         public float SpreadJitterAngle => spreadJitterAngle;
         public int SpreadSeed => spreadSeed;
         public float PlayerRecoilDistance => playerRecoilDistance;
+        public float MaximumProjectileDistance => maximumProjectileDistance;
         public int EnemyBurstShotCount => enemyBurstShotCount;
         public float MeleeRange => meleeRange;
         public float MeleeHalfAngle => meleeHalfAngle;
@@ -89,7 +93,8 @@ namespace Deltatime.Combat
             float totalSpreadAngle,
             float maximumSpreadJitterAngle,
             int deterministicSpreadSeed,
-            float recoilDistance)
+            float recoilDistance,
+            float projectileMaximumDistance)
         {
             kind = WeaponKind.Firearm;
             displayName = weaponName;
@@ -107,6 +112,9 @@ namespace Deltatime.Combat
                 45f);
             spreadSeed = deterministicSpreadSeed;
             playerRecoilDistance = Mathf.Max(0f, recoilDistance);
+            maximumProjectileDistance = Mathf.Max(
+                0f,
+                projectileMaximumDistance);
             enemyBurstShotCount = Mathf.Max(1, burstCount);
             heldVisualScale = new Vector3(0.18f, 0.16f, 0.78f);
             worldVisualScale = new Vector3(0.82f, 0.16f, 0.26f);
@@ -131,6 +139,7 @@ namespace Deltatime.Combat
             spreadJitterAngle = 0f;
             spreadSeed = 0;
             playerRecoilDistance = 0f;
+            maximumProjectileDistance = 0f;
             enemyBurstShotCount = 1;
             meleeRange = Mathf.Max(0.1f, range);
             meleeHalfAngle = Mathf.Clamp(halfAngle, 1f, 90f);

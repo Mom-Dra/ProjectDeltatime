@@ -23,7 +23,9 @@ namespace Deltatime.Combat
         private Vector3 trailStart;
         private float speed;
         private float radius;
+        private float maximumTravelDistance;
         private float worldLifetime;
+        private float travelledDistance;
         private int damage;
         private bool initialized;
         private bool resolved;
@@ -48,18 +50,38 @@ namespace Deltatime.Combat
             float deltaTime = worldTime.WorldDeltaTime;
             float travelDistance = speed * deltaTime;
             Vector3 origin = transform.position;
+            float remainingDistance = maximumTravelDistance > 0f
+                ? Mathf.Max(0f, maximumTravelDistance - travelledDistance)
+                : float.PositiveInfinity;
+            float permittedTravelDistance = Mathf.Min(
+                travelDistance,
+                remainingDistance);
 
-            if (travelDistance > 0f && TryFindImpact(origin, travelDistance, out RaycastHit impact, out IDamageable target))
+            if (permittedTravelDistance > 0f &&
+                TryFindImpact(
+                    origin,
+                    permittedTravelDistance,
+                    out RaycastHit impact,
+                    out IDamageable target))
             {
                 transform.position = origin + (direction * impact.distance);
+                travelledDistance += impact.distance;
                 UpdateTrail();
                 ResolveImpact(impact.point, target);
                 return;
             }
 
-            transform.position = origin + (direction * travelDistance);
+            transform.position = origin + (direction * permittedTravelDistance);
+            travelledDistance += permittedTravelDistance;
             worldLifetime += deltaTime;
             UpdateTrail();
+
+            if (maximumTravelDistance > 0f &&
+                travelledDistance >= maximumTravelDistance)
+            {
+                ResolveRangeLimit();
+                return;
+            }
 
             if (worldLifetime >= maximumWorldLifetime)
             {
@@ -75,7 +97,8 @@ namespace Deltatime.Combat
             Vector3 travelDirection,
             float travelSpeed,
             int hitDamage,
-            float castRadius)
+            float castRadius,
+            float maxTravelDistance)
         {
             worldTime = timeSource;
             faction = ownerFaction;
@@ -86,6 +109,7 @@ namespace Deltatime.Combat
             speed = travelSpeed;
             damage = hitDamage;
             radius = castRadius;
+            maximumTravelDistance = Mathf.Max(0f, maxTravelDistance);
             trailStart = transform.position;
             initialized = worldTime != null;
 
@@ -167,6 +191,17 @@ namespace Deltatime.Combat
 
             Color flashColor = faction == CombatFaction.Player ? playerColor : enemyColor;
             HitFlash.Create(point, flashColor);
+            Destroy(gameObject);
+        }
+
+        private void ResolveRangeLimit()
+        {
+            if (resolved)
+            {
+                return;
+            }
+
+            resolved = true;
             Destroy(gameObject);
         }
 
