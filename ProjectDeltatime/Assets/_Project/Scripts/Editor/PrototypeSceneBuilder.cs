@@ -1367,7 +1367,8 @@ namespace Deltatime.EditorTools
                 1,
                 0f,
                 1.5f,
-                101);
+                101,
+                0f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1398,7 +1399,8 @@ namespace Deltatime.EditorTools
                 1,
                 0f,
                 1.5f,
-                211);
+                211,
+                0f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1426,7 +1428,8 @@ namespace Deltatime.EditorTools
                 8,
                 18f,
                 1f,
-                307);
+                307,
+                0.35f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -1691,6 +1694,7 @@ namespace Deltatime.EditorTools
                 Mathf.Approximately(pistolDefinition.SpreadAngle, 0f) &&
                 Mathf.Approximately(pistolDefinition.SpreadJitterAngle, 1.5f) &&
                 pistolDefinition.SpreadSeed == 101 &&
+                Mathf.Approximately(pistolDefinition.PlayerRecoilDistance, 0f) &&
                 automaticRifleDefinition != null &&
                 automaticRifleDefinition.FireMode == WeaponFireMode.Automatic &&
                 automaticRifleDefinition.ProjectileCount == 1 &&
@@ -1701,6 +1705,9 @@ namespace Deltatime.EditorTools
                     automaticRifleDefinition.SpreadJitterAngle,
                     1.5f) &&
                 automaticRifleDefinition.SpreadSeed == 211 &&
+                Mathf.Approximately(
+                    automaticRifleDefinition.PlayerRecoilDistance,
+                    0f) &&
                 shotgunDefinition != null &&
                 shotgunDefinition.FireMode == WeaponFireMode.SemiAutomatic &&
                 shotgunDefinition.AmmunitionCapacity == 6 &&
@@ -1710,7 +1717,12 @@ namespace Deltatime.EditorTools
                 shotgunDefinition.ProjectileCount == 8 &&
                 Mathf.Approximately(shotgunDefinition.SpreadAngle, 18f) &&
                 Mathf.Approximately(shotgunDefinition.SpreadJitterAngle, 1f) &&
-                shotgunDefinition.SpreadSeed == 307;
+                shotgunDefinition.SpreadSeed == 307 &&
+                Mathf.Approximately(
+                    shotgunDefinition.PlayerRecoilDistance,
+                    0.35f);
+            bool hasCircularShotgunSpread =
+                HasCircularShotgunSpread(shotgunDefinition);
             bool hasConfiguredWeaponPickups =
                 pistolPickup != null &&
                 pistolPickup.Definition == pistolDefinition &&
@@ -1876,6 +1888,7 @@ namespace Deltatime.EditorTools
                 !hasDeadlineKeyBinding ||
                 !hasFireLeftMouseBinding ||
                 !hasConfiguredWeaponDefinitions ||
+                !hasCircularShotgunSpread ||
                 !hasConfiguredWeaponPickups)
             {
                 throw new InvalidOperationException(
@@ -1902,6 +1915,7 @@ namespace Deltatime.EditorTools
                     $"deadlineQBinding={hasDeadlineKeyBinding}, " +
                     $"fireLmbBinding={hasFireLeftMouseBinding}, " +
                     $"weaponDefinitions={hasConfiguredWeaponDefinitions}, " +
+                    $"circularShotgunSpread={hasCircularShotgunSpread}, " +
                     $"weaponPickups={hasConfiguredWeaponPickups}, " +
                     $"expectedDeadlineCharges={expectedDeadlineCharges}, enemies={enemyCount}, " +
                     $"ranged={rangedEnemyCount}, chasers={chasingEnemyCount}, motors={enemyMotorCount}, " +
@@ -1915,6 +1929,63 @@ namespace Deltatime.EditorTools
             }
 
             ValidatePlayerControls();
+        }
+
+        private static bool HasCircularShotgunSpread(
+            WeaponDefinition shotgunDefinition)
+        {
+            if (shotgunDefinition == null ||
+                shotgunDefinition.ProjectileCount < 2 ||
+                shotgunDefinition.SpreadAngle <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 forward = Vector3.forward;
+            float maximumAngle = (shotgunDefinition.SpreadAngle * 0.5f) +
+                0.01f;
+            bool hasPositiveHorizontal = false;
+            bool hasNegativeHorizontal = false;
+            bool hasPositiveVertical = false;
+            bool hasNegativeVertical = false;
+
+            for (int pelletIndex = 0;
+                 pelletIndex < shotgunDefinition.ProjectileCount;
+                 pelletIndex++)
+            {
+                Vector3 direction = WeaponSpreadPattern.GetProjectileDirection(
+                    forward,
+                    pelletIndex,
+                    shotgunDefinition.ProjectileCount,
+                    shotgunDefinition.SpreadAngle,
+                    shotgunDefinition.SpreadJitterAngle,
+                    shotgunDefinition.SpreadSeed,
+                    0);
+                Vector3 repeatedDirection =
+                    WeaponSpreadPattern.GetProjectileDirection(
+                        forward,
+                        pelletIndex,
+                        shotgunDefinition.ProjectileCount,
+                        shotgunDefinition.SpreadAngle,
+                        shotgunDefinition.SpreadJitterAngle,
+                        shotgunDefinition.SpreadSeed,
+                        0);
+                if (Vector3.Angle(forward, direction) > maximumAngle ||
+                    (direction - repeatedDirection).sqrMagnitude > 0.00000001f)
+                {
+                    return false;
+                }
+
+                hasPositiveHorizontal |= direction.x > 0.01f;
+                hasNegativeHorizontal |= direction.x < -0.01f;
+                hasPositiveVertical |= direction.y > 0.01f;
+                hasNegativeVertical |= direction.y < -0.01f;
+            }
+
+            return hasPositiveHorizontal &&
+                   hasNegativeHorizontal &&
+                   hasPositiveVertical &&
+                   hasNegativeVertical;
         }
 
         private static void ValidatePlayerControls()

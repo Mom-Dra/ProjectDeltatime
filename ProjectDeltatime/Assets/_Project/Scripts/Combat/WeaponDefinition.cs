@@ -33,6 +33,9 @@ namespace Deltatime.Combat
         [SerializeField, Range(0f, 45f)] private float spreadJitterAngle;
         [SerializeField] private int spreadSeed = 1;
 
+        [Header("Player Recoil")]
+        [SerializeField, Min(0f)] private float playerRecoilDistance;
+
         [Header("Enemy Firearm Use")]
         [SerializeField, Min(1)] private int enemyBurstShotCount = 1;
 
@@ -61,6 +64,7 @@ namespace Deltatime.Combat
         public float SpreadAngle => spreadAngle;
         public float SpreadJitterAngle => spreadJitterAngle;
         public int SpreadSeed => spreadSeed;
+        public float PlayerRecoilDistance => playerRecoilDistance;
         public int EnemyBurstShotCount => enemyBurstShotCount;
         public float MeleeRange => meleeRange;
         public float MeleeHalfAngle => meleeHalfAngle;
@@ -84,7 +88,8 @@ namespace Deltatime.Combat
             int pellets,
             float totalSpreadAngle,
             float maximumSpreadJitterAngle,
-            int deterministicSpreadSeed)
+            int deterministicSpreadSeed,
+            float recoilDistance)
         {
             kind = WeaponKind.Firearm;
             displayName = weaponName;
@@ -101,6 +106,7 @@ namespace Deltatime.Combat
                 0f,
                 45f);
             spreadSeed = deterministicSpreadSeed;
+            playerRecoilDistance = Mathf.Max(0f, recoilDistance);
             enemyBurstShotCount = Mathf.Max(1, burstCount);
             heldVisualScale = new Vector3(0.18f, 0.16f, 0.78f);
             worldVisualScale = new Vector3(0.82f, 0.16f, 0.26f);
@@ -124,6 +130,7 @@ namespace Deltatime.Combat
             spreadAngle = 0f;
             spreadJitterAngle = 0f;
             spreadSeed = 0;
+            playerRecoilDistance = 0f;
             enemyBurstShotCount = 1;
             meleeRange = Mathf.Max(0.1f, range);
             meleeHalfAngle = Mathf.Clamp(halfAngle, 1f, 90f);

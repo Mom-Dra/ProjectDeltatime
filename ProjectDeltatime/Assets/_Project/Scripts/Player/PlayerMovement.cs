@@ -21,6 +21,7 @@ namespace Deltatime.Player
         private NavMeshGroundMovement groundMovement;
         private Vector3 physicsStepStartPosition;
         private Vector3 physicsStepInputDirection;
+        private Vector3 pendingRecoilDisplacement;
         private uint physicsStepVersion;
         private uint sampledPhysicsStepVersion;
         private bool physicsStepEligible;
@@ -73,6 +74,7 @@ namespace Deltatime.Player
 
             if (!health.IsAlive || worldTime.IsHardFrozen)
             {
+                pendingRecoilDisplacement = Vector3.zero;
                 StopPlanarMotion();
                 return;
             }
@@ -91,14 +93,22 @@ namespace Deltatime.Player
             }
 
             Vector3 currentVelocity = body.linearVelocity;
+            Vector3 recoilDisplacement = ConsumePendingRecoil();
             if (groundMovement != null)
             {
                 groundMovement.TryMove(
                     body,
-                    movementVelocity * UnityEngine.Time.fixedUnscaledDeltaTime,
+                    (movementVelocity *
+                     UnityEngine.Time.fixedUnscaledDeltaTime) +
+                    recoilDisplacement,
                     out _);
                 body.linearVelocity = Vector3.zero;
                 return;
+            }
+
+            if (recoilDisplacement.sqrMagnitude > 0.0000000001f)
+            {
+                body.MovePosition(body.position + recoilDisplacement);
             }
 
             body.linearVelocity = new Vector3(
@@ -117,6 +127,17 @@ namespace Deltatime.Player
             health = playerHealth;
             dash = playerDash;
             worldTime = timeSource;
+        }
+
+        public void QueueRecoil(Vector3 direction, float distance)
+        {
+            direction.y = 0f;
+            if (distance <= 0f || direction.sqrMagnitude <= 0.000001f)
+            {
+                return;
+            }
+
+            pendingRecoilDisplacement += direction.normalized * distance;
         }
 
         private void OnDisable()
@@ -154,6 +175,13 @@ namespace Deltatime.Player
 
             Vector3 currentVelocity = body.linearVelocity;
             body.linearVelocity = new Vector3(0f, currentVelocity.y, 0f);
+        }
+
+        private Vector3 ConsumePendingRecoil()
+        {
+            Vector3 recoil = pendingRecoilDisplacement;
+            pendingRecoilDisplacement = Vector3.zero;
+            return recoil;
         }
 
         private void OnValidate()

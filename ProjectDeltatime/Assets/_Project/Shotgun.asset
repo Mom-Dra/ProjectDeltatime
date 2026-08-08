@@ -24,6 +24,7 @@ MonoBehaviour:
   spreadAngle: 18
   spreadJitterAngle: 1
   spreadSeed: 307
+  playerRecoilDistance: 0.35
   enemyBurstShotCount: 1
   meleeRange: 1.45
   meleeHalfAngle: 35

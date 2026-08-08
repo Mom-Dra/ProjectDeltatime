@@ -30,9 +30,6 @@ namespace Deltatime.Combat
             public float Interval { get; }
         }
 
-        private const uint HorizontalSpreadChannelSalt = 0x68BC21EBu;
-        private const uint VerticalSpreadChannelSalt = 0x165667B1u;
-
         [SerializeField] private WeaponDefinition startingDefinition;
         [SerializeField] private Transform muzzle;
         [SerializeField] private Renderer heldWeaponRenderer;
@@ -328,7 +325,7 @@ namespace Deltatime.Combat
             int currentShotSequence)
         {
             int projectileCount = Mathf.Max(1, Definition.ProjectileCount);
-            float totalSpreadAngle = projectileCount > 1
+            float coneAngle = projectileCount > 1
                 ? Definition.SpreadAngle
                 : 0f;
 
@@ -342,11 +339,11 @@ namespace Deltatime.Combat
                     worldTime,
                     faction,
                     gameObject,
-                    GetProjectileDirection(
+                    WeaponSpreadPattern.GetProjectileDirection(
                         direction,
                         i,
                         projectileCount,
-                        totalSpreadAngle,
+                        coneAngle,
                         Definition.SpreadJitterAngle,
                         Definition.SpreadSeed,
                         currentShotSequence),
@@ -356,90 +353,11 @@ namespace Deltatime.Combat
             }
         }
 
-        private static Vector3 GetProjectileDirection(
-            Vector3 baseDirection,
-            int projectileIndex,
-            int projectileCount,
-            float totalSpreadAngle,
-            float maximumSpreadJitterAngle,
-            int spreadSeed,
-            int currentShotSequence)
-        {
-            Vector3 normalizedDirection = baseDirection.sqrMagnitude > 0.0001f
-                ? baseDirection.normalized
-                : Vector3.forward;
-            float fanAngle = 0f;
-            if (projectileCount > 1 && totalSpreadAngle > 0f)
-            {
-                float spreadT = projectileIndex / (float)(projectileCount - 1);
-                fanAngle = Mathf.Lerp(
-                    -totalSpreadAngle * 0.5f,
-                    totalSpreadAngle * 0.5f,
-                    spreadT);
-            }
-
-            float horizontalJitterAngle = GetDeterministicSpreadJitter(
-                maximumSpreadJitterAngle,
-                spreadSeed,
-                currentShotSequence,
-                projectileIndex,
-                HorizontalSpreadChannelSalt);
-            Vector3 horizontalDirection =
-                Quaternion.AngleAxis(
-                    fanAngle + horizontalJitterAngle,
-                    Vector3.up) * normalizedDirection;
-
-            float verticalJitterAngle = GetDeterministicSpreadJitter(
-                maximumSpreadJitterAngle,
-                spreadSeed,
-                currentShotSequence,
-                projectileIndex,
-                VerticalSpreadChannelSalt);
-            Vector3 pitchAxis = Vector3.Cross(Vector3.up, horizontalDirection);
-            if (pitchAxis.sqrMagnitude <= 0.000001f)
-            {
-                pitchAxis = Vector3.right;
-            }
-            else
-            {
-                pitchAxis.Normalize();
-            }
-
-            return Quaternion.AngleAxis(verticalJitterAngle, pitchAxis) *
-                   horizontalDirection;
-        }
-
         private int ConsumeShotSequence()
         {
             int currentShotSequence = shotSequence;
             shotSequence++;
             return currentShotSequence;
-        }
-
-        private static float GetDeterministicSpreadJitter(
-            float maximumAngle,
-            int spreadSeed,
-            int currentShotSequence,
-            int projectileIndex,
-            uint channelSalt)
-        {
-            if (maximumAngle <= 0f)
-            {
-                return 0f;
-            }
-
-            uint state = (uint)spreadSeed;
-            state += (uint)currentShotSequence * 0x9E3779B9u;
-            state += (uint)projectileIndex * 0x85EBCA6Bu;
-            state += channelSalt;
-            state ^= state >> 16;
-            state *= 0x7FEB352Du;
-            state ^= state >> 15;
-            state *= 0x846CA68Bu;
-            state ^= state >> 16;
-
-            float normalizedSample = (state & 0x00FFFFFFu) / 16777215f;
-            return Mathf.Lerp(-maximumAngle, maximumAngle, normalizedSample);
         }
 
         private void ValidateConfiguration()

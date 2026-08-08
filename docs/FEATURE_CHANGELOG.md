@@ -21,6 +21,16 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-08 - 샷건 원형 콘 산포·플레이어 반동 리팩터링
+
+- 변경 유형: 샷건 탄도 패턴·플레이어 이동 반동 리팩터링, 무기 데이터·빌더 검증·문서 갱신
+- 변경 내용: **구현 완료**. `WeaponSpreadPattern`이 기존 `WeaponController`의 좌우 팬/축별 회전 계산을 대체한다. 다중 펠릿은 원형 콘 단면을 `sqrt` 반경으로 채워 면적 밀도를 균등하게 하고, 무기 시드·발사 순번으로 전체 패턴을 결정적으로 회전한다. 샷건은 8펠릿·총 퍼짐 18도(반각 9도) 안에서 펠릿별 최대 1도 반경 지터를 적용하므로 좌우 부채꼴이 아닌 발사축 중심의 원형 콘으로 퍼진다. `WeaponDefinition.playerRecoilDistance`를 추가해 샷건만 0.35m 후방 이동 반동을 사용하며 권총·자동소총·근접 무기는 0m다. `PlayerCombat`은 실제 플레이어 총기 발사 때만 반동을 대기시키고, `DEADLINE` 준비 발사는 해제 뒤에 대기 반동을 적용한다. 적 사격에는 플레이어 반동을 적용하지 않는다.
+- 영향을 받은 시스템: 샷건·권총·자동소총 공용 탄도 산포, 플레이어 샷건 이동 반동, `DEADLINE` 준비/해제 발사, Stage1/Stage2 무기 데이터 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponSpreadPattern.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.5.6`으로 갱신해 원형 콘 산포 규칙, 샷건 반동 값과 적용 범위, 빌더 검증, 자동 검증 결과 및 수동 확인 범위를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`을 실행해 `Tundra build success (6.59 seconds)`와 `Stage1 and Stage2 validation passed.`를 확인했다. 빌더는 샷건 8펠릿이 반각 9도 이내에 있고 수평·수직 양방향으로 분포하며 동일 입력에서 결정적인지 확인한다. 이어 `PrototypePlayModeSmokeTest.RunFromCommandLine`은 `Prototype play-mode smoke test passed.`로 완료했다. 로그: `ProjectDeltatime/ShotgunSpreadBuild2.log`, `ProjectDeltatime/ShotgunSpreadSmoke.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 산포 수학·통합 전투 흐름을 확인하지만, 실제 조작으로 0.35m 반동의 체감과 벽/경사면 근처의 이동 제한, 다양한 거리에서의 원형 펠릿 명중 분포는 별도 수동 플레이 검증이 필요하다.
+
 ## 2026-08-08 - Tutorial 공중 무기 회수 DEADLINE 진행·무제한 시야
 
 - 변경 유형: Tutorial 진행 조건·시야 정책 개선, HUD 안내·씬 구성·PlayMode 회귀 검사·문서 갱신

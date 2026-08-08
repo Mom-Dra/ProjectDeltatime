@@ -11,6 +11,7 @@ namespace Deltatime.Player
     {
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private PlayerAim aim;
+        [SerializeField] private PlayerMovement movement;
         [SerializeField] private PlayerHealth health;
         [SerializeField] private WeaponController weapon;
         [SerializeField] private WorldTimeController worldTime;
@@ -42,6 +43,7 @@ namespace Deltatime.Player
                 new WeaponController.StagedMeleeAttack[2];
         private float catchBufferRemaining;
         private float nextPunchTime;
+        private Vector3 stagedRecoilDisplacement;
         private int stagedMeleeAttackCount;
         private int stagedUnarmedPunchCount;
 
@@ -50,8 +52,14 @@ namespace Deltatime.Player
 
         private void Awake()
         {
+            if (movement == null)
+            {
+                movement = GetComponent<PlayerMovement>();
+            }
+
             if (input == null ||
                 aim == null ||
+                movement == null ||
                 health == null ||
                 weapon == null ||
                 worldTime == null ||
@@ -117,6 +125,14 @@ namespace Deltatime.Player
             {
                 bool weaponUseSucceeded = TryUseEquippedWeapon(
                     out bool firearmAttempted);
+                if (weaponUseSucceeded &&
+                    weapon.Definition != null &&
+                    weapon.Definition.IsFirearm)
+                {
+                    movement.QueueRecoil(
+                        -GetWeaponOriginAimDirection(),
+                        weapon.Definition.PlayerRecoilDistance);
+                }
                 if (weaponUseSucceeded || firearmAttempted)
                 {
                     worldTimeActivity.Pulse(
@@ -210,6 +226,13 @@ namespace Deltatime.Player
 
             float clock = UnityEngine.Time.unscaledTime;
             weapon.CommitStagedFireCooldown(clock);
+            if (stagedRecoilDisplacement.sqrMagnitude > 0.000001f)
+            {
+                movement.QueueRecoil(
+                    stagedRecoilDisplacement,
+                    stagedRecoilDisplacement.magnitude);
+            }
+
             for (int i = 0; i < stagedMeleeAttackCount; i++)
             {
                 weapon.CommitStagedMeleeAttack(
@@ -268,10 +291,19 @@ namespace Deltatime.Player
 
             if (weapon.Definition.IsFirearm)
             {
-                return weapon.TryStageFire(
+                Vector3 fireDirection = GetWeaponOriginAimDirection();
+                bool stagedFire = weapon.TryStageFire(
                     CombatFaction.Player,
-                    GetWeaponOriginAimDirection(),
+                    fireDirection,
                     worldTime);
+                if (stagedFire)
+                {
+                    stagedRecoilDisplacement +=
+                        -fireDirection.normalized *
+                        weapon.Definition.PlayerRecoilDistance;
+                }
+
+                return stagedFire;
             }
 
             if (stagedMeleeAttackCount >= stagedMeleeAttacks.Length ||
@@ -301,6 +333,7 @@ namespace Deltatime.Player
         {
             stagedMeleeAttackCount = 0;
             stagedUnarmedPunchCount = 0;
+            stagedRecoilDisplacement = Vector3.zero;
         }
 
         private bool TryUseUnarmedPunch()
