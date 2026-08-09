@@ -54,7 +54,11 @@ namespace Deltatime.EditorTools
         private const string ProjectilePrefabPath = Prefabs + "/Projectile.prefab";
         private const string PickupPrefabPath = Prefabs + "/WeaponPickup.prefab";
         private const string PistolPickupPrefabPath = Prefabs + "/PistolPickup.prefab";
+        private const string AutomaticRiflePickupPrefabPath =
+            Prefabs + "/AutomaticRiflePickup.prefab";
         private const string ShotgunPickupPrefabPath = Prefabs + "/ShotgunPickup.prefab";
+        private const string MeleeWeaponPickupPrefabPath =
+            Prefabs + "/MeleeWeaponPickup.prefab";
         private const string ThrownWeaponPrefabPath = Prefabs + "/ThrownWeapon.prefab";
         private const string InterceptableWeaponPrefabPath =
             Prefabs + "/InterceptableWeapon.prefab";
@@ -72,6 +76,8 @@ namespace Deltatime.EditorTools
         private const int VisionObstacleLayer = 8;
         private const int Stage1DeadlineCharges = 2;
         private const int Stage2DeadlineCharges = 2;
+        private const float MinimumPickupColliderDimension = 0.01f;
+        private const float PickupColliderBoundsTolerance = 0.0001f;
 
         [MenuItem("Tools/Prototype/Build Stage 1 + Stage 2")]
         public static void BuildPrototypeRoom()
@@ -155,18 +161,12 @@ namespace Deltatime.EditorTools
                 ShotgunDefinitionPath);
             meleeWeapon = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
                 MeleeWeaponDefinitionPath);
-            EnsureConfiguredPickupPrefab(
-                PistolPickupPrefabPath,
-                "Pistol Pickup",
+            EnsureConfiguredPickupPrefabs(
                 pickupMaterial,
                 pistol,
-                8);
-            EnsureConfiguredPickupPrefab(
-                ShotgunPickupPrefabPath,
-                "Shotgun Pickup",
-                pickupMaterial,
+                automaticRifle,
                 shotgun,
-                6);
+                meleeWeapon);
             AssetDatabase.SaveAssets();
 
             Scene scene = EditorSceneManager.NewScene(
@@ -334,6 +334,50 @@ namespace Deltatime.EditorTools
             }
             Debug.Log(
                 "Stage1 and Stage2 built successfully. Stage2 remains open.");
+        }
+
+        [MenuItem("Tools/Prototype/Build Placeable Weapon Pickups")]
+        public static void BuildPlaceableWeaponPickups()
+        {
+            EnsureFolders();
+
+            Material pickupMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                PickupMaterialPath);
+            if (pickupMaterial == null)
+            {
+                pickupMaterial = EnsureStandardMaterial(
+                    PickupMaterialPath,
+                    new Color(1f, 0.55f, 0.035f, 1f),
+                    0.45f,
+                    0.55f,
+                    new Color(0.08f, 0.018f, 0.002f, 1f));
+            }
+
+            WeaponDefinition pistol = LoadPlaceableWeaponDefinition(
+                PistolDefinitionPath,
+                "Pistol");
+            WeaponDefinition automaticRifle = LoadPlaceableWeaponDefinition(
+                AutomaticRifleDefinitionPath,
+                "Automatic Rifle");
+            WeaponDefinition shotgun = LoadPlaceableWeaponDefinition(
+                ShotgunDefinitionPath,
+                "Shotgun");
+            WeaponDefinition meleeWeapon = LoadPlaceableWeaponDefinition(
+                MeleeWeaponDefinitionPath,
+                "Melee Weapon");
+
+            EnsureConfiguredPickupPrefabs(
+                pickupMaterial,
+                pistol,
+                automaticRifle,
+                shotgun,
+                meleeWeapon);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+
+            Debug.Log(
+                "Built placeable weapon pickups: Pistol, Automatic Rifle, " +
+                "Shotgun, Melee Weapon.");
         }
 
         public static void BuildAndValidateFromCommandLine()
@@ -1387,6 +1431,56 @@ namespace Deltatime.EditorTools
             UnityEngine.Object.DestroyImmediate(root);
         }
 
+        private static void EnsureConfiguredPickupPrefabs(
+            Material pickupMaterial,
+            WeaponDefinition pistol,
+            WeaponDefinition automaticRifle,
+            WeaponDefinition shotgun,
+            WeaponDefinition meleeWeapon)
+        {
+            EnsureConfiguredPickupPrefab(
+                PistolPickupPrefabPath,
+                "Pistol Pickup",
+                pickupMaterial,
+                pistol,
+                pistol.AmmunitionCapacity);
+            EnsureConfiguredPickupPrefab(
+                AutomaticRiflePickupPrefabPath,
+                "Automatic Rifle Pickup",
+                pickupMaterial,
+                automaticRifle,
+                automaticRifle.AmmunitionCapacity);
+            EnsureConfiguredPickupPrefab(
+                ShotgunPickupPrefabPath,
+                "Shotgun Pickup",
+                pickupMaterial,
+                shotgun,
+                shotgun.AmmunitionCapacity);
+            EnsureConfiguredPickupPrefab(
+                MeleeWeaponPickupPrefabPath,
+                "Melee Weapon Pickup",
+                pickupMaterial,
+                meleeWeapon,
+                meleeWeapon.AmmunitionCapacity);
+
+            ValidateConfiguredPickupPrefab(
+                PistolPickupPrefabPath,
+                pistol,
+                pistol.AmmunitionCapacity);
+            ValidateConfiguredPickupPrefab(
+                AutomaticRiflePickupPrefabPath,
+                automaticRifle,
+                automaticRifle.AmmunitionCapacity);
+            ValidateConfiguredPickupPrefab(
+                ShotgunPickupPrefabPath,
+                shotgun,
+                shotgun.AmmunitionCapacity);
+            ValidateConfiguredPickupPrefab(
+                MeleeWeaponPickupPrefabPath,
+                meleeWeapon,
+                meleeWeapon.AmmunitionCapacity);
+        }
+
         private static void EnsureConfiguredPickupPrefab(
             string path,
             string pickupName,
@@ -1405,9 +1499,148 @@ namespace Deltatime.EditorTools
             collider.isTrigger = true;
             WeaponPickup pickup = root.AddComponent<WeaponPickup>();
             pickup.Initialize(definition, ammunition);
+            ConfigurePickupColliderToWorldModel(root.transform, collider);
 
             PrefabUtility.SaveAsPrefabAsset(root, path);
             UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        private static void ConfigurePickupColliderToWorldModel(
+            Transform pickupRoot,
+            BoxCollider collider)
+        {
+            Bounds modelBounds = CalculateWorldModelLocalBounds(pickupRoot);
+            collider.center = modelBounds.center;
+            collider.size = ClampPickupColliderSize(modelBounds.size);
+        }
+
+        private static Bounds CalculateWorldModelLocalBounds(
+            Transform pickupRoot)
+        {
+            Transform worldModel = pickupRoot.Find("Weapon Model Visual");
+            if (worldModel == null)
+            {
+                throw new InvalidOperationException(
+                    "Configured weapon pickup has no world model visual.");
+            }
+
+            Renderer[] renderers =
+                worldModel.GetComponentsInChildren<Renderer>(true);
+            bool hasBounds = false;
+            Bounds localBounds = default;
+
+            foreach (Renderer renderer in renderers)
+            {
+                if (!renderer.enabled)
+                {
+                    continue;
+                }
+
+                Bounds rendererBounds = renderer.bounds;
+                Vector3 minimum = rendererBounds.min;
+                Vector3 maximum = rendererBounds.max;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 worldPoint = new Vector3(
+                        (corner & 1) == 0 ? minimum.x : maximum.x,
+                        (corner & 2) == 0 ? minimum.y : maximum.y,
+                        (corner & 4) == 0 ? minimum.z : maximum.z);
+                    Vector3 localPoint =
+                        pickupRoot.InverseTransformPoint(worldPoint);
+
+                    if (!hasBounds)
+                    {
+                        localBounds = new Bounds(localPoint, Vector3.zero);
+                        hasBounds = true;
+                    }
+                    else
+                    {
+                        localBounds.Encapsulate(localPoint);
+                    }
+                }
+            }
+
+            if (!hasBounds)
+            {
+                throw new InvalidOperationException(
+                    "Configured weapon pickup world model has no enabled renderer.");
+            }
+
+            return localBounds;
+        }
+
+        private static Vector3 ClampPickupColliderSize(Vector3 size)
+        {
+            return new Vector3(
+                Mathf.Max(MinimumPickupColliderDimension, size.x),
+                Mathf.Max(MinimumPickupColliderDimension, size.y),
+                Mathf.Max(MinimumPickupColliderDimension, size.z));
+        }
+
+        private static WeaponDefinition LoadPlaceableWeaponDefinition(
+            string path,
+            string displayName)
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(path);
+            if (definition == null)
+            {
+                throw new InvalidOperationException(
+                    $"Missing {displayName} weapon definition at {path}.");
+            }
+
+            if (!definition.HasCustomWorldVisual)
+            {
+                throw new InvalidOperationException(
+                    $"{displayName} has no configured world visual at {path}.");
+            }
+
+            return definition;
+        }
+
+        private static void ValidateConfiguredPickupPrefab(
+            string path,
+            WeaponDefinition expectedDefinition,
+            int expectedAmmunition)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            WeaponPickup pickup = prefab == null
+                ? null
+                : prefab.GetComponent<WeaponPickup>();
+            BoxCollider collider = prefab == null
+                ? null
+                : prefab.GetComponent<BoxCollider>();
+            bool hasWorldModel = prefab != null &&
+                                 prefab.transform.Find("Weapon Model Visual") != null;
+            bool hasMatchingColliderBounds = false;
+            if (collider != null && hasWorldModel)
+            {
+                Bounds expectedBounds = CalculateWorldModelLocalBounds(
+                    prefab.transform);
+                hasMatchingColliderBounds =
+                    Approximately(collider.center, expectedBounds.center) &&
+                    Approximately(
+                        collider.size,
+                        ClampPickupColliderSize(expectedBounds.size));
+            }
+
+            if (pickup == null ||
+                pickup.Definition != expectedDefinition ||
+                pickup.Ammunition != expectedAmmunition ||
+                collider == null ||
+                !collider.isTrigger ||
+                !hasWorldModel ||
+                !hasMatchingColliderBounds)
+            {
+                throw new InvalidOperationException(
+                    $"Invalid configured weapon pickup prefab at {path}.");
+            }
+        }
+
+        private static bool Approximately(Vector3 left, Vector3 right)
+        {
+            return (left - right).sqrMagnitude <=
+                   PickupColliderBoundsTolerance * PickupColliderBoundsTolerance;
         }
 
         private static void EnsureThrownWeaponPrefab(
@@ -1428,7 +1661,7 @@ namespace Deltatime.EditorTools
                 new Color(1f, 0.65f, 0.08f, 1f),
                 0.055f);
             ThrownWeapon thrownWeapon = root.AddComponent<ThrownWeapon>();
-            thrownWeapon.ConfigurePrototype(7f, 6f, 2f);
+            thrownWeapon.ConfigurePrototype(7f, 4f, 2f);
 
             PrefabUtility.SaveAsPrefabAsset(root, ThrownWeaponPrefabPath);
             UnityEngine.Object.DestroyImmediate(root);

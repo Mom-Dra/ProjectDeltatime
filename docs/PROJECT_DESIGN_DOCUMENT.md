@@ -7,11 +7,16 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-09 (KST) |
-| 문서 버전 | 1.6.15 |
-| 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편은 플레이어 현재 높이 수평 평면 조준점과 총구 기준 수평 발사, 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기, 독립 Stage1~Stage6를 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델을 사용하며, 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Stage1 및 Stage3~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. |
+| 문서 버전 | 1.6.20 |
+| 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편은 플레이어 현재 높이 수평 평면 조준점과 총구 기준 수평 발사, 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기, 독립 Stage1~Stage6를 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Stage1 및 Stage3~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. |
 
 ### 1.1 분석 기준과 범위
 
+- 2026-08-09 플레이어가 던진 무기의 최대 이동 거리는 `ThrownWeapon.prefab`과 `ThrownWeapon` 기본값, `PrototypeSceneBuilder` 재생성값에서 모두 6m에서 4m로 줄였다. 속도 7과 기절 시간 2 월드초, 충돌 시 즉시 기절·착지·픽업 변환 흐름은 유지한다. 따라서 비충돌 투척물은 총구 시작점에서 최대 4m를 이동한 뒤 바닥 픽업으로 변환된다. **구현 완료**. Unity 배치 컴파일과 프리팹·기본값·생성기 수치 대조는 통과했고, 실제 Play Mode 비행 거리 체감은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Prefabs/ThrownWeapon.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`.
+- 2026-08-09 `MeleeWeapon.asset`의 야구방망이 손 모델은 로컬 위치 `(0.019, 0.021, 0.093)`, 회전 `(189.308, -24.15198, -6.239014)`, 균일 스케일 `(1, 1, 1)`을 사용한다. 근접 타격 판정은 `MeleeAttackResolver`의 거리·각도·시야 검사로 별도 처리되므로 이 손 모델 보정은 공격 피해·사거리·타격 시점에 영향을 주지 않는다. **구현 완료**. 에셋 직렬화 값은 정적으로 확인했고 Unity Play Mode의 손 그립·공격 중 시각 정렬은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`.
+- 2026-08-09 직접 배치용 네 무기 픽업의 Trigger `BoxCollider`는 더 이상 공통 `1×1×1` 크기를 쓰지 않고, 각 `Weapon Model Visual`의 활성 Renderer 경계를 픽업 로컬 좌표로 합산한 좁은 AABB를 사용한다. 현재 직렬화 크기/중심은 권총 `(0.042992774, 0.27395654, 0.42000002)`/`(0, 0.080000006, 0.21000002)`, 자동소총 `(0.069229424, 0.33086163, 0.9599999)`/`(0, 0.13, 0.47999996)`, 샷건 `(0.063373215, 0.23060584, 0.9200001)`/`(0, 0.13999999, 0.46000007)`, 근접 무기 `(0.06476646, 0.064766586, 0.91999996)`/`(0, 0.100000024, 0.45999998)`이다. `Tools/Prototype/Build Placeable Weapon Pickups`는 생성 뒤 계산값과 Collider 직렬화 값의 일치도 검증한다. **구현 완료**. Unity 배치 생성·검증은 통과했고, 새 빈 씬에서의 수동 획득 범위 체감은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/AutomaticRiflePickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/MeleeWeaponPickup.prefab`.
+- 2026-08-09 `PistolPickup.prefab`, `AutomaticRiflePickup.prefab`, `ShotgunPickup.prefab`, `MeleeWeaponPickup.prefab`은 각각 권총 8발·자동소총 30발·샷건 6발·근접 무기 0발을 기본값으로 가진 직접 배치용 `WeaponPickup`이다. 모두 Trigger `BoxCollider`와 대응하는 `WeaponDefinition`, `Weapon Model Visual` 자식을 직렬화해 어떤 씬에도 드래그해 배치할 수 있다. `Tools/Prototype/Build Placeable Weapon Pickups`는 네 프리팹을 함께 재생성하고 정의·기본 탄약·트리거·월드 모델 포함을 검증한다. **구현 완료**. Unity 배치 생성·검증은 통과했지만, 각 프리팹을 새 빈 씬에 수동 배치한 뒤 실제 획득·교환 감각은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/AutomaticRiflePickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/MeleeWeaponPickup.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`.
+- 2026-08-09 `AutomaticRifle.asset`의 Assault Rifle 손 모델은 로컬 위치 `(-0.227, 0.013, -0.188)`, 회전 `(-4.056, 65.2, -85.452)`, 균일 스케일 `(1.2, 1.2, 1.2)`을 사용한다. 실제 발사 `Weapon Muzzle`은 모델 내부 로컬 위치 `(0, 0.061, 0.96)`, 회전 `(0, 0, 0)`이다. `WeaponController.Muzzle`이 이 커스텀 총구를 사용하므로 Rifle 투사체 시작점도 해당 위치를 따른다. **구현 완료**. 에셋 직렬화 값은 정적으로 확인했고 Unity Play Mode의 손 그립·총구 축·투사체 시작점은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`.
 - 2026-08-09 Pistol 장착 애니메이션의 손끝 기준축 확인을 위해 넣었던 플레이어 Pistol 전용 시각 루트 `+36.1°` Y축 보정은 제거했다. `CharacterAnimationController`는 다시 모든 장비 프로필에서 기존 시각 루트 기준 회전과 대시 방향 회전만 사용한다. 게임플레이 Rigidbody 루트, 이동·조준·발사 판정과 `WeaponVisualPresenter`의 총구 조준 보정은 변경하지 않았다. **구현 완료**. Pistol 손끝·몸체 forward 정렬을 위한 별도 기준 포즈/IK 해법은 **계획 필요**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterAnimationController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`.
 - 2026-08-09 `Shotgun.asset`의 Pump Shotgun 손 모델은 로컬 위치 `(0.044, 0.118, -0.037)`, 회전 `(2.878, 68.211, -91.666)`, 균일 스케일 `(1, 1, 1)`을 사용한다. 실제 발사 `Weapon Muzzle`은 모델 내부 로컬 위치 `(0, 0.071, 0.92)`, 회전 `(0, 0, 0)`이다. `WeaponController.Muzzle`이 이 커스텀 총구를 사용하므로 Shotgun 투사체 시작점도 해당 위치를 따른다. **구현 완료**. 에셋 직렬화 값은 정적으로 확인했고 Unity Play Mode의 손 그립·총구 축·투사체 시작점은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`.
 - 2026-08-09 Pistol Animator Override는 기본 2D 방향 이동의 Idle을 `Assets/Animations/Pistol_Handgun Locomotion Pack/pistol idle.fbx`, 전진·후진·좌·우를 각각 `pistol walk.fbx`, `pistol walk backward.fbx`, `pistol strafe.fbx`, `pistol strafe (2).fbx`로 교체한다. Idle 참조가 이전 `Characters@Pistol Idle.fbx`를 가리키던 상태를 현재 `pistol idle.fbx`로 복구했으며, 공용 Roll·Attack은 기본 Controller 클립을 유지한다. **구현 완료**. GUID 정적 대조는 통과했고 Unity Play Mode의 실제 전환은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Animation/Pistol.overrideController`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`.
@@ -142,7 +147,7 @@
 | 근접 무기 공격 | 구현 완료 | 전방 반각 35도·거리 1.45 안에서 시야가 확보된 가장 가까운 적대 대상 하나에 피해 3을 적용 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset` | 플레이어는 실제 시간 쿨다운, 적은 월드 시간 상태 머신 사용. 플레이 검증 미실행 |
 | 빈손 플레이어 주먹 | 구현 완료 | 빈손일 때 LMB Down으로 기존 `MeleeAttackResolver`에 거리 1.2, 반각 35도, 피해 1, 사용 간격 0.6초의 근접 공격을 요청한다. `DEADLINE`에서는 기존 행동 준비·이동 해제 경로를 재사용한다 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs` | 현재 적 체력 모델상 유효 피격 1회 처치. 실제 적중과 `DEADLINE` 연계는 플레이 테스트 **미실행**으로 확인 불가 |
 | 투사체 충돌·피해 | 구현 완료 | SphereCast로 충돌을 찾고 적대 팩션 `IDamageable`에 피해 전달 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs` | 총기 피해 3은 플레이어 최대 체력과 같음 |
-| 무기 투척 | 구현 완료 | 장비 무기를 던지고 적 명중 시 기절, 최대 6 거리 후 바닥 픽업으로 변환. 네 현재 무기 정의는 Cube 대신 각 월드 모델을 비행 루트에 표시 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponFlightVisualPresenter.cs` | 권총·자동소총·샷건·야구방망이 모델 생성·Cube 비활성화 PlayMode 스모크 통과. 실제 비행 방향 체감은 확인 불가 |
+| 무기 투척 | 구현 완료 | 장비 무기를 던지고 적 명중 시 기절, 최대 4 거리 후 바닥 픽업으로 변환. 네 현재 무기 정의는 Cube 대신 각 월드 모델을 비행 루트에 표시 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponFlightVisualPresenter.cs` | 권총·자동소총·샷건·야구방망이 모델 생성·Cube 비활성화 PlayMode 스모크 통과. 실제 비행 방향 체감은 확인 불가 |
 | 적 기절·무장 해제·재무장 | 구현 완료 | 모든 적이 기절 시 현재 장비와 남은 탄약을 드롭하고, 2 월드초 후 빈손 판단을 재개해 주먹 공격 또는 예약한 바닥 무기 획득을 시도 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyBehavior.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs` | 재무장 후 다시 기절/사망하면 새 현재 장비를 다시 드롭. 플레이 검증 미실행 |
 | 바닥 무기 획득·교환·예약 | 구현 완료 | 플레이어는 `E`로 근처 픽업을 획득/교환하며 적 예약을 무시한다. 빈손 적은 NavMesh 완전 경로가 있는 픽업을 예약해 획득 | `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs` | 여러 적의 동일 픽업 추적을 예약으로 방지. 런타임 경쟁 결과 확인 불가 |
 | 적 무기 공중 드롭 | 구현 완료 | 이동 방향 또는 전방으로 현재 총기/근접 무기를 포물선 드롭하고 착지 예측선을 표시. 네 현재 무기 정의는 Cube 대신 각 월드 모델을 표시 | `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyWeaponDrop.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponFlightVisualPresenter.cs` | 권총·자동소총·샷건·야구방망이 공중 모델 생성·Cube 비활성화 PlayMode 스모크 통과 |
@@ -307,7 +312,7 @@ flowchart TD
 ### 5.7 아이템·무기·인벤토리
 
 - **시스템 목적:** 무기 자원 순환과 즉시 장비 교환을 제공한다.
-- **현재 동작 방식:** 바닥 픽업은 무기 정의와 탄약, 적 예약 소유자를 보유한다. 플레이어는 예약을 무시하고 획득/교환한다. 빈손 적은 장전된 총기를 우선하되 경로 차이가 2 이상이면 가까운 근접 무기를 선택하고 한 픽업을 예약한다. 공중 드롭은 적이 가로채지 않으며 플레이어가 잡으면 이전 무기를 바닥에 생성한다.
+- **현재 동작 방식:** 바닥 픽업은 무기 정의와 탄약, 적 예약 소유자를 보유한다. `PistolPickup`, `AutomaticRiflePickup`, `ShotgunPickup`, `MeleeWeaponPickup`은 각각의 정의·최대 시작 탄약·월드 모델·모델 활성 Renderer 경계에 맞춘 Trigger Collider를 직렬화한 직접 배치용 프리팹이다. 플레이어는 예약을 무시하고 획득/교환한다. 빈손 적은 장전된 총기를 우선하되 경로 차이가 2 이상이면 가까운 근접 무기를 선택하고 한 픽업을 예약한다. 공중 드롭은 적이 가로채지 않으며 플레이어가 잡으면 이전 무기를 바닥에 생성한다.
 - **주요 클래스:** `WeaponDefinition`, `WeaponPickup`, `InterceptableWeapon`, `EnemyWeaponDrop`, `WeaponController`
 - **데이터 흐름:** ScriptableObject 종류/수치 + 탄약 → 픽업/예약/공중 드롭 → 플레이어 또는 적 무기 컨트롤러 장비 → 사격/근접 공격/투척
 - **다른 시스템과의 의존성:** 적 기절/사망, 플레이어 상호작용, 월드 시간, 프리팹
@@ -490,8 +495,10 @@ flowchart LR
 |---|---|---|
 | `Projectile.prefab` | `LineRenderer`, `Projectile` | 팩션별 탄환 이동·충돌·트레일 |
 | `WeaponPickup.prefab` | Cube, Trigger Collider, `WeaponPickup` | 바닥 무기 보관·교환 |
-| `PistolPickup.prefab` | Cube, Trigger Collider, `WeaponPickup`, `Pistol.asset` 참조 | Stage1/Stage2 시작 권총 픽업 |
-| `ShotgunPickup.prefab` | Cube, Trigger Collider, `WeaponPickup`, `Shotgun.asset` 참조 | Stage1/Stage2 시작 샷건 픽업 |
+| `PistolPickup.prefab` | 모델 활성 Renderer 경계에 맞춘 Trigger Collider, `WeaponPickup`, `Pistol.asset`, Tactical Pistol 월드 모델 | 어느 씬에나 직접 배치 가능한 기본 탄약 8발 권총 픽업 |
+| `AutomaticRiflePickup.prefab` | 모델 활성 Renderer 경계에 맞춘 Trigger Collider, `WeaponPickup`, `AutomaticRifle.asset`, Assault Rifle 월드 모델 | 어느 씬에나 직접 배치 가능한 기본 탄약 30발 자동소총 픽업 |
+| `ShotgunPickup.prefab` | 모델 활성 Renderer 경계에 맞춘 Trigger Collider, `WeaponPickup`, `Shotgun.asset`, Pump Shotgun 월드 모델 | 어느 씬에나 직접 배치 가능한 기본 탄약 6발 샷건 픽업 |
+| `MeleeWeaponPickup.prefab` | 모델 활성 Renderer 경계에 맞춘 Trigger Collider, `WeaponPickup`, `MeleeWeapon.asset`, Baseball Bat 월드 모델 | 어느 씬에나 직접 배치 가능한 근접 무기 픽업 |
 | `ThrownWeapon.prefab` | Cube fallback, `LineRenderer`, `ThrownWeapon` | 플레이어 무기 투척·기절·착지. 런타임에 정의의 월드 모델이 있으면 Cube를 숨기고 모델을 비행 루트에 생성 |
 | `InterceptableWeapon.prefab` | Body Cube fallback, Trigger Sphere, Trail, Prediction, Landing Marker, `InterceptableWeapon` | 적 드롭 무기의 포물선 비행·예측·가로채기. 런타임에 정의의 월드 모델이 있으면 Body를 숨기고 모델을 비행 루트에 생성 |
 | `TacticalPistol.prefab` | 정규화한 MR POLY Tactical Pistol FBX | `Pistol.asset`의 손·바닥·투척·공중 드롭 시각 |
@@ -814,7 +821,7 @@ Unity 버전: `6000.1.13f1`
 | 플레이어 빈손 주먹 범위/반각/간격/피해 | 1.2 / 35도 / 0.6초 / 1 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs` | 실제 시간 쿨다운, `DEADLINE`에서는 기존 준비/해제 경로 |
 | 투사체 최대 수명 | 4 월드초 | `ProjectDeltatime/Assets/_Project/Prefabs/Projectile.prefab` | 사거리 0m 무기의 미충돌 안전 제거; 샷건 14m 제한이 우선 |
 | 투척 무기 속도 | 7 | `ProjectDeltatime/Assets/_Project/Prefabs/ThrownWeapon.prefab` | 월드 시간 기준 |
-| 투척 무기 최대 거리 | 6 | 같은 프리팹 | 도달 시 픽업 생성 |
+| 투척 무기 최대 거리 | 4 | 같은 프리팹 | 도달 시 픽업 생성 |
 | 투척 무기 기절 | 2 월드초 | 같은 프리팹 | 모든 적이 현재 장비를 드롭하고 회복 후 빈손 판단 재개 |
 | 바닥 픽업 반경 | 1.25 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity` | 플레이어 중심 |
 | 공중 가로채기 반경 | 1.15 | 같은 씬의 `PlayerCombat` | 플레이어 중심 |
@@ -987,6 +994,11 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-09 | 1.6.20 | 야구방망이의 오른손 모델 로컬 위치·회전을 갱신 | 근접 무기 손 장착 시각, 공격 시각 정렬 |
+| 2026-08-09 | 1.6.19 | 플레이어 투척 무기의 최대 이동 거리를 6m에서 4m로 축소하고 프리팹·기본값·재생성값을 통일 | 투척 무기 비행거리, 기절·착지·바닥 픽업 변환 |
+| 2026-08-09 | 1.6.18 | 직접 배치용 네 무기 픽업의 Trigger `BoxCollider`를 각 월드 모델 활성 Renderer의 로컬 경계에 맞춰 자동 계산·검증 | 무기 픽업 상호작용 범위, 모델 시각, `PrototypeSceneBuilder` |
+| 2026-08-09 | 1.6.17 | Assault Rifle의 오른손 모델과 실제 발사 총구 로컬 보정값을 갱신 | Rifle 손 장착 시각, `Weapon Muzzle`, 투사체 시작점 |
+| 2026-08-09 | 1.6.16 | 권총·자동소총·샷건·근접 무기에 대응하는 직접 배치용 픽업 프리팹 4종과 일괄 재생성·구성 검증 메뉴를 추가 | 씬 콘텐츠 제작, 무기 픽업, 월드 모델, `PrototypeSceneBuilder` |
 | 2026-08-09 | 1.6.15 | Pump Shotgun의 오른손 모델과 실제 발사 총구 로컬 보정값을 갱신 | Shotgun 손 장착 시각, `Weapon Muzzle`, 투사체 시작점 |
 | 2026-08-09 | 1.6.14 | 플레이어 Pistol 애니메이션 프로필의 +36.1도 시각 루트 보정을 제거하고 모든 장비 프로필의 기존 회전 동작으로 복귀 | 플레이어 Pistol 손끝 기준축, 구르기 시각, Stage1 애니메이션 스모크 |
 | 2026-08-09 | 1.6.13 | Pistol Override Controller의 Idle을 현재 `pistol idle.fbx`로 재연결하고 전·후·좌·우 이동 매핑을 정적으로 대조 | Pistol 장착 Idle/방향 이동 Animator 프로필 |

@@ -21,6 +21,56 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-09 - 근접 무기 손 모델 보정값 적용
+
+- 변경 유형: 근접 무기 오른손 모델 로컬 Transform 보정
+- 변경 내용: **구현 완료**. `MeleeWeapon.asset`의 `heldModelLocalPosition`을 `(0.019, 0.021, 0.093)`, `heldModelLocalEulerAngles`를 `(189.308, -24.15198, -6.239014)`로 갱신했다. `heldModelLocalScale` `(1, 1, 1)`과 기존 총구 보정값은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어·적 근접 무기 오른손 장착 시각, 야구방망이 손 그립
+- 관련 파일: `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.20`으로 갱신해 근접 무기 손 모델 직렬화 보정값과 타격 판정의 비영향 범위를 기록했다.
+- 테스트 결과: **미실행**. 에셋 직렬화 값은 정적으로 확인했으나 Unity Play Mode에서 손 그립·이동·공격 중 시각 정렬은 아직 확인하지 않았다.
+- 남은 작업: WeaponCalibration Play Mode에서 근접 무기 장착 상태의 손 그립과 공격 중 모델 관통 여부를 수동 확인한다.
+
+## 2026-08-09 - 플레이어 투척 무기 비행거리 축소
+
+- 변경 유형: 투척 무기 밸런스 조정
+- 변경 내용: **구현 완료**. `ThrownWeapon.maximumTravelDistance`와 `ThrownWeapon.prefab`의 직렬화 값을 6m에서 4m로 낮췄다. `PrototypeSceneBuilder`가 이후 프리팹을 재생성할 때도 같은 4m를 적용한다. 속도 7, 충돌 반경 0.25, 기절 시간 2 월드초와 충돌 시 즉시 기절·착지·픽업 변환은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 무기 투척, 기절 판정 도달 범위, 바닥 무기 착지·회수, 월드 시간 기반 투척 이동
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Prefabs/ThrownWeapon.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.19`로 갱신해 실제 최대 거리 4m, 유지된 속도·기절 시간, 밸런스 표를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 스크립트 컴파일이 성공했고, 프리팹 직렬화값·컴포넌트 기본값·프리팹 재생성값이 모두 4m인 것을 정적으로 확인했다.
+- 남은 작업: Play Mode에서 벽 비충돌 상태의 투척물이 총구 시작점에서 최대 4m에 착지하는지와 실제 조작 체감을 수동 확인한다.
+
+## 2026-08-09 - Automatic Rifle 손 모델·총구 보정값 적용
+
+- 변경 유형: Automatic Rifle 손 모델 및 실제 발사 총구 로컬 Transform 보정
+- 변경 내용: **구현 완료**. `AutomaticRifle.asset`의 `heldModelLocalPosition`을 `(-0.227, 0.013, -0.188)`, `heldModelLocalEulerAngles`를 `(-4.056, 65.2, -85.452)`, `heldModelLocalScale`을 `(1.2, 1.2, 1.2)`로 갱신했다. `heldMuzzleLocalPosition`은 `(0, 0.061, 0.96)`로 갱신했고, 총구 로컬 회전 `(0, 0, 0)`은 유지했다.
+- 영향을 받은 시스템: 플레이어·적 Automatic Rifle 오른손 장착 시각, Rifle `Weapon Muzzle` 위치, 투사체 생성 시작점
+- 관련 파일: `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.17`로 갱신해 Automatic Rifle 손 모델·총구 직렬화 보정값과 수동 확인 범위를 기록했다.
+- 테스트 결과: **미실행**. 에셋 직렬화 값은 정적으로 확인했으나 Unity Play Mode에서 Rifle 손 그립·총구 축·투사체 출발점은 아직 확인하지 않았다.
+- 남은 작업: WeaponCalibration Play Mode에서 Rifle 장착 상태의 손 그립, 총구 시각 위치, 실제 투사체 생성 위치를 수동 확인한다.
+
+## 2026-08-09 - 무기 픽업 모델 경계형 Trigger Collider
+
+- 변경 유형: 무기 픽업 상호작용 범위 정밀화 및 프리팹 생성 검증 확장
+- 변경 내용: **구현 완료**. `BuildPlaceableWeaponPickups`가 각 `Weapon Model Visual` 아래 활성 Renderer의 월드 경계 8개 꼭짓점을 픽업 로컬 좌표로 변환·합산해 `BoxCollider.center`와 `size`를 저장하도록 변경했다. 기존 공통 `1×1×1` 크기를 권총 `(0.042992774, 0.27395654, 0.42000002)`, 자동소총 `(0.069229424, 0.33086163, 0.9599999)`, 샷건 `(0.063373215, 0.23060584, 0.9200001)`, 근접 무기 `(0.06476646, 0.064766586, 0.91999996)`의 실제 모델 경계 크기로 교체했다. Trigger 방식은 유지하며, 최소 축 크기만 `0.01`로 제한한다. 프리팹 검증은 정의·탄약·트리거·모델뿐 아니라 재계산한 경계와 Collider 직렬화 값의 일치도 확인한다.
+- 영향을 받은 시스템: 씬에 배치한 무기 픽업의 상호작용 Trigger 범위, 바닥 무기 모델 시각, 콘텐츠 생성 도구
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/AutomaticRiflePickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/MeleeWeaponPickup.prefab`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.18`로 갱신해 모델 경계 기반 Collider 정책, 실제 직렬화 크기·중심, 자동 검증 범위를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드에서 `Deltatime.EditorTools.PrototypeSceneBuilder.BuildPlaceableWeaponPickups`를 실행해 프리팹 4종을 재생성하고 정의·탄약·Trigger Collider·월드 모델·계산 경계 일치 검증을 통과했다. 컴파일 오류 및 프리팹 검증 실패는 없었다.
+- 남은 작업: 새 빈 씬에 네 프리팹을 각각 배치한 뒤, 실제 플레이어 획득 가능 거리와 적의 무기 탐색·예약 체감을 Play Mode로 수동 확인한다.
+
+## 2026-08-09 - 직접 배치용 무기 픽업 프리팹 4종
+
+- 변경 유형: 콘텐츠 제작 워크플로 및 무기 픽업 프리팹 추가
+- 변경 내용: **구현 완료**. `PistolPickup.prefab`과 `ShotgunPickup.prefab`을 월드 모델 포함 구성으로 재생성하고, `AutomaticRiflePickup.prefab`, `MeleeWeaponPickup.prefab`을 추가했다. 네 프리팹은 각각 대응 `WeaponDefinition`, 최대 시작 탄약(권총 8발, 자동소총 30발, 샷건 6발, 근접 무기 0발), Trigger `BoxCollider`, `Weapon Model Visual` 자식을 직렬화한다. `Tools/Prototype/Build Placeable Weapon Pickups` 및 `BuildPlaceableWeaponPickups`는 네 프리팹을 함께 생성하고 정의·탄약·트리거·월드 모델 포함을 검증한다.
+- 영향을 받은 시스템: 씬 콘텐츠 제작, 플레이어/적 무기 획득·교환, 바닥 무기 월드 시각
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/AutomaticRiflePickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/MeleeWeaponPickup.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.16`으로 갱신해 네 직접 배치용 프리팹의 구성, 생성 메뉴, 정적 검증 범위를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드에서 `Deltatime.EditorTools.PrototypeSceneBuilder.BuildPlaceableWeaponPickups`를 실행해 프리팹 4종 생성과 정의·탄약·Trigger Collider·월드 모델 검증을 통과했다. 기존 `FindObjectOfType` API 사용 경고가 있었으나 컴파일 오류와 생성 검증 실패는 없었다.
+- 남은 작업: 새 빈 씬에서 네 프리팹을 수동 배치한 뒤 플레이어 획득·교환과 적 재무장 흐름을 Play Mode로 확인한다.
+
 ## 2026-08-09 - Shotgun 손 모델·총구 보정값 적용
 
 - 변경 유형: Shotgun 손 모델 및 실제 발사 총구 로컬 Transform 보정

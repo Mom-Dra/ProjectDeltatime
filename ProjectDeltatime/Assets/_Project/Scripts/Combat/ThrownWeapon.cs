@@ -11,7 +11,7 @@ namespace Deltatime.Combat
     {
         [SerializeField, Min(0.1f)] private float speed = 7f;
         [SerializeField, Min(0.01f)] private float collisionRadius = 0.25f;
-        [SerializeField, Min(0.1f)] private float maximumTravelDistance = 6f;
+        [SerializeField, Min(0.1f)] private float maximumTravelDistance = 4f;
         [SerializeField, Min(0.01f)] private float stunDuration = 2f;
         [SerializeField, Min(0f)] private float maximumTrailLength = 1.2f;
         [SerializeField, Min(1f)] private float slowTimeTrailMultiplier = 2f;

@@ -218,7 +218,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 7
   collisionRadius: 0.25
-  maximumTravelDistance: 6
+  maximumTravelDistance: 4
   stunDuration: 2
   maximumTrailLength: 1.2
   slowTimeTrailMultiplier: 2

@@ -35,8 +35,8 @@ MonoBehaviour:
   visualColor: {r: 0.9, g: 0.42, b: 0.08, a: 1}
   heldVisualPrefab: {fileID: 1517063078158682979, guid: 2de0c56278d6f0a42a9616734a8a5f4e, type: 3}
   worldVisualPrefab: {fileID: 1517063078158682979, guid: 2de0c56278d6f0a42a9616734a8a5f4e, type: 3}
-  heldModelLocalPosition: {x: 0, y: 0, z: 0.04}
-  heldModelLocalEulerAngles: {x: 0, y: 0, z: 0}
+  heldModelLocalPosition: {x: 0.019, y: 0.021, z: 0.093}
+  heldModelLocalEulerAngles: {x: 189.308, y: -24.15198, z: -6.239014}
   heldModelLocalScale: {x: 1, y: 1, z: 1}
   worldModelLocalPosition: {x: 0, y: 0.1, z: 0}
   worldModelLocalEulerAngles: {x: 0, y: 0, z: 0}
