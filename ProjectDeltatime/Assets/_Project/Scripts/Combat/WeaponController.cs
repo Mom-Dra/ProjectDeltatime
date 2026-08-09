@@ -1,6 +1,7 @@
 using System;
 using Deltatime.Core;
 using Deltatime.TimeSystem;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -39,6 +40,8 @@ namespace Deltatime.Combat
 
         private float nextUseTime;
         private bool hasStagedFire;
+        private bool customHeldVisualActive;
+        private Transform customHeldMuzzle;
         private int shotSequence;
 
         public event Action EquipmentChanged;
@@ -50,11 +53,19 @@ namespace Deltatime.Combat
         public bool HasUsableWeapon =>
             Definition != null &&
             (Definition.IsMelee || Ammunition > 0);
+        public bool CustomHeldVisualActive => customHeldVisualActive;
         public WeaponDefinition StartingDefinition => startingDefinition;
-        public Transform Muzzle => muzzle;
+        public Transform Muzzle => customHeldMuzzle != null
+            ? customHeldMuzzle
+            : muzzle;
 
         private void Awake()
         {
+            if (GetComponent<WeaponVisualPresenter>() == null)
+            {
+                gameObject.AddComponent<WeaponVisualPresenter>();
+            }
+
             ValidateConfiguration();
             if (startingDefinition != null && Definition == null)
             {
@@ -120,7 +131,8 @@ namespace Deltatime.Combat
             CombatFaction faction,
             GameObject source,
             Vector3 direction,
-            float clock)
+            float clock,
+            MeleeAttackExecution attackExecution = null)
         {
             if (Definition == null ||
                 !Definition.IsMelee ||
@@ -128,6 +140,23 @@ namespace Deltatime.Combat
                 clock < nextUseTime)
             {
                 return false;
+            }
+
+            if (attackExecution != null)
+            {
+                if (!attackExecution.BeginAttack(
+                        source,
+                        faction,
+                        direction,
+                        Definition.MeleeRange,
+                        Definition.MeleeHalfAngle,
+                        Definition.Damage))
+                {
+                    return false;
+                }
+
+                nextUseTime = clock + Definition.UseInterval;
+                return true;
             }
 
             nextUseTime = clock + Definition.UseInterval;
@@ -198,10 +227,29 @@ namespace Deltatime.Combat
             CombatFaction faction,
             GameObject source,
             StagedMeleeAttack stagedAttack,
-            float clock)
+            float clock,
+            MeleeAttackExecution attackExecution = null)
         {
             if (source == null || stagedAttack.Damage <= 0)
             {
+                return;
+            }
+
+            if (attackExecution != null)
+            {
+                if (attackExecution.BeginAttack(
+                        source,
+                        faction,
+                        stagedAttack.Direction,
+                        stagedAttack.Range,
+                        stagedAttack.HalfAngle,
+                        stagedAttack.Damage))
+                {
+                    nextUseTime = Mathf.Max(
+                        nextUseTime,
+                        clock + stagedAttack.Interval);
+                }
+
                 return;
             }
 
@@ -303,11 +351,28 @@ namespace Deltatime.Combat
             startingDefinition = initialDefinition;
         }
 
+        public void SetCustomHeldVisualActive(bool value)
+        {
+            if (customHeldVisualActive == value)
+            {
+                return;
+            }
+
+            customHeldVisualActive = value;
+            RefreshVisual();
+        }
+
+        public void SetCustomHeldMuzzle(Transform value)
+        {
+            customHeldMuzzle = value;
+        }
+
         private void RefreshVisual()
         {
             if (heldWeaponRenderer != null)
             {
-                heldWeaponRenderer.enabled = Definition != null;
+                heldWeaponRenderer.enabled = Definition != null &&
+                                             !customHeldVisualActive;
                 if (Definition != null)
                 {
                     heldWeaponRenderer.transform.localScale =

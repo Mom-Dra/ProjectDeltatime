@@ -5,12 +5,16 @@ namespace Deltatime.Combat
 {
     public sealed class WeaponPickup : MonoBehaviour
     {
+        private const string CustomModelName = "Weapon Model Visual";
+
         [SerializeField] private WeaponDefinition definition;
         [SerializeField, Min(0)] private int ammunition = 1;
         [SerializeField] private Renderer bodyRenderer;
         [SerializeField] private Color pickupColor = new Color(1f, 0.8f, 0.15f, 1f);
 
         private EnemyCombatant reservationOwner;
+        private GameObject customModel;
+        private WeaponDefinition customModelDefinition;
 
         public WeaponDefinition Definition => definition;
         public int Ammunition => ammunition;
@@ -104,17 +108,82 @@ namespace Deltatime.Combat
 
         private void ApplyVisual()
         {
+            bool hasCustomModel = definition != null &&
+                                  definition.HasCustomWorldVisual;
             if (bodyRenderer != null)
             {
-                bodyRenderer.material.color = definition == null
-                    ? pickupColor
-                    : definition.VisualColor;
+                bodyRenderer.enabled = !hasCustomModel;
+                if (!hasCustomModel)
+                {
+                    bodyRenderer.material.color = definition == null
+                        ? pickupColor
+                        : definition.VisualColor;
+                }
             }
 
             if (definition != null)
             {
-                transform.localScale = definition.WorldVisualScale;
+                transform.localScale = hasCustomModel
+                    ? Vector3.one
+                    : definition.WorldVisualScale;
             }
+
+            if (hasCustomModel)
+            {
+                EnsureCustomModel();
+            }
+            else
+            {
+                RemoveCustomModel();
+            }
+        }
+
+        private void EnsureCustomModel()
+        {
+            if (customModel == null)
+            {
+                Transform existing = transform.Find(CustomModelName);
+                if (existing != null)
+                {
+                    customModel = existing.gameObject;
+                }
+            }
+
+            if (customModel != null && customModelDefinition == definition)
+            {
+                return;
+            }
+
+            RemoveCustomModel();
+            customModel = Instantiate(
+                definition.WorldVisualPrefab,
+                transform,
+                false);
+            customModel.name = CustomModelName;
+            Transform modelTransform = customModel.transform;
+            modelTransform.localPosition = definition.WorldModelLocalPosition;
+            modelTransform.localRotation = Quaternion.Euler(
+                definition.WorldModelLocalEulerAngles);
+            modelTransform.localScale = definition.WorldModelLocalScale;
+            customModelDefinition = definition;
+        }
+
+        private void RemoveCustomModel()
+        {
+            if (customModel != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(customModel);
+                }
+                else
+                {
+                    DestroyImmediate(customModel);
+                }
+            }
+
+            customModel = null;
+            customModelDefinition = null;
         }
     }
 }

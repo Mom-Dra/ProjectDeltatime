@@ -1627,7 +1627,7 @@ namespace Deltatime.EditorTools
                 18f,
                 1f,
                 307,
-                0.35f,
+                0f,
                 14f);
             EditorUtility.SetDirty(definition);
             return definition;
@@ -1878,6 +1878,14 @@ namespace Deltatime.EditorTools
                     owner == null
                         ? null
                         : owner.GetComponent<CharacterVisualController>();
+                MeleeAttackExecution meleeExecution =
+                    owner == null
+                        ? null
+                        : owner.GetComponent<MeleeAttackExecution>();
+                WeaponVisualPresenter weaponVisual =
+                    owner == null
+                        ? null
+                        : owner.GetComponent<WeaponVisualPresenter>();
                 Animator animator = driver == null ? null : driver.Animator;
                 Renderer proxyRenderer =
                     owner == null ? null : owner.GetComponent<Renderer>();
@@ -1885,6 +1893,11 @@ namespace Deltatime.EditorTools
                     owner == null
                         ? null
                         : owner.transform.Find("Combat Identity Ring");
+                bool hasUpperBodyAttackLayer =
+                    animator != null &&
+                    animator.layerCount == 2 &&
+                    animator.GetLayerName(1) == "Upper Body Attack" &&
+                    Mathf.Approximately(animator.GetLayerWeight(1), 1f);
                 bool hasEnabledVisualCollider = false;
                 if (visual != null && visual.VisualRoot != null)
                 {
@@ -1911,9 +1924,12 @@ namespace Deltatime.EditorTools
                     animator.updateMode != AnimatorUpdateMode.UnscaledTime ||
                     animator.runtimeAnimatorController == null ||
                     animator.runtimeAnimatorController.animationClips.Length < 7 ||
+                    !hasUpperBodyAttackLayer ||
                     animator.runtimeAnimatorController !=
                         library.GetController(expectedStyles[i]) ||
                     driver.IsEnemy != (i > 0) ||
+                    meleeExecution == null ||
+                    weaponVisual == null ||
                     proxyRenderer == null ||
                     proxyRenderer.shadowCastingMode !=
                         ShadowCastingMode.ShadowsOnly ||
@@ -1925,6 +1941,9 @@ namespace Deltatime.EditorTools
                         $"'{actorNames[i]}': animator={animator != null}, " +
                         $"avatarValid={animator != null && animator.avatar != null && animator.avatar.isValid}, " +
                         $"controller={animator?.runtimeAnimatorController != null}, " +
+                        $"upperBodyLayer={hasUpperBodyAttackLayer}, " +
+                        $"meleeExecution={meleeExecution != null}, " +
+                        $"weaponVisual={weaponVisual != null}, " +
                         $"expectedStyle={expectedStyles[i]}, " +
                         $"visual={visual?.VisualRoot != null}, " +
                         $"identityRing={identityRing != null}, " +
@@ -2026,7 +2045,7 @@ namespace Deltatime.EditorTools
                 shotgunDefinition.SpreadSeed == 307 &&
                 Mathf.Approximately(
                     shotgunDefinition.PlayerRecoilDistance,
-                    0.35f) &&
+                    0f) &&
                 Mathf.Approximately(
                     shotgunDefinition.MaximumProjectileDistance,
                     14f);

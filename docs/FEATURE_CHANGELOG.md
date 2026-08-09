@@ -21,6 +21,106 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-09 - 플레이어 Pistol 시각 루트 Y축 보정
+
+- 변경 유형: Pistol 장착 애니메이션의 손끝·몸체 전방 기준축 시각 보정, Stage1 애니메이션 스모크 확장
+- 변경 내용: **구현 완료**. `CharacterAnimationController`에 직렬화 가능한 `pistolVisualYawOffset` 기본값 `+36.1°`를 추가했다. 플레이어 입력 소스가 있고 현재 장비 스타일이 `Pistol`일 때만 시각 루트의 일반 및 대시 회전에 이 Y축 보정을 적용한다. 빈손·Rifle·Melee와 적은 0°를 유지한다. 게임플레이 `Player` Rigidbody 루트와 이동·조준·발사 방향은 변경하지 않으며, 이후 `WeaponVisualPresenter`가 기존처럼 총구를 마우스 조준 방향으로 보정한다.
+- 영향을 받은 시스템: 플레이어 Pistol Idle/이동/대시 시각, Humanoid 오른손·손끝 기준축, 총구 조준 보정의 입력 시각
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterAnimationController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.12`로 갱신해 Pistol 전용 보정 범위, 대시 적용, 비영향 게임플레이 경로와 검증 상태를 기록했다.
+- 테스트 결과: **부분 통과**. 정적으로 Pistol 프로필만 `36.1°`, 나머지 프로필은 `0°`를 반환하고 일반·대시 시각 루트 회전 모두가 동일 보정값을 사용하는지 확인했으며 `git diff --check`를 통과했다. Stage1 Play Mode 스모크는 해당 값 검증을 추가했지만 Unity 배치 실행은 이전 작업에서 사용자 승인이 거부되어 **미실행**이다.
+- 남은 작업: **확인 불가**. Play Mode에서 Pistol 장착 시 손끝·초록색 몸체 forward Ray·청록색 총구 Ray의 수평 방향, 빈손 전환 후 0° 복귀, Pistol 대시 시 시각 방향을 수동 확인해야 한다.
+
+## 2026-08-09 - 플레이어 몸체 전방 Debug Ray
+
+- 변경 유형: 플레이어 방향 디버그 시각화 추가
+- 변경 내용: **구현 완료**. `PlayerAim.Update`가 플레이어 루트 위치의 Y축 0.08m 위에서 `transform.forward` 방향으로 1.5m 길이의 초록색 `Debug.DrawRay`를 매 프레임 그린다. 기존 조준 `LineRenderer`는 변경하지 않아 몸체 forward와 마우스 조준선을 독립적으로 비교할 수 있다. Ray는 디버그 표시만 수행하며 이동·회전·월드 시간·무기 판정은 변경하지 않는다.
+- 영향을 받은 시스템: 플레이어 조준·회전의 Scene/Game Gizmos 디버그 표시
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.11`로 갱신해 Ray 시작점·방향·길이·색상·기능 영향 범위와 검증 상태를 기록했다.
+- 테스트 결과: **부분 통과**. `PlayerAim.cs`에서 초록색 Ray의 시작점·`transform.forward` 방향·1.5m 길이를 정적으로 확인했고 변경 파일의 `git diff --check`를 통과했다. Unity 배치 컴파일은 사용자 승인 거부로 **미실행**했다. 이후 .NET 정적 빌드는 Unity가 생성하는 `Temp/obj/Assembly-CSharp/project.assets.json` 부재로 시작되지 않아 컴파일 결과는 **확인 불가**다.
+- 남은 작업: **확인 불가**. Play Mode에서 Scene 뷰 또는 Game 뷰의 Gizmos를 켜고, 초록색 Ray가 플레이어 몸체의 기대 전방축을 가리키는지 수동 확인이 필요하다.
+
+## 2026-08-09 - 플레이어 총기 Aim Pivot 조준 시각 보정
+
+- 변경 유형: 플레이어 총기 오른손 장착 계층 재구성, 마우스 조준 방향 시각 보정, Stage1 Play Mode 무기 검증 확장
+- 변경 내용: **구현 완료**. `WeaponVisualPresenter`의 런타임 계층을 `RightHand → Weapon Aim Pivot → Held Weapon Model → Weapon Muzzle`로 변경했다. 기존 `WeaponDefinition`의 손 모델 Position/Rotation/Scale은 `Held Weapon Model`에 그대로 적용한다. `LateUpdate`에서 Animator가 갱신한 손 포즈 뒤에 Aim Pivot을 기본 로컬 Transform으로 되돌리고, 현재 `Weapon Muzzle.forward`와 `PlayerAim`의 조준점을 향하는 방향을 수평면에 투영해 계산한 Y축 회전만 Pivot에 적용한다. 보정은 `PlayerAim`이 있는 플레이어의 권총·자동소총·샷건에만 적용하며, 근접 무기와 적 장비에는 적용하지 않는다. `PlayerDash.IsDashing` 중에는 Pivot을 기본 회전으로 유지해 대시 방향 구르기 시각을 우선한다. `Weapon Muzzle`은 계속 실제 발사 시작점이고 `PlayerCombat`의 기존 마우스 조준점 기반 탄환 방향 계산은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 권총·자동소총·샷건 오른손 시각, 총구 수평 전방축, 구르기 시각, Stage1 무기 장착·바닥·투척·공중 드롭 자동 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.10`으로 갱신해 Aim Pivot 계층, 플레이어 총기 전용 LateUpdate 수평 조준 보정, 대시 중 해제, 탄환 판정 비변경, 검증 결과와 손/IK 수동 확인 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`이 권총·자동소총·샷건의 현재 `Weapon Muzzle`이 오른손 아래 Aim Pivot 계층에 있는지, 수평 전방축과 `PlayerAim` 방향의 각도 오차가 0.25도 이내인지, 근접 무기 Pivot이 기본 회전인지 확인했다. 기존 바닥 픽업·플레이어 투척·적 무장 해제 공중 드롭 모델과 근접 타이밍 검증도 함께 통과했다. 이어 `WeaponCalibrationSceneBuilder.ValidateFromCommandLine` 정적 검증을 통과했다. 로그: `ProjectDeltatime/AimPivotStage1Smoke.log`, `ProjectDeltatime/AimPivotWeaponCalibrationValidate.log`.
+- 남은 작업: **확인 불가**. 손가락·왼손 IK는 추가하지 않았으므로 이동·공격 애니메이션 중 손의 미세한 관통과 구르기 중 실제 시각 자연스러움은 Play Mode 수동 확인이 필요하다.
+
+## 2026-08-09 - Tactical Pistol 손·총구 수동 보정값 적용
+
+- 변경 유형: 권총 무기 모델 Transform 보정값 갱신
+- 변경 내용: **구현 완료**. `Pistol.asset`의 `heldModelLocalPosition`을 `(0.058, -0.009, -0.007)`, `heldModelLocalEulerAngles`를 `(-11.904, 73.839, 185.269)`, `heldModelLocalScale`을 `(0.65, 0.65, 0.65)`으로 저장했다. `heldMuzzleLocalPosition`은 `(0, 0.112, 0.42)`, `heldMuzzleLocalEulerAngles`는 `(0, 0, 0)`으로 저장했다. 따라서 `WeaponVisualPresenter`가 Humanoid 오른손에 생성하는 Tactical Pistol 모델과 그 내부 `Weapon Muzzle`이 해당 로컬 Transform을 사용한다.
+- 영향을 받은 시스템: 플레이어/적 권총 오른손 시각, 플레이어 권총 투사체 시작점, 적 권총 경고선·사격 원점, WeaponCalibration 수동 보정
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WeaponCalibrationSceneBuilder.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.9`로 갱신해 실제 직렬화된 권총 손 모델·총구 로컬 Transform과 검증/수동 확인 상태를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `WeaponCalibrationSceneBuilder.ValidateFromCommandLine`이 변경된 `Pistol.asset`을 재임포트한 뒤 저장된 `WeaponCalibration` 씬을 열어 정적 검증을 통과했다. 로그: `ProjectDeltatime/WeaponCalibrationPistolPoseValidate.log`.
+- 남은 작업: **확인 불가**. 정적 검증은 에셋 로드와 보정 씬 구성을 확인한다. 실제 플레이 화면에서 권총의 손 그립·총구 축이 의도와 일치하는지는 수동 확인이 필요하다.
+
+## 2026-08-09 - 샷건 플레이어 이동 반동 제거
+
+- 변경 유형: 샷건 밸런스 조정, 무기 데이터·씬 빌더 검증·기획 문서 갱신
+- 변경 내용: **구현 완료**. `Shotgun.asset`의 `playerRecoilDistance`를 `0.35m`에서 `0m`로 변경했다. 따라서 일반 발사와 `DEADLINE` 준비 발사 해제 모두 `PlayerCombat`의 공용 반동 대기 경로를 통과하더라도 `PlayerMovement`에 이동량이 등록되지 않아 플레이어를 뒤로 밀지 않는다. `PrototypeSceneBuilder`의 생성값과 저장 데이터 검증값도 0m로 맞췄다.
+- 영향을 받은 시스템: 샷건 발사, 플레이어 이동, `DEADLINE` 준비/해제 발사, 무기 데이터, Stage1/Stage2 씬 재생성·검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.8`로 갱신해 샷건의 플레이어 이동 반동 0m, 일반·`DEADLINE` 해제 발사의 무이동 정책, 데이터 표와 변경 이력을 반영했다.
+- 테스트 결과: **부분 통과**. Unity 6000.1.13f1 배치 컴파일 명령이 종료 코드 0으로 완료했다. `Shotgun.asset`의 직렬화 값과 `PrototypeSceneBuilder`의 생성·검증값은 모두 0m임을 정적으로 확인했다. `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`과 PlayMode 스모크는 기존 작업 트리의 저장 씬 변경을 재생성으로 덮어쓸 수 있어 **미실행**했다.
+- 남은 작업: **확인 불가**. 별도 보존 지점에서 빌더·PlayMode 스모크를 실행하고, 일반 발사와 `DEADLINE` 해제 발사 후 플레이어 위치가 유지되는지 수동 확인이 필요하다.
+
+## 2026-08-09 - 적 없는 전용 무기 보정 씬
+
+- 변경 유형: 무기 시각 보정 전용 씬·에디터 빌더 추가, 보정 창 안내 갱신
+- 변경 내용: **구현 완료**. `WeaponCalibration.unity`는 Stage1을 별도 씬으로 저장한 뒤 플레이어·카메라·공간·월드 시간·기존 무기 픽업은 유지하고, 모든 적과 `StageController`, `StageReplayController`, 레거시 `GameHud`를 제거한다. `VisionCone`은 무제한 시야가 되어 리플레이 시야 조명에 의존하지 않는다. `Build Weapon Calibration Scene`은 이 구성을 Stage1에서 다시 생성하고, `Open Weapon Calibration Scene`은 기존 씬을 열어 Player를 선택하고 무기 보정 창을 연다. 무기 손/총구/월드 모델 수치는 기존처럼 `WeaponDefinition` 에셋에 저장되므로 이 씬의 재생성과 분리된다. 보정 창의 안내도 Stage1 대신 WeaponCalibration Play Mode를 사용하도록 변경했다. 이 에디터 전용 씬은 Build Settings에 추가하지 않는다.
+- 영향을 받은 시스템: 무기 모델·총구 위치 보정, 플레이어 전투/이동/Animator 수동 시험, 시야 연출, 에디터 씬 생성·정적 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/WeaponCalibration.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WeaponCalibrationSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WeaponModelCalibrationWindow.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.7`로 갱신해 보정 씬의 구성·메뉴·재생성 범위·Build Settings 제외 정책과 수동 확인 상태를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `WeaponCalibrationSceneBuilder.BuildAndValidateFromCommandLine`을 실행해 씬 생성 뒤 정확히 한 명의 무장 플레이어·월드 시간·카메라·캐릭터 Animator, 무제한 `VisionCone`, 적/StageController/StageReplayController/GameHud 0개를 정적 검증했다. 안내 문구 수정 뒤 `ValidateFromCommandLine`으로 저장된 씬을 다시 열어 같은 정적 검증을 통과했다. 스크립트 컴파일도 두 실행에서 `Tundra build success`로 완료했다. 로그: `ProjectDeltatime/WeaponCalibrationBuild.log`, `ProjectDeltatime/WeaponCalibrationValidate.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 씬 구성과 참조 제거만 확인한다. 실제 Play Mode에서 각 무기의 손 그립, 총구 축, 투척/드롭 월드 모델 크기와 조작 감각은 사용자가 보정 창으로 수동 확인해야 한다.
+
+## 2026-08-08 - 무기 모델·총구 보정 창
+
+- 변경 유형: 무기 시각 보정 Editor 도구 추가, 실제 발사/경고선 원점 모델 총구 연동, PlayMode 회귀 검증 확장
+- 변경 내용: **구현 완료**. `Tools/Prototype/Animation/Calibrate Weapon Models` Editor 창에서 Pistol·Automatic Rifle·Shotgun·Melee Weapon의 오른손 모델과 바닥/투척/공중 드롭 모델의 위치·회전·스케일, 모델 내부 실제 발사 총구의 위치·회전을 편집한다. 창은 Play Mode에서 선택 무기를 플레이어에게 즉시 장착하고 값을 변경할 때 해당 `WeaponDefinition` 에셋에 저장하며, 현재 장비 모델을 즉시 갱신한다. `WeaponVisualPresenter`는 손 모델 안에 `Weapon Muzzle` 자식을 만들고, `WeaponController`는 그 위치를 우선 총구로 사용한다. 플레이어의 탄환 시작점·조준점 방향 계산과 적의 경고선·사격 원점이 조정한 모델 총구 위치를 사용한다. 총구 회전은 모델 축/Gizmo용이며 탄환 방향은 기존 조준점/대상 방향을 유지한다. Scene Gizmos는 선택된 프레젠터의 총구 위치와 전방 축을 청록색으로 표시한다. 이후 무기 모델 빌드는 기존 손/월드/총구 보정값을 유지한다.
+- 영향을 받은 시스템: 무기 ScriptableObject 보정 데이터, 플레이어/적 총기 발사 원점·조준·경고선, Humanoid 오른손 모델, 바닥 픽업·투척·공중 드롭 모델, Unity Editor 도구
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WeaponModelCalibrationWindow.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.6`으로 갱신해 보정 창 사용 범위, `Weapon Muzzle` 우선 발사 원점, Gizmo 표시, 자동 검증과 수동 보정 필요 상태를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `CharacterAnimationAssetBuilder.BuildWeaponModelsFromCommandLine`이 네 무기 정의의 기본 모델 총구 오프셋을 생성했다. `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`은 네 무기의 손 모델·`Weapon Muzzle` 자식·바닥·투척·공중 드롭 모델 및 Cube/Body 비활성화를 통과했다. `Stage6PlayModeSmokeTest.RunFromCommandLine`은 적 사격 원점 변경 뒤 NavMesh 완전 경로 5/5와 런타임 초기화를 통과했다. 로그: `ProjectDeltatime/WeaponCalibrationBuild.log`, `ProjectDeltatime/WeaponCalibrationFinalSmoke.log`, `ProjectDeltatime/WeaponCalibrationStage6Smoke.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 총구 Transform 연결과 게임플레이 회귀를 확인하지만, 각 Synty 캐릭터의 손가락 그립과 사용자가 의도한 총구 축·비행 방향/크기는 수동 Play Mode에서 보정 창으로 조절해야 한다.
+
+## 2026-08-08 - 권총·자동소총·샷건 모델 적용
+
+- 변경 유형: 신규 무기 FBX 정규화, 무기 정의 시각 에셋 연결, 손·바닥·투척·공중 드롭 검증 확장
+- 변경 내용: **구현 완료**. `Assets/MR POLY/Low Poly Weapons Set/Models`의 `Tactical Pistol.fbx`, `Assault Rifle.fbx`, `Pump Shotgun.fbx`를 각각 0.42m, 0.96m, 0.92m 길이의 `TacticalPistol.prefab`, `AssaultRifle.prefab`, `PumpShotgun.prefab`으로 정규화했다. `Pistol.asset`, `AutomaticRifle.asset`, `Shotgun.asset`의 held/world 모델 참조와 오프셋을 설정했으므로, `WeaponVisualPresenter`, `WeaponPickup`, `WeaponFlightVisualPresenter`가 동일 모델을 오른손, 바닥, 플레이어 투척, 적 무장 해제 공중 드롭에 사용한다. 기존 Cube는 모델을 가진 세 정의에서 숨겨진다.
+- 영향을 받은 시스템: 플레이어·적 장비 시각, 바닥 무기 픽업·교환, 플레이어 무기 투척, 적 기절·무장 해제·공중 드롭/가로채기, 무기 정의
+- 관련 파일: `ProjectDeltatime/Assets/MR POLY/Low Poly Weapons Set/Models/Tactical Pistol.fbx`, `ProjectDeltatime/Assets/MR POLY/Low Poly Weapons Set/Models/Assault Rifle.fbx`, `ProjectDeltatime/Assets/MR POLY/Low Poly Weapons Set/Models/Pump Shotgun.fbx`, `ProjectDeltatime/Assets/_Project/Animation/TacticalPistol.prefab`, `ProjectDeltatime/Assets/_Project/Animation/AssaultRifle.prefab`, `ProjectDeltatime/Assets/_Project/Animation/PumpShotgun.prefab`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset`, `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.5`로 갱신해 세 총기 모델의 생성·참조 범위, 네 무기 자동 검증과 실제 그립/비행 방향 수동 확인 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `CharacterAnimationAssetBuilder.BuildWeaponModelsFromCommandLine`이 세 프리팹과 ScriptableObject 참조를 생성했다. `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`은 권총·자동소총·샷건·야구방망이마다 오른손·바닥 픽업·`ThrownWeapon`·`InterceptableWeapon`의 모델 생성과 Cube/Body 비활성화를 통과했다. 로그: `ProjectDeltatime/WeaponModelBuild.log`, `ProjectDeltatime/WeaponModelsSmoke.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 모델 연결·생성만 확인한다. Synty 손가락 그립, 무기별 손 위치/방향, 회전 중 비행 방향·크기는 사용자가 수동으로 확인한 뒤 `CharacterAnimationAssetBuilder.ConfigureFirearmWeaponVisuals`의 오프셋과 각 무기 정의의 값으로 조정해야 한다.
+
+## 2026-08-08 - 투척·공중 드롭 무기 모델 표시
+
+- 변경 유형: 무기 비행 시각 교체, 투척·무장 해제 공중 드롭 공통화, Stage1 PlayMode 스모크 확장
+- 변경 내용: **구현 완료**. `WeaponFlightVisualPresenter`가 `WeaponDefinition.worldVisualPrefab`을 가진 무기를 비행 루트의 자식으로 생성한다. `ThrownWeapon`(플레이어 투척)과 `InterceptableWeapon`(적 기절·무장 해제 공중 드롭)은 이를 초기화 시 적용하고, 모델이 있으면 기존 Cube/Body 렌더러를 숨긴다. 따라서 `MeleeWeapon.asset`의 `BaseballBat_Raw_Wood_Clean.prefab`이 바닥 픽업뿐 아니라 플레이어가 던진 무기와 적에게서 날아온 공중 무기에도 표시된다. 월드 모델이 없는 정의는 기존 Cube fallback을 그대로 사용한다.
+- 영향을 받은 시스템: 플레이어 무기 투척, 적 기절·무장 해제·공중 드롭, 공중 무기 가로채기, 무기 ScriptableObject 월드 시각
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponFlightVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.4`로 갱신해 투척·공중 드롭의 월드 모델/fallback 정책, 자동 검증 결과와 실제 비행 방향 수동 확인 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`이 야구방망이 정의로 `ThrownWeapon`과 `InterceptableWeapon`을 각각 초기화해 `Flying Weapon Model` 생성과 기존 Cube/Body 비활성화를 확인했다. 기존 오른손·바닥 모델 및 근접 타격 시점 검증도 함께 통과했다. 로그: `ProjectDeltatime/WeaponFlightSmoke.log`.
+- 남은 작업: **확인 불가**. 자동 검증은 모델 생성과 fallback 숨김만 확인한다. 실제 플레이에서 방망이가 회전할 때의 방향·크기·궤적 체감은 수동 확인 후 필요하면 `MeleeWeapon.asset`의 world 모델 오프셋/회전/스케일을 조정해야 한다.
+
+## 2026-08-08 - 근접 타격 프레임 동기화·야구방망이 모델 적용
+
+- 변경 유형: 근접 피해 판정 시점 변경, 상체 Animator 레이어 동기화, 근접 무기 손/바닥 시각 에셋 교체, Stage1 스모크 확장
+- 변경 내용: **구현 완료**. 플레이어의 빈손·근접 무기와 적의 빈손·근접 무기는 입력/AI 공격 시작 시 `MeleeAttackExecution`에 판정을 보류한다. 생성된 `Upper Body Attack` 레이어의 두 공격 상태는 `MeleeAttackImpactBehaviour`를 가지며 정규화 시간 0.48에서 보류된 판정을 정확히 한 번 실행한다. 하체 방향 이동 레이어는 공격 중에도 유지된다. Animator가 없는 씬은 즉시 피해를 주는 호환 경로를 유지한다. `BaseballBat_Raw_Wood(Clean)`은 길이 0.92m 기준의 `BaseballBat_Raw_Wood_Clean.prefab`으로 정규화되어 `MeleeWeapon.asset`에 연결되고, Humanoid 오른손 및 `WeaponPickup`의 바닥 표시에서 사용된다.
+- 영향을 받은 시스템: 플레이어/적 근접 전투·DEADLINE 준비 근접 공격, Animator Controller/Override, 장비 시각 표시, 바닥 무기 픽업, Stage1 및 Stage3~Stage6 캐릭터 씬
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/MeleeAttackImpactBehaviour.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`, `ProjectDeltatime/Assets/_Project/Animation/BaseballBat_Raw_Wood_Clean.prefab`, `ProjectDeltatime/Assets/_Project/MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.3으로 갱신해 근접 타격 프레임, 야구방망이 오른손/바닥 표시, 자동 검증 결과와 수동 조정 항목을 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1에서 `CharacterAnimationAssetBuilder.BuildAndApplyFromCommandLine`이 캐릭터 26명을 구성했다. `PrototypeSceneBuilder.ValidateStage1CharacterAnimationsFromCommandLine`은 상체 레이어·실행 컴포넌트를 통과했고, `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`은 오른손 야구방망이·바닥 픽업 모델 생성, 타격 후 0.18초 내 무피해, 타격 후 0.85초 내 1회 피해를 통과했다. 공통 변경 이후 `Stage6PlayModeSmokeTest.RunFromCommandLine`도 NavMesh 완전 경로 5/5와 런타임 초기화를 통과했다. 로그: `ProjectDeltatime/MeleeTimingBuild.log`, `ProjectDeltatime/MeleeTimingStatic.log`, `ProjectDeltatime/MeleeTimingSmoke.log`, `ProjectDeltatime/MeleeTimingStage6Smoke.log`.
+- 남은 작업: **확인 불가**. 실제 플레이에서 각 Synty 캐릭터의 손가락 그립, 방망이 방향/크기, 0.48 정규화 시점의 타격 체감은 수동 확인 후 필요하면 `ConfigureMeleeWeaponVisual`의 오프셋과 각 공격 상태의 타격 시점을 조정해야 한다.
+
 ## 2026-08-08 - 대시 방향 제자리 구르기 보정
 
 - 변경 유형: 캐릭터 구르기 클립 보정, 플레이어 대시 시각 방향 처리, Animator 에셋 빌더 검증 강화

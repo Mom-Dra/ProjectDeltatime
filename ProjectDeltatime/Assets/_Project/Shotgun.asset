@@ -25,7 +25,7 @@ MonoBehaviour:
   spreadAngle: 18
   spreadJitterAngle: 1
   spreadSeed: 307
-  playerRecoilDistance: 0.35
+  playerRecoilDistance: 0
   maximumProjectileDistance: 14
   enemyBurstShotCount: 1
   meleeRange: 1.45
@@ -33,3 +33,14 @@ MonoBehaviour:
   heldVisualScale: {x: 0.18, y: 0.16, z: 0.78}
   worldVisualScale: {x: 0.82, y: 0.16, z: 0.26}
   visualColor: {r: 0.5, g: 0.55, b: 0.62, a: 1}
+  heldVisualPrefab: {fileID: 5712856927229792703, guid: 824b61c887c2f1e4b957e020308bf923, type: 3}
+  worldVisualPrefab: {fileID: 5712856927229792703, guid: 824b61c887c2f1e4b957e020308bf923, type: 3}
+  heldModelLocalPosition: {x: 0.02, y: 0.14, z: -0.26}
+  heldModelLocalEulerAngles: {x: 0, y: 0, z: 0}
+  heldModelLocalScale: {x: 1, y: 1, z: 1}
+  worldModelLocalPosition: {x: 0, y: 0.14, z: 0}
+  worldModelLocalEulerAngles: {x: 0, y: 0, z: 0}
+  worldModelLocalScale: {x: 1, y: 1, z: 1}
+  heldMuzzleLocalPosition: {x: 0, y: 0, z: 0.92}
+  heldMuzzleLocalEulerAngles: {x: 0, y: 0, z: 0}
+  hasHeldMuzzleCalibration: 1

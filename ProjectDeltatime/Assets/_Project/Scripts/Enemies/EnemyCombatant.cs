@@ -47,6 +47,7 @@ namespace Deltatime.Enemies
         [SerializeField] private EnemyPerception perception;
         [SerializeField] private EnemyMotor motor;
         [SerializeField] private WeaponController weapon;
+        [SerializeField] private MeleeAttackExecution meleeAttackExecution;
         [SerializeField] private EnemyWeaponDrop weaponDrop;
         [SerializeField] private LineRenderer warningLine;
         [SerializeField] private VisionCone playerVision;
@@ -109,6 +110,16 @@ namespace Deltatime.Enemies
 
         protected virtual void Awake()
         {
+            if (meleeAttackExecution == null)
+            {
+                meleeAttackExecution = GetComponent<MeleeAttackExecution>();
+                if (meleeAttackExecution == null)
+                {
+                    meleeAttackExecution = gameObject.AddComponent<
+                        MeleeAttackExecution>();
+                }
+            }
+
             if (worldTime == null ||
                 perception == null ||
                 motor == null ||
@@ -144,6 +155,7 @@ namespace Deltatime.Enemies
         {
             if (IsDead)
             {
+                meleeAttackExecution?.CancelPendingAttacks();
                 StopMovement();
                 SetWarningVisible(false);
                 return;
@@ -621,6 +633,18 @@ namespace Deltatime.Enemies
             }
 
             CloseAttackPerformed?.Invoke();
+            if (meleeAttackExecution != null)
+            {
+                meleeAttackExecution.BeginAttack(
+                    gameObject,
+                    CombatFaction.Enemy,
+                    transform.forward,
+                    pendingAttackRange,
+                    pendingAttackHalfAngle,
+                    pendingAttackDamage);
+                return;
+            }
+
             MeleeAttackResolver.TryHitNearest(
                 gameObject,
                 CombatFaction.Enemy,
@@ -886,7 +910,9 @@ namespace Deltatime.Enemies
                 playerVision.ContainsWorldPoint(bodyRenderer.bounds.center);
             bodyRenderer.enabled = visible;
             characterVisual?.SetVisible(visible && !IsDead);
-            weaponRenderer.enabled = visible && weapon.HasWeapon;
+            weaponRenderer.enabled = visible &&
+                                     weapon.HasWeapon &&
+                                     !weapon.CustomHeldVisualActive;
             if (!visible)
             {
                 SetWarningVisible(false);

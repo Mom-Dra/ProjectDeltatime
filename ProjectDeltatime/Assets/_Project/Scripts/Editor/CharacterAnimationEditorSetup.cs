@@ -64,6 +64,19 @@ namespace Deltatime.EditorTools
             driver.Configure(primaryAnimator, library);
             primaryAnimator.runtimeAnimatorController =
                 library.GetController(initialStyle);
+
+            if (weapon != null &&
+                owner.GetComponent<MeleeAttackExecution>() == null)
+            {
+                owner.AddComponent<MeleeAttackExecution>();
+            }
+
+            if (weapon != null &&
+                owner.GetComponent<WeaponVisualPresenter>() == null)
+            {
+                owner.AddComponent<WeaponVisualPresenter>();
+            }
+
             EditorUtility.SetDirty(primaryAnimator);
             EditorUtility.SetDirty(driver);
             return primaryAnimator.runtimeAnimatorController != null;

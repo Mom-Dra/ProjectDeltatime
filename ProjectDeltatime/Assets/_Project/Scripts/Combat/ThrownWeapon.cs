@@ -1,6 +1,7 @@
 using Deltatime.Core;
 using Deltatime.TimeSystem;
 using Deltatime.Utilities;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -22,6 +23,7 @@ namespace Deltatime.Combat
         private WeaponDefinition definition;
         private LineRenderer trail;
         private Renderer bodyRenderer;
+        private WeaponFlightVisualPresenter flightVisual;
         private CombatFaction faction;
         private GameObject source;
         private Vector3 direction;
@@ -40,6 +42,11 @@ namespace Deltatime.Combat
         {
             trail = GetComponent<LineRenderer>();
             bodyRenderer = GetComponentInChildren<Renderer>();
+            flightVisual = GetComponent<WeaponFlightVisualPresenter>();
+            if (flightVisual == null)
+            {
+                flightVisual = gameObject.AddComponent<WeaponFlightVisualPresenter>();
+            }
         }
 
         private void Update()
@@ -116,8 +123,11 @@ namespace Deltatime.Combat
 
             if (definition != null)
             {
-                transform.localScale = definition.WorldVisualScale;
-                if (bodyRenderer != null)
+                flightVisual.Apply(definition, bodyRenderer);
+                transform.localScale = flightVisual.HasCustomModel
+                    ? Vector3.one
+                    : definition.WorldVisualScale;
+                if (!flightVisual.HasCustomModel && bodyRenderer != null)
                 {
                     bodyRenderer.material.color = definition.VisualColor;
                 }

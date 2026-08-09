@@ -15,6 +15,7 @@ namespace Deltatime.Player
         [SerializeField] private PlayerMovement movement;
         [SerializeField] private PlayerHealth health;
         [SerializeField] private WeaponController weapon;
+        [SerializeField] private MeleeAttackExecution meleeAttackExecution;
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private WorldTimeActivity worldTimeActivity;
         [SerializeField] private DeadlineController deadline;
@@ -54,6 +55,16 @@ namespace Deltatime.Player
 
         private void Awake()
         {
+            if (meleeAttackExecution == null)
+            {
+                meleeAttackExecution = GetComponent<MeleeAttackExecution>();
+                if (meleeAttackExecution == null)
+                {
+                    meleeAttackExecution = gameObject.AddComponent<
+                        MeleeAttackExecution>();
+                }
+            }
+
             if (movement == null)
             {
                 movement = GetComponent<PlayerMovement>();
@@ -87,6 +98,7 @@ namespace Deltatime.Player
             {
                 catchBufferRemaining = 0f;
                 ClearStagedMeleeAttacks();
+                meleeAttackExecution?.CancelPendingAttacks();
                 return;
             }
 
@@ -94,6 +106,7 @@ namespace Deltatime.Player
             {
                 catchBufferRemaining = 0f;
                 ClearStagedMeleeAttacks();
+                meleeAttackExecution?.CancelPendingAttacks();
                 return;
             }
 
@@ -160,6 +173,7 @@ namespace Deltatime.Player
             {
                 catchBufferRemaining = 0f;
                 ClearStagedMeleeAttacks();
+                meleeAttackExecution?.CancelPendingAttacks();
             }
         }
 
@@ -241,7 +255,8 @@ namespace Deltatime.Player
                     CombatFaction.Player,
                     gameObject,
                     stagedMeleeAttacks[i],
-                    clock);
+                    clock,
+                    meleeAttackExecution);
             }
 
             if (stagedUnarmedPunchCount > 0)
@@ -276,7 +291,8 @@ namespace Deltatime.Player
                     CombatFaction.Player,
                     gameObject,
                     aim.AimDirection,
-                    clock)
+                    clock,
+                    meleeAttackExecution)
                 : weapon.TryFire(
                     CombatFaction.Player,
                     GetWeaponOriginAimDirection(),
@@ -351,13 +367,29 @@ namespace Deltatime.Player
             }
 
             nextPunchTime = clock + punchInterval;
-            MeleeAttackResolver.TryHitNearest(
-                gameObject,
-                CombatFaction.Player,
-                direction,
-                punchRange,
-                punchHalfAngle,
-                punchDamage);
+            if (meleeAttackExecution != null &&
+                !meleeAttackExecution.BeginAttack(
+                    gameObject,
+                    CombatFaction.Player,
+                    direction,
+                    punchRange,
+                    punchHalfAngle,
+                    punchDamage))
+            {
+                return false;
+            }
+
+            if (meleeAttackExecution == null)
+            {
+                MeleeAttackResolver.TryHitNearest(
+                    gameObject,
+                    CombatFaction.Player,
+                    direction,
+                    punchRange,
+                    punchHalfAngle,
+                    punchDamage);
+            }
+
             UnarmedAttackPerformed?.Invoke();
             return true;
         }

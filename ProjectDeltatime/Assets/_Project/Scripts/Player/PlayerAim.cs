@@ -8,6 +8,8 @@ namespace Deltatime.Player
     [RequireComponent(typeof(Rigidbody))]
     public sealed class PlayerAim : MonoBehaviour
     {
+        private const float BodyForwardDebugRayLength = 1.5f;
+
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private WorldTimeActivity worldTimeActivity;
         [SerializeField] private Camera gameplayCamera;
@@ -60,6 +62,10 @@ namespace Deltatime.Player
             hasPreviousAngle = true;
             worldTimeActivity.SetAimTurn(turnActivity);
             UpdateDirectionLine();
+            Debug.DrawRay(
+                transform.position + (Vector3.up * 0.08f),
+                transform.forward * BodyForwardDebugRayLength,
+                Color.green);
         }
 
         public Vector3 GetPlanarDirectionFrom(Vector3 origin)

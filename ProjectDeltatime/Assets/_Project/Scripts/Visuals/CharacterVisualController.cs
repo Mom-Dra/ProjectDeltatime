@@ -25,9 +25,15 @@ namespace Deltatime.Visuals
         public void Configure(Transform root)
         {
             visualRoot = root;
-            visualRenderers = root == null
+            RefreshRenderers();
+        }
+
+        public void RefreshRenderers()
+        {
+            visualRenderers = visualRoot == null
                 ? Array.Empty<Renderer>()
-                : root.GetComponentsInChildren<Renderer>(true);
+                : visualRoot.GetComponentsInChildren<Renderer>(true);
+            originalColors.Clear();
         }
 
         public bool ContainsRenderer(Renderer renderer)

@@ -1,5 +1,6 @@
 using Deltatime.TimeSystem;
 using Deltatime.Utilities;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -39,6 +40,7 @@ namespace Deltatime.Combat
         private int ammunition;
         private bool initialized;
         private bool resolved;
+        private WeaponFlightVisualPresenter flightVisual;
 
         public WeaponDefinition Definition => definition;
         public int Ammunition => ammunition;
@@ -59,6 +61,12 @@ namespace Deltatime.Combat
 
             predictionLine.enabled = false;
             landingMarkerRenderer.enabled = false;
+
+            flightVisual = GetComponent<WeaponFlightVisualPresenter>();
+            if (flightVisual == null)
+            {
+                flightVisual = gameObject.AddComponent<WeaponFlightVisualPresenter>();
+            }
         }
 
         private void Update()
@@ -179,14 +187,23 @@ namespace Deltatime.Combat
 
         private void ApplyWeaponVisual()
         {
-            if (definition == null || bodyRenderer == null)
+            if (definition == null)
             {
                 return;
             }
 
-            bodyRenderer.transform.localScale =
-                definition.WorldVisualScale;
-            bodyRenderer.material.color = definition.VisualColor;
+            if (flightVisual == null)
+            {
+                flightVisual = GetComponent<WeaponFlightVisualPresenter>();
+            }
+
+            flightVisual.Apply(definition, bodyRenderer);
+            transform.localScale = Vector3.one;
+            if (!flightVisual.HasCustomModel && bodyRenderer != null)
+            {
+                bodyRenderer.transform.localScale = definition.WorldVisualScale;
+                bodyRenderer.material.color = definition.VisualColor;
+            }
         }
 
         private void AdvanceFlight(float deltaTime)

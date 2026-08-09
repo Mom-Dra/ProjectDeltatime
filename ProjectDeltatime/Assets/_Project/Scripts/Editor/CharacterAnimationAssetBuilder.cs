@@ -29,6 +29,34 @@ namespace Deltatime.EditorTools
             OutputFolder + "/DeltatimeRollInPlace.anim";
         private const string UpperBodyAttackMaskPath =
             OutputFolder + "/DeltatimeUpperBodyAttack.mask";
+        private const string BaseballBatVisualPrefabPath =
+            OutputFolder + "/BaseballBat_Raw_Wood_Clean.prefab";
+        private const string TacticalPistolVisualPrefabPath =
+            OutputFolder + "/TacticalPistol.prefab";
+        private const string AssaultRifleVisualPrefabPath =
+            OutputFolder + "/AssaultRifle.prefab";
+        private const string PumpShotgunVisualPrefabPath =
+            OutputFolder + "/PumpShotgun.prefab";
+        private const string BaseballBatModelPath =
+            "Assets/Modeling/Baseball Bat/FBX/Raw/" +
+            "BaseballBat_Raw_Wood(Clean).fbx";
+        private const string TacticalPistolModelPath =
+            "Assets/MR POLY/Low Poly Weapons Set/Models/" +
+            "Tactical Pistol.fbx";
+        private const string AssaultRifleModelPath =
+            "Assets/MR POLY/Low Poly Weapons Set/Models/" +
+            "Assault Rifle.fbx";
+        private const string PumpShotgunModelPath =
+            "Assets/MR POLY/Low Poly Weapons Set/Models/" +
+            "Pump Shotgun.fbx";
+        private const string PistolWeaponDefinitionPath =
+            "Assets/_Project/Pistol.asset";
+        private const string AutomaticRifleWeaponDefinitionPath =
+            "Assets/_Project/AutomaticRifle.asset";
+        private const string ShotgunWeaponDefinitionPath =
+            "Assets/_Project/Shotgun.asset";
+        private const string MeleeWeaponDefinitionPath =
+            "Assets/_Project/MeleeWeapon.asset";
 
         private const string Basic = "Assets/Animations/Basic/";
         private const string Pistol =
@@ -108,11 +136,33 @@ namespace Deltatime.EditorTools
                 $"Configured actors: {configuredCount}.");
         }
 
+        [MenuItem("Tools/Prototype/Animation/Build Weapon Models")]
+        public static void BuildWeaponModels()
+        {
+            EnsureOutputFolder();
+            BuildWeaponModelAssets();
+            AssetDatabase.SaveAssets();
+            Debug.Log("Weapon model build completed.");
+        }
+
         public static void BuildAndApplyFromCommandLine()
         {
             try
             {
                 BuildAndApply();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorApplication.Exit(1);
+            }
+        }
+
+        public static void BuildWeaponModelsFromCommandLine()
+        {
+            try
+            {
+                BuildWeaponModels();
             }
             catch (Exception exception)
             {
@@ -215,8 +265,35 @@ namespace Deltatime.EditorTools
                 meleeController);
             EditorUtility.SetDirty(library);
             ConfigureWeaponAnimationStyles();
+            BuildWeaponModelAssets();
             AssetDatabase.SaveAssets();
             return library;
+        }
+
+        private static void BuildWeaponModelAssets()
+        {
+            GameObject baseballBatVisual = EnsureBaseballBatVisualPrefab();
+            GameObject tacticalPistolVisual = EnsureFirearmVisualPrefab(
+                TacticalPistolVisualPrefabPath,
+                TacticalPistolModelPath,
+                "Tactical Pistol",
+                0.42f);
+            GameObject assaultRifleVisual = EnsureFirearmVisualPrefab(
+                AssaultRifleVisualPrefabPath,
+                AssaultRifleModelPath,
+                "Assault Rifle",
+                0.96f);
+            GameObject pumpShotgunVisual = EnsureFirearmVisualPrefab(
+                PumpShotgunVisualPrefabPath,
+                PumpShotgunModelPath,
+                "Pump Shotgun",
+                0.92f);
+
+            ConfigureMeleeWeaponVisual(baseballBatVisual);
+            ConfigureFirearmWeaponVisuals(
+                tacticalPistolVisual,
+                assaultRifleVisual,
+                pumpShotgunVisual);
         }
 
         private static AnimatorController CreateBaseController(
@@ -296,8 +373,10 @@ namespace Deltatime.EditorTools
 
             AnimatorState attackA = attackStateMachine.AddState("Attack A");
             attackA.motion = motions.AttackA;
+            AddMeleeImpactBehaviour(attackA, 0.48f);
             AnimatorState attackB = attackStateMachine.AddState("Attack B");
             attackB.motion = motions.AttackB;
+            AddMeleeImpactBehaviour(attackB, 0.48f);
             AddAnyStateTriggerTransition(
                 attackStateMachine,
                 attackA,
@@ -310,6 +389,15 @@ namespace Deltatime.EditorTools
                 0.04f);
             AddExitTransition(attackA, empty, 0.88f, 0.08f);
             AddExitTransition(attackB, empty, 0.88f, 0.08f);
+        }
+
+        private static void AddMeleeImpactBehaviour(
+            AnimatorState state,
+            float normalizedImpactTime)
+        {
+            MeleeAttackImpactBehaviour behaviour =
+                state.AddStateMachineBehaviour<MeleeAttackImpactBehaviour>();
+            behaviour.ImpactNormalizedTime = normalizedImpactTime;
         }
 
         private static AvatarMask CreateUpperBodyAttackMask()
@@ -715,17 +803,269 @@ namespace Deltatime.EditorTools
         private static void ConfigureWeaponAnimationStyles()
         {
             SetWeaponStyle(
-                "Assets/_Project/Pistol.asset",
+                PistolWeaponDefinitionPath,
                 CharacterAnimationStyle.Pistol);
             SetWeaponStyle(
-                "Assets/_Project/AutomaticRifle.asset",
+                AutomaticRifleWeaponDefinitionPath,
                 CharacterAnimationStyle.Rifle);
             SetWeaponStyle(
-                "Assets/_Project/Shotgun.asset",
+                ShotgunWeaponDefinitionPath,
                 CharacterAnimationStyle.Rifle);
             SetWeaponStyle(
                 "Assets/_Project/MeleeWeapon.asset",
                 CharacterAnimationStyle.Melee);
+        }
+
+        private static GameObject EnsureBaseballBatVisualPrefab()
+        {
+            GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(
+                BaseballBatModelPath);
+            if (source == null)
+            {
+                throw new InvalidOperationException(
+                    "The selected baseball bat model is missing at " +
+                    BaseballBatModelPath + ".");
+            }
+
+            DeleteGeneratedController(BaseballBatVisualPrefabPath);
+            GameObject root = new GameObject("Baseball Bat Raw Wood Clean");
+            GameObject model = PrefabUtility.InstantiatePrefab(source) as GameObject;
+            if (model == null)
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                throw new InvalidOperationException(
+                    "Failed to instantiate the selected baseball bat model.");
+            }
+
+            model.transform.SetParent(root.transform, false);
+            NormalizeBaseballBatModel(model);
+            PrefabUtility.SaveAsPrefabAsset(root, BaseballBatVisualPrefabPath);
+            UnityEngine.Object.DestroyImmediate(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(
+                BaseballBatVisualPrefabPath);
+        }
+
+        private static GameObject EnsureFirearmVisualPrefab(
+            string visualPrefabPath,
+            string sourceModelPath,
+            string displayName,
+            float targetLength)
+        {
+            GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(
+                sourceModelPath);
+            if (source == null)
+            {
+                throw new InvalidOperationException(
+                    $"The selected {displayName} model is missing at " +
+                    sourceModelPath + ".");
+            }
+
+            DeleteGeneratedController(visualPrefabPath);
+            GameObject root = new GameObject(displayName);
+            GameObject model = PrefabUtility.InstantiatePrefab(source) as GameObject;
+            if (model == null)
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                throw new InvalidOperationException(
+                    $"Failed to instantiate the selected {displayName} model.");
+            }
+
+            model.transform.SetParent(root.transform, false);
+            NormalizeFirearmModel(model, targetLength);
+            PrefabUtility.SaveAsPrefabAsset(root, visualPrefabPath);
+            UnityEngine.Object.DestroyImmediate(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(visualPrefabPath);
+        }
+
+        private static void NormalizeFirearmModel(
+            GameObject model,
+            float targetLength)
+        {
+            Bounds initialBounds = CalculateRendererBounds(model);
+            Vector3 initialSize = initialBounds.size;
+            Vector3 longAxis = initialSize.x >= initialSize.y &&
+                               initialSize.x >= initialSize.z
+                ? Vector3.right
+                : initialSize.y >= initialSize.z
+                    ? Vector3.up
+                    : Vector3.forward;
+            model.transform.localRotation = Quaternion.FromToRotation(
+                longAxis,
+                Vector3.forward);
+
+            Bounds rotatedBounds = CalculateRendererBounds(model);
+            float length = Mathf.Max(
+                0.001f,
+                Mathf.Max(
+                    rotatedBounds.size.x,
+                    Mathf.Max(rotatedBounds.size.y, rotatedBounds.size.z)));
+            model.transform.localScale *= targetLength / length;
+
+            Bounds normalizedBounds = CalculateRendererBounds(model);
+            model.transform.localPosition -= normalizedBounds.center;
+            model.transform.localPosition +=
+                Vector3.forward * normalizedBounds.extents.z;
+        }
+
+        private static void NormalizeBaseballBatModel(GameObject model)
+        {
+            Bounds initialBounds = CalculateRendererBounds(model);
+            Vector3 initialSize = initialBounds.size;
+            Vector3 longAxis = initialSize.x >= initialSize.y &&
+                               initialSize.x >= initialSize.z
+                ? Vector3.right
+                : initialSize.y >= initialSize.z
+                    ? Vector3.up
+                    : Vector3.forward;
+            model.transform.localRotation = Quaternion.FromToRotation(
+                longAxis,
+                Vector3.forward);
+
+            Bounds rotatedBounds = CalculateRendererBounds(model);
+            float length = Mathf.Max(
+                0.001f,
+                Mathf.Max(
+                    rotatedBounds.size.x,
+                    Mathf.Max(rotatedBounds.size.y, rotatedBounds.size.z)));
+            model.transform.localScale *= 0.92f / length;
+
+            Bounds normalizedBounds = CalculateRendererBounds(model);
+            model.transform.localPosition -= normalizedBounds.center;
+            model.transform.localPosition +=
+                Vector3.forward * normalizedBounds.extents.z;
+        }
+
+        private static Bounds CalculateRendererBounds(GameObject root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "Baseball bat visual has no renderers.");
+            }
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
+            return bounds;
+        }
+
+        private static void ConfigureMeleeWeaponVisual(GameObject baseballBat)
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
+                    MeleeWeaponDefinitionPath);
+            if (definition == null || baseballBat == null)
+            {
+                throw new InvalidOperationException(
+                    "Melee weapon visual setup requires the weapon definition " +
+                    "and generated baseball bat prefab.");
+            }
+
+            if (!definition.HasCustomHeldVisual ||
+                !definition.HasCustomWorldVisual)
+            {
+                definition.ConfigureModelVisuals(
+                    baseballBat,
+                    baseballBat,
+                    new Vector3(0f, 0f, 0.04f),
+                    Vector3.zero,
+                    Vector3.one,
+                    new Vector3(0f, 0.1f, 0f),
+                    Vector3.zero,
+                    Vector3.one,
+                    Vector3.forward * 0.92f,
+                    Vector3.zero);
+            }
+            else
+            {
+                definition.ConfigureModelVisualPrefabs(
+                    baseballBat,
+                    baseballBat);
+                if (!definition.HasHeldMuzzleCalibration)
+                {
+                    definition.ConfigureHeldMuzzle(
+                        Vector3.forward * 0.92f,
+                        Vector3.zero);
+                }
+            }
+            EditorUtility.SetDirty(definition);
+        }
+
+        private static void ConfigureFirearmWeaponVisuals(
+            GameObject tacticalPistol,
+            GameObject assaultRifle,
+            GameObject pumpShotgun)
+        {
+            ConfigureWeaponVisual(
+                PistolWeaponDefinitionPath,
+                tacticalPistol,
+                new Vector3(0.02f, 0.06f, -0.1f),
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, 0.08f, 0f),
+                new Vector3(0f, 0f, 0.42f));
+            ConfigureWeaponVisual(
+                AutomaticRifleWeaponDefinitionPath,
+                assaultRifle,
+                new Vector3(0.02f, 0.13f, -0.28f),
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, 0.13f, 0f),
+                new Vector3(0f, 0f, 0.96f));
+            ConfigureWeaponVisual(
+                ShotgunWeaponDefinitionPath,
+                pumpShotgun,
+                new Vector3(0.02f, 0.14f, -0.26f),
+                new Vector3(0f, 0f, 0f),
+                new Vector3(0f, 0.14f, 0f),
+                new Vector3(0f, 0f, 0.92f));
+        }
+
+        private static void ConfigureWeaponVisual(
+            string definitionPath,
+            GameObject visualPrefab,
+            Vector3 heldPosition,
+            Vector3 heldEulerAngles,
+            Vector3 worldPosition,
+            Vector3 muzzlePosition)
+        {
+            WeaponDefinition definition =
+                AssetDatabase.LoadAssetAtPath<WeaponDefinition>(definitionPath);
+            if (definition == null || visualPrefab == null)
+            {
+                throw new InvalidOperationException(
+                    "Weapon visual setup requires the weapon definition and " +
+                    "generated model prefab at " + definitionPath + ".");
+            }
+
+            if (!definition.HasCustomHeldVisual ||
+                !definition.HasCustomWorldVisual)
+            {
+                definition.ConfigureModelVisuals(
+                    visualPrefab,
+                    visualPrefab,
+                    heldPosition,
+                    heldEulerAngles,
+                    Vector3.one,
+                    worldPosition,
+                    Vector3.zero,
+                    Vector3.one,
+                    muzzlePosition,
+                    Vector3.zero);
+            }
+            else
+            {
+                definition.ConfigureModelVisualPrefabs(
+                    visualPrefab,
+                    visualPrefab);
+                if (!definition.HasHeldMuzzleCalibration)
+                {
+                    definition.ConfigureHeldMuzzle(muzzlePosition, Vector3.zero);
+                }
+            }
+            EditorUtility.SetDirty(definition);
         }
 
         private static void SetWeaponStyle(

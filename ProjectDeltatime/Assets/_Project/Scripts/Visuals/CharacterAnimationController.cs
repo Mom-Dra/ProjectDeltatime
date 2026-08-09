@@ -39,6 +39,10 @@ namespace Deltatime.Visuals
         [Header("Dash Visual")]
         [SerializeField, Min(0.01f)] private float rollVisualDuration = 0.5f;
 
+        [Header("Pistol Visual Yaw")]
+        [SerializeField, Range(-180f, 180f)]
+        private float pistolVisualYawOffset = 36.1f;
+
         private CharacterAnimationStyle currentStyle;
         private RuntimeAnimatorController currentController;
         private bool previousDashState;
@@ -51,6 +55,8 @@ namespace Deltatime.Visuals
         public Animator Animator => animator;
         public CharacterAnimationStyle CurrentStyle => currentStyle;
         public bool IsEnemy => enemyMotor != null;
+        public float CurrentVisualRootYawOffset =>
+            IsPlayerPistolStyle ? pistolVisualYawOffset : 0f;
 
         private void Awake()
         {
@@ -180,17 +186,6 @@ namespace Deltatime.Visuals
                 weapon.UsePerformed += HandleAttackPerformed;
             }
 
-            if (playerCombat != null)
-            {
-                playerCombat.UnarmedAttackPerformed -= HandleAttackPerformed;
-                playerCombat.UnarmedAttackPerformed += HandleAttackPerformed;
-            }
-
-            if (enemyCombatant != null)
-            {
-                enemyCombatant.CloseAttackPerformed -= HandleAttackPerformed;
-                enemyCombatant.CloseAttackPerformed += HandleAttackPerformed;
-            }
         }
 
         private void Unsubscribe()
@@ -201,15 +196,6 @@ namespace Deltatime.Visuals
                 weapon.UsePerformed -= HandleAttackPerformed;
             }
 
-            if (playerCombat != null)
-            {
-                playerCombat.UnarmedAttackPerformed -= HandleAttackPerformed;
-            }
-
-            if (enemyCombatant != null)
-            {
-                enemyCombatant.CloseAttackPerformed -= HandleAttackPerformed;
-            }
         }
 
         private void HandleEquipmentChanged()
@@ -328,36 +314,57 @@ namespace Deltatime.Visuals
                 return;
             }
 
+            Quaternion visualYawOffset = Quaternion.Euler(
+                0f,
+                CurrentVisualRootYawOffset,
+                0f);
             if (rollVisualTimeRemaining > 0f &&
                 rollDirection.sqrMagnitude > 0.000001f)
             {
                 visualRoot.rotation = Quaternion.LookRotation(
                     rollDirection.normalized,
-                    Vector3.up);
+                    Vector3.up) * visualYawOffset;
                 return;
             }
 
-            visualRoot.localRotation = visualRootRestRotation;
+            visualRoot.localRotation =
+                visualRootRestRotation * visualYawOffset;
         }
 
-        private void HandleAttackPerformed()
+        private bool IsPlayerPistolStyle =>
+            playerInput != null &&
+            currentStyle == CharacterAnimationStyle.Pistol;
+
+        public bool TryPlayMeleeAttackAnimation()
         {
             if (animator == null ||
                 library == null ||
-                !library.SupportsAttack(currentStyle))
+                !library.SupportsAttack(currentStyle) ||
+                animator.runtimeAnimatorController == null ||
+                animator.layerCount < 2)
             {
-                return;
+                return false;
             }
 
             int trigger = useAlternateAttack ? AttackBHash : AttackAHash;
             useAlternateAttack = !useAlternateAttack;
             animator.SetTrigger(trigger);
+            return true;
+        }
+
+        private void HandleAttackPerformed()
+        {
+            TryPlayMeleeAttackAnimation();
         }
 
         private void OnValidate()
         {
             directionDamping = Mathf.Max(0f, directionDamping);
             rollVisualDuration = Mathf.Max(0.01f, rollVisualDuration);
+            pistolVisualYawOffset = Mathf.Clamp(
+                pistolVisualYawOffset,
+                -180f,
+                180f);
         }
     }
 }

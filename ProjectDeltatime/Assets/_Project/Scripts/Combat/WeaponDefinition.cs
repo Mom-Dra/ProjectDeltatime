@@ -57,6 +57,21 @@ namespace Deltatime.Combat
         [SerializeField] private Color visualColor =
             new Color(0.5f, 0.55f, 0.62f, 1f);
 
+        [Header("Model Visuals")]
+        [SerializeField] private GameObject heldVisualPrefab;
+        [SerializeField] private GameObject worldVisualPrefab;
+        [SerializeField] private Vector3 heldModelLocalPosition;
+        [SerializeField] private Vector3 heldModelLocalEulerAngles;
+        [SerializeField] private Vector3 heldModelLocalScale = Vector3.one;
+        [SerializeField] private Vector3 worldModelLocalPosition;
+        [SerializeField] private Vector3 worldModelLocalEulerAngles;
+        [SerializeField] private Vector3 worldModelLocalScale = Vector3.one;
+
+        [Header("Held Muzzle")]
+        [SerializeField] private Vector3 heldMuzzleLocalPosition;
+        [SerializeField] private Vector3 heldMuzzleLocalEulerAngles;
+        [SerializeField] private bool hasHeldMuzzleCalibration;
+
         public WeaponKind Kind => kind;
         public string DisplayName => displayName;
         public CharacterAnimationStyle AnimationStyle => animationStyle;
@@ -79,6 +94,19 @@ namespace Deltatime.Combat
         public Vector3 HeldVisualScale => heldVisualScale;
         public Vector3 WorldVisualScale => worldVisualScale;
         public Color VisualColor => visualColor;
+        public GameObject HeldVisualPrefab => heldVisualPrefab;
+        public GameObject WorldVisualPrefab => worldVisualPrefab;
+        public Vector3 HeldModelLocalPosition => heldModelLocalPosition;
+        public Vector3 HeldModelLocalEulerAngles => heldModelLocalEulerAngles;
+        public Vector3 HeldModelLocalScale => heldModelLocalScale;
+        public Vector3 WorldModelLocalPosition => worldModelLocalPosition;
+        public Vector3 WorldModelLocalEulerAngles => worldModelLocalEulerAngles;
+        public Vector3 WorldModelLocalScale => worldModelLocalScale;
+        public Vector3 HeldMuzzleLocalPosition => heldMuzzleLocalPosition;
+        public Vector3 HeldMuzzleLocalEulerAngles => heldMuzzleLocalEulerAngles;
+        public bool HasHeldMuzzleCalibration => hasHeldMuzzleCalibration;
+        public bool HasCustomHeldVisual => heldVisualPrefab != null;
+        public bool HasCustomWorldVisual => worldVisualPrefab != null;
         public bool IsFirearm => kind == WeaponKind.Firearm;
         public bool IsMelee => kind == WeaponKind.Melee;
         public bool IsAutomatic =>
@@ -154,6 +182,59 @@ namespace Deltatime.Combat
             heldVisualScale = new Vector3(0.14f, 0.14f, 1.05f);
             worldVisualScale = new Vector3(0.24f, 0.16f, 1.05f);
             visualColor = new Color(0.9f, 0.42f, 0.08f, 1f);
+        }
+
+        public void ConfigureModelVisuals(
+            GameObject heldPrefab,
+            GameObject worldPrefab,
+            Vector3 heldPosition,
+            Vector3 heldEulerAngles,
+            Vector3 heldScale,
+            Vector3 worldPosition,
+            Vector3 worldEulerAngles,
+            Vector3 worldScale,
+            Vector3 muzzlePosition,
+            Vector3 muzzleEulerAngles)
+        {
+            heldVisualPrefab = heldPrefab;
+            worldVisualPrefab = worldPrefab;
+            heldModelLocalPosition = heldPosition;
+            heldModelLocalEulerAngles = heldEulerAngles;
+            heldModelLocalScale = SanitizeScale(heldScale);
+            worldModelLocalPosition = worldPosition;
+            worldModelLocalEulerAngles = worldEulerAngles;
+            worldModelLocalScale = SanitizeScale(worldScale);
+            ConfigureHeldMuzzle(muzzlePosition, muzzleEulerAngles);
+        }
+
+        public void ConfigureModelVisualPrefabs(
+            GameObject heldPrefab,
+            GameObject worldPrefab)
+        {
+            heldVisualPrefab = heldPrefab;
+            worldVisualPrefab = worldPrefab;
+        }
+
+        public void ConfigureHeldMuzzle(
+            Vector3 localPosition,
+            Vector3 localEulerAngles)
+        {
+            heldMuzzleLocalPosition = localPosition;
+            heldMuzzleLocalEulerAngles = localEulerAngles;
+            hasHeldMuzzleCalibration = true;
+        }
+
+        public void MarkModelVisualsCalibrated()
+        {
+            hasHeldMuzzleCalibration = true;
+        }
+
+        private static Vector3 SanitizeScale(Vector3 value)
+        {
+            return new Vector3(
+                Mathf.Max(0.001f, value.x),
+                Mathf.Max(0.001f, value.y),
+                Mathf.Max(0.001f, value.z));
         }
     }
 }

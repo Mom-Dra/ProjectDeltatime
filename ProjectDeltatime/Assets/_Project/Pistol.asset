@@ -33,3 +33,14 @@ MonoBehaviour:
   heldVisualScale: {x: 0.18, y: 0.16, z: 0.78}
   worldVisualScale: {x: 0.82, y: 0.16, z: 0.26}
   visualColor: {r: 0.5, g: 0.55, b: 0.62, a: 1}
+  heldVisualPrefab: {fileID: 7153845922303118929, guid: 9c9ac4dfc1131e74c8d29dfa5516d22f, type: 3}
+  worldVisualPrefab: {fileID: 7153845922303118929, guid: 9c9ac4dfc1131e74c8d29dfa5516d22f, type: 3}
+  heldModelLocalPosition: {x: 0.058, y: -0.009, z: -0.007}
+  heldModelLocalEulerAngles: {x: -11.904, y: 73.839, z: 185.269}
+  heldModelLocalScale: {x: 0.65, y: 0.65, z: 0.65}
+  worldModelLocalPosition: {x: 0, y: 0.08, z: 0}
+  worldModelLocalEulerAngles: {x: 0, y: 0, z: 0}
+  worldModelLocalScale: {x: 1, y: 1, z: 1}
+  heldMuzzleLocalPosition: {x: 0, y: 0.112, z: 0.42}
+  heldMuzzleLocalEulerAngles: {x: 0, y: 0, z: 0}
+  hasHeldMuzzleCalibration: 1

@@ -16726,6 +16726,8 @@ GameObject:
   - component: {fileID: 343663612}
   - component: {fileID: 343663613}
   - component: {fileID: 343663614}
+  - component: {fileID: 343663616}
+  - component: {fileID: 343663615}
   m_Layer: 0
   m_Name: Enemy Center
   m_TagString: Untagged
@@ -16770,6 +16772,7 @@ MonoBehaviour:
   perception: {fileID: 343663602}
   motor: {fileID: 343663603}
   weapon: {fileID: 343663606}
+  meleeAttackExecution: {fileID: 0}
   weaponDrop: {fileID: 343663605}
   warningLine: {fileID: 343663604}
   playerVision: {fileID: 1884313317}
@@ -17172,6 +17175,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 343663601}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &343663615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343663599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &343663616
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 343663599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &343844048
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -30680,6 +30710,8 @@ GameObject:
   - component: {fileID: 604727852}
   - component: {fileID: 604727853}
   - component: {fileID: 604727854}
+  - component: {fileID: 604727856}
+  - component: {fileID: 604727855}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -30762,6 +30794,7 @@ MonoBehaviour:
   movement: {fileID: 0}
   health: {fileID: 604727847}
   weapon: {fileID: 604727838}
+  meleeAttackExecution: {fileID: 0}
   worldTime: {fileID: 593267852}
   worldTimeActivity: {fileID: 593267851}
   deadline: {fileID: 604727840}
@@ -31151,6 +31184,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 0}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &604727855
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604727837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &604727856
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 604727837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &606174930
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -44098,6 +44158,8 @@ GameObject:
   - component: {fileID: 872568109}
   - component: {fileID: 872568122}
   - component: {fileID: 872568123}
+  - component: {fileID: 872568125}
+  - component: {fileID: 872568124}
   m_Layer: 0
   m_Name: Enemy North Gunner
   m_TagString: Untagged
@@ -44165,6 +44227,7 @@ MonoBehaviour:
   perception: {fileID: 872568112}
   motor: {fileID: 872568113}
   weapon: {fileID: 872568116}
+  meleeAttackExecution: {fileID: 0}
   weaponDrop: {fileID: 872568114}
   warningLine: {fileID: 872568115}
   playerVision: {fileID: 1884313317}
@@ -44545,6 +44608,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 872568111}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &872568124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872568108}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &872568125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 872568108}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &874507138
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -49707,6 +49797,8 @@ GameObject:
   - component: {fileID: 960721827}
   - component: {fileID: 960721840}
   - component: {fileID: 960721841}
+  - component: {fileID: 960721843}
+  - component: {fileID: 960721842}
   m_Layer: 0
   m_Name: Enemy South Chaser
   m_TagString: Untagged
@@ -49774,6 +49866,7 @@ MonoBehaviour:
   perception: {fileID: 960721830}
   motor: {fileID: 960721831}
   weapon: {fileID: 960721834}
+  meleeAttackExecution: {fileID: 0}
   weaponDrop: {fileID: 960721833}
   warningLine: {fileID: 960721832}
   playerVision: {fileID: 1884313317}
@@ -50154,6 +50247,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 960721829}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &960721842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 960721826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &960721843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 960721826}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &962566498
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -70017,6 +70137,8 @@ GameObject:
   - component: {fileID: 1359110441}
   - component: {fileID: 1359110442}
   - component: {fileID: 1359110443}
+  - component: {fileID: 1359110445}
+  - component: {fileID: 1359110444}
   m_Layer: 0
   m_Name: Enemy West
   m_TagString: Untagged
@@ -70061,6 +70183,7 @@ MonoBehaviour:
   perception: {fileID: 1359110431}
   motor: {fileID: 1359110432}
   weapon: {fileID: 1359110435}
+  meleeAttackExecution: {fileID: 0}
   weaponDrop: {fileID: 1359110433}
   warningLine: {fileID: 1359110434}
   playerVision: {fileID: 1884313317}
@@ -70465,6 +70588,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 1359110430}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &1359110444
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1359110428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &1359110445
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1359110428}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1359161049
 GameObject:
   m_ObjectHideFlags: 0
@@ -84263,6 +84413,8 @@ GameObject:
   - component: {fileID: 1635739198}
   - component: {fileID: 1635739199}
   - component: {fileID: 1635739200}
+  - component: {fileID: 1635739202}
+  - component: {fileID: 1635739201}
   m_Layer: 0
   m_Name: Enemy East
   m_TagString: Untagged
@@ -84307,6 +84459,7 @@ MonoBehaviour:
   perception: {fileID: 1635739188}
   motor: {fileID: 1635739189}
   weapon: {fileID: 1635739192}
+  meleeAttackExecution: {fileID: 0}
   weaponDrop: {fileID: 1635739190}
   warningLine: {fileID: 1635739191}
   playerVision: {fileID: 1884313317}
@@ -84711,6 +84864,33 @@ MonoBehaviour:
   enemyCombatant: {fileID: 1635739187}
   directionDamping: 0.08
   rollVisualDuration: 0.5
+--- !u!114 &1635739201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635739185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0049e210f9166d246b925de16f6d4848, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weapon: {fileID: 0}
+  animationController: {fileID: 0}
+  characterVisual: {fileID: 0}
+--- !u!114 &1635739202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635739185}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac806c24535c4d4c93c9ae1f18fa783, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1636826977
 PrefabInstance:
   m_ObjectHideFlags: 0
