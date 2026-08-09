@@ -21,6 +21,16 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-09 - 플레이어 조준 방향 가이드선 제거
+
+- 변경 유형: 플레이어 조준 시각 피드백 제거
+- 변경 내용: **구현 완료**. `PlayerAim`의 청록색 조준 `LineRenderer` 갱신과 `PrototypeSceneBuilder`의 해당 렌더러 생성·연결을 제거했다. 현재 `Stage1`~`Stage6`, `Tutorial`, `WeaponCalibration`에 저장돼 있던 레거시 렌더러는 즉시 표시되지 않도록 비활성화했다. 플레이어 회전, 조준점 계산, 월드 시간 조준 활동량, 총구·투사체 방향은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 조준 시각, 씬 직렬화, `PrototypeSceneBuilder` 재생성 경로
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage6.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/WeaponCalibration.unity`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.21`로 갱신해 조준 방향 라인 피드백 제거와 남은 디버그 Ray의 범위를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 스크립트 컴파일과 Stage6 Play Mode 스모크를 통과했다. 코드에 조준 방향 렌더러 갱신·생성 경로가 남지 않고, 8개 대상 씬의 레거시 렌더러가 모두 비활성화된 것도 정적으로 확인했다. 모든 씬의 실제 화면 수동 확인은 **미실행**이다.
+- 남은 작업: Unity Play Mode에서 모든 씬의 플레이어 주변에 청록색 조준선이 표시되지 않는지 수동 확인한다.
+
 ## 2026-08-09 - 근접 무기 손 모델 보정값 적용
 
 - 변경 유형: 근접 무기 오른손 모델 로컬 Transform 보정

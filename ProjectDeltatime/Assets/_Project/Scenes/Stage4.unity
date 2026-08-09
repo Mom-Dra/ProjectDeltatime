@@ -2934,9 +2934,7 @@ MonoBehaviour:
   input: {fileID: 604727845}
   worldTimeActivity: {fileID: 593267851}
   gameplayCamera: {fileID: 1220728250}
-  directionLine: {fileID: 604727843}
   angularSpeedForFullActivity: 360
-  directionLineLength: 1.2
 --- !u!120 &604727843
 LineRenderer:
   serializedVersion: 2
@@ -2945,7 +2943,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 604727837}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1

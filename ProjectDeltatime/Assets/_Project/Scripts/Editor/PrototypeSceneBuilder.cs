@@ -711,15 +711,8 @@ namespace Deltatime.EditorTools
             PlayerMovement movement = root.AddComponent<PlayerMovement>();
             movement.Configure(input, health, dash, worldTime);
 
-            LineRenderer aimLine = root.AddComponent<LineRenderer>();
-            ConfigureLine(
-                aimLine,
-                lineMaterial,
-                new Color(0.2f, 1f, 1f, 0.85f),
-                0.045f);
-
             PlayerAim aim = root.AddComponent<PlayerAim>();
-            aim.Configure(input, activity, gameplayCamera, aimLine);
+            aim.Configure(input, activity, gameplayCamera);
 
             Transform muzzle;
             Renderer heldWeaponRenderer;

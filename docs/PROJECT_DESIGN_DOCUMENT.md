@@ -20,7 +20,7 @@
 - 2026-08-09 Pistol 장착 애니메이션의 손끝 기준축 확인을 위해 넣었던 플레이어 Pistol 전용 시각 루트 `+36.1°` Y축 보정은 제거했다. `CharacterAnimationController`는 다시 모든 장비 프로필에서 기존 시각 루트 기준 회전과 대시 방향 회전만 사용한다. 게임플레이 Rigidbody 루트, 이동·조준·발사 판정과 `WeaponVisualPresenter`의 총구 조준 보정은 변경하지 않았다. **구현 완료**. Pistol 손끝·몸체 forward 정렬을 위한 별도 기준 포즈/IK 해법은 **계획 필요**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterAnimationController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`.
 - 2026-08-09 `Shotgun.asset`의 Pump Shotgun 손 모델은 로컬 위치 `(0.044, 0.118, -0.037)`, 회전 `(2.878, 68.211, -91.666)`, 균일 스케일 `(1, 1, 1)`을 사용한다. 실제 발사 `Weapon Muzzle`은 모델 내부 로컬 위치 `(0, 0.071, 0.92)`, 회전 `(0, 0, 0)`이다. `WeaponController.Muzzle`이 이 커스텀 총구를 사용하므로 Shotgun 투사체 시작점도 해당 위치를 따른다. **구현 완료**. 에셋 직렬화 값은 정적으로 확인했고 Unity Play Mode의 손 그립·총구 축·투사체 시작점은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`.
 - 2026-08-09 Pistol Animator Override는 기본 2D 방향 이동의 Idle을 `Assets/Animations/Pistol_Handgun Locomotion Pack/pistol idle.fbx`, 전진·후진·좌·우를 각각 `pistol walk.fbx`, `pistol walk backward.fbx`, `pistol strafe.fbx`, `pistol strafe (2).fbx`로 교체한다. Idle 참조가 이전 `Characters@Pistol Idle.fbx`를 가리키던 상태를 현재 `pistol idle.fbx`로 복구했으며, 공용 Roll·Attack은 기본 Controller 클립을 유지한다. **구현 완료**. GUID 정적 대조는 통과했고 Unity Play Mode의 실제 전환은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Animation/Pistol.overrideController`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`.
-- 2026-08-09 플레이어 몸체의 실제 루트 전방축 확인용 디버그 Ray는 `PlayerAim.Update`에서 플레이어 루트 위치의 Y축 0.08m 위를 시작점으로 하고 `transform.forward` 방향으로 1.5m를 초록색으로 매 프레임 그린다. 기존 조준 `LineRenderer`와 별개이므로 몸체 forward와 마우스 조준 방향을 비교할 수 있으며, 게임플레이 상태·회전·발사 판정은 변경하지 않는다. **구현 완료**. Unity 배치 컴파일은 사용자 승인 거부로 **미실행**했고, Unity 생성 의존 파일 부재로 .NET 정적 빌드도 완료하지 못했다. 소스 위치와 공백 검사는 통과했다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`.
+- 2026-08-09 플레이어 몸체의 실제 루트 전방축 확인용 디버그 Ray는 `PlayerAim.Update`에서 플레이어 루트 위치의 Y축 0.08m 위를 시작점으로 하고 `transform.forward` 방향으로 1.5m를 초록색으로 매 프레임 그린다. 게임 화면에 표시되던 청록색 조준 `LineRenderer`는 제거했으므로, 이제 이 Ray만 에디터 Gizmo/디버그 용도로 남는다. 게임플레이 상태·회전·발사 판정은 변경하지 않는다. **구현 완료**. Unity 6000.1.13f1 배치 컴파일과 Stage6 Play Mode 스모크는 통과했고, 8개 대상 씬의 레거시 렌더러 비활성화도 정적으로 확인했다. 모든 씬에서의 실제 화면 수동 확인은 **미실행**이다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage6PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`.
 - 2026-08-09 플레이어 권총·자동소총·샷건의 장착 시각은 Humanoid 오른손 아래 `Weapon Aim Pivot`을 추가해 `RightHand → Weapon Aim Pivot → Held Weapon Model → Weapon Muzzle` 계층으로 구성한다. 기존 `WeaponDefinition`의 손 모델 Position/Rotation/Scale과 Pistol 보정값은 `Held Weapon Model`에 그대로 적용한다. `WeaponVisualPresenter`는 Animator 손 포즈 뒤의 `LateUpdate`에서 Pivot을 매 프레임 기본 로컬 Transform으로 되돌린 뒤, `Weapon Muzzle.forward`와 `PlayerAim`의 마우스 조준 방향을 지면 수평축으로 투영한 Y축 각도 차이만 Pivot에 적용한다. 대상은 `PlayerAim`이 있는 플레이어 총기뿐이며, 근접 무기·적 장비에는 회전을 적용하지 않는다. `PlayerDash.IsDashing` 중에는 Pivot을 기본 회전으로 유지해 구르기 시각을 우선하고, 종료 다음 프레임부터 다시 조준을 따른다. 투사체는 계속 `Weapon Muzzle`에서 기존 마우스 조준점 방향으로 발사되므로 탄환 판정은 변경하지 않았다. **구현 완료**. Stage1 Play Mode 스모크와 WeaponCalibration 정적 검증은 통과했으며, 실제 손 그립·왼손 IK·구르기 중 최종 시각 체감은 **확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`.
 - 이 문서의 경로는 저장소 루트 `C:\Users\HuiYong\UnityProjects\ProjectDeltatime`를 기준으로 적는다.
 - 실제 Unity 프로젝트 루트는 저장소 안의 `ProjectDeltatime/`이다. 따라서 Unity의 `Assets`, `Packages`, `ProjectSettings`는 각각 `ProjectDeltatime/Assets`, `ProjectDeltatime/Packages`, `ProjectDeltatime/ProjectSettings`에 있다.
@@ -566,7 +566,6 @@ flowchart LR
 
 ### 7.4 피드백
 
-- 조준 방향 라인
 - 적 조준 경고 라인
 - 플레이어/적 탄환의 팩션별 색상 트레일
 - 저속 시간에서 길어지는 투사체·투척 트레일
@@ -994,6 +993,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-09 | 1.6.21 | 플레이어에 렌더링되던 청록색 조준 방향 `LineRenderer`를 제거하고 기존 씬에서는 비활성화 | 플레이어 조준 시각, 씬 재생성 |
 | 2026-08-09 | 1.6.20 | 야구방망이의 오른손 모델 로컬 위치·회전을 갱신 | 근접 무기 손 장착 시각, 공격 시각 정렬 |
 | 2026-08-09 | 1.6.19 | 플레이어 투척 무기의 최대 이동 거리를 6m에서 4m로 축소하고 프리팹·기본값·재생성값을 통일 | 투척 무기 비행거리, 기절·착지·바닥 픽업 변환 |
 | 2026-08-09 | 1.6.18 | 직접 배치용 네 무기 픽업의 Trigger `BoxCollider`를 각 월드 모델 활성 Renderer의 로컬 경계에 맞춰 자동 계산·검증 | 무기 픽업 상호작용 범위, 모델 시각, `PrototypeSceneBuilder` |

@@ -13,9 +13,7 @@ namespace Deltatime.Player
         [SerializeField] private PlayerInputReader input;
         [SerializeField] private WorldTimeActivity worldTimeActivity;
         [SerializeField] private Camera gameplayCamera;
-        [SerializeField] private LineRenderer directionLine;
         [SerializeField, Min(1f)] private float angularSpeedForFullActivity = 360f;
-        [SerializeField, Min(0.1f)] private float directionLineLength = 1.2f;
 
         private Rigidbody body;
         private float previousAngle;
@@ -61,7 +59,6 @@ namespace Deltatime.Player
             previousAngle = AimAngleDegrees;
             hasPreviousAngle = true;
             worldTimeActivity.SetAimTurn(turnActivity);
-            UpdateDirectionLine();
             Debug.DrawRay(
                 transform.position + (Vector3.up * 0.08f),
                 transform.forward * BodyForwardDebugRayLength,
@@ -80,13 +77,11 @@ namespace Deltatime.Player
         public void Configure(
             PlayerInputReader inputReader,
             WorldTimeActivity activity,
-            Camera targetCamera,
-            LineRenderer debugLine)
+            Camera targetCamera)
         {
             input = inputReader;
             worldTimeActivity = activity;
             gameplayCamera = targetCamera;
-            directionLine = debugLine;
         }
 
         private bool TryResolveAimPoint(Ray pointerRay, out Vector3 point)
@@ -104,19 +99,6 @@ namespace Deltatime.Player
 
             point = pointerRay.GetPoint(hitDistance);
             return true;
-        }
-
-        private void UpdateDirectionLine()
-        {
-            if (directionLine == null)
-            {
-                return;
-            }
-
-            directionLine.positionCount = 2;
-            Vector3 origin = transform.position + (Vector3.up * 0.08f);
-            directionLine.SetPosition(0, origin);
-            directionLine.SetPosition(1, origin + (AimDirection * directionLineLength));
         }
 
         private void ValidateConfiguration()
