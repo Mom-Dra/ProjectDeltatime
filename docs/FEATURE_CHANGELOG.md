@@ -21,15 +21,55 @@
 - 테스트 결과:
 - 남은 작업:
 
-## 2026-08-09 - 플레이어 Pistol 시각 루트 Y축 보정
+## 2026-08-09 - Shotgun 손 모델·총구 보정값 적용
 
-- 변경 유형: Pistol 장착 애니메이션의 손끝·몸체 전방 기준축 시각 보정, Stage1 애니메이션 스모크 확장
-- 변경 내용: **구현 완료**. `CharacterAnimationController`에 직렬화 가능한 `pistolVisualYawOffset` 기본값 `+36.1°`를 추가했다. 플레이어 입력 소스가 있고 현재 장비 스타일이 `Pistol`일 때만 시각 루트의 일반 및 대시 회전에 이 Y축 보정을 적용한다. 빈손·Rifle·Melee와 적은 0°를 유지한다. 게임플레이 `Player` Rigidbody 루트와 이동·조준·발사 방향은 변경하지 않으며, 이후 `WeaponVisualPresenter`가 기존처럼 총구를 마우스 조준 방향으로 보정한다.
-- 영향을 받은 시스템: 플레이어 Pistol Idle/이동/대시 시각, Humanoid 오른손·손끝 기준축, 총구 조준 보정의 입력 시각
+- 변경 유형: Shotgun 손 모델 및 실제 발사 총구 로컬 Transform 보정
+- 변경 내용: **구현 완료**. `Shotgun.asset`의 `heldModelLocalPosition`을 `(0.044, 0.118, -0.037)`, `heldModelLocalEulerAngles`를 `(2.878, 68.211, -91.666)`로 갱신했다. `heldModelLocalScale`은 이미 일치하는 `(1, 1, 1)`을 유지했고, `heldMuzzleLocalPosition`은 `(0, 0.071, 0.92)`로 갱신했다. 총구 로컬 회전 `(0, 0, 0)`은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어·적 Shotgun 오른손 장착 시각, Shotgun `Weapon Muzzle` 위치, 투사체 생성 시작점
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.15`로 갱신해 Shotgun 손 모델·총구 직렬화 보정값과 수동 확인 범위를 기록했다.
+- 테스트 결과: **미실행**. 에셋 직렬화 값은 정적으로 확인했으나 Unity Play Mode에서 Shotgun 손 그립·총구 축·투사체 출발점은 아직 확인하지 않았다.
+- 남은 작업: WeaponCalibration Play Mode에서 Shotgun 장착 상태의 손 그립, 총구 시각 위치, 실제 투사체 생성 위치를 수동 확인한다.
+
+## 2026-08-09 - Pistol Animator Idle 매핑 복구
+
+- 변경 유형: Pistol Animator Override Controller 클립 참조 재연결
+- 변경 내용: **구현 완료**. `Pistol.overrideController`의 기본 Idle 클립 Override를 이전 `Characters@Pistol Idle.fbx`에서 현재 `Pistol_Handgun Locomotion Pack/pistol idle.fbx`로 다시 연결했다. 전진·후진·좌·우 방향 이동 Override는 각각 현재 `pistol walk`, `pistol walk backward`, `pistol strafe`, `pistol strafe (2)` 클립을 이미 참조하고 있어 변경하지 않았고, 공용 Roll·Attack 매핑도 유지했다.
+- 영향을 받은 시스템: Pistol 장착 시 Idle 및 방향 이동 Animator 프로필
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Animation/Pistol.overrideController`, `ProjectDeltatime/Assets/Animations/Pistol_Handgun Locomotion Pack/pistol idle.fbx`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationAssetBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.13`으로 갱신해 Pistol Override의 Idle·방향 이동 매핑과 수동 확인 항목을 기록했다.
+- 테스트 결과: **부분 통과**. Override의 Idle GUID가 현재 `pistol idle.fbx` GUID와 일치하고, 네 방향 이동 GUID가 각 소스 FBX와 일치하는지 정적으로 확인했다. Unity Play Mode는 **미실행**이다.
+- 남은 작업: Play Mode에서 Pistol 장착 후 Idle, 전진, 후진, 좌·우 이동 전환을 수동 확인한다.
+
+## 2026-08-09 - Pistol 손 모델 최종 장착 보정
+
+- 변경 유형: Pistol 손 모델 Position/Rotation 보정값 갱신
+- 변경 내용: **구현 완료**. `Pistol.asset`의 `heldModelLocalPosition`을 `(0.08, 0.03, -0.039)`, `heldModelLocalEulerAngles`를 `(11.737, 65.521, -448.114)`, `heldModelLocalScale`을 `(0.65, 0.65, 0.65)`로 설정했다. 실제 발사 총구 로컬 보정값은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 Pistol 오른손 장착 시각, Tactical Pistol 모델 위치·회전·크기
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Pistol.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`의 Pistol 손 모델 직렬화 보정값을 새 값으로 갱신했다.
+- 테스트 결과: **미실행**. 에셋 직렬화 값은 정적으로 확인했으나 Unity Play Mode에서 최종 손 그립과 총구 시각 정렬은 아직 재확인하지 않았다.
+- 남은 작업: WeaponCalibration Play Mode에서 Pistol 장착 상태의 손 그립·총구 위치·조준 방향을 수동 확인한다.
+
+## 2026-08-09 - 총기 탄환 생성 위치를 시각 총구로 통일
+
+- 변경 유형: 총기 탄환 생성 위치 변경
+- 변경 내용: **구현 완료**. `WeaponController`의 일반 발사와 `DEADLINE` 준비 발사가 기존 Player 루트 `muzzle.position` 대신 공용 `Muzzle.position`을 사용하도록 변경했다. 커스텀 시각 무기가 장착된 Pistol은 `RightHand → Weapon Aim Pivot → Held Weapon Model → Weapon Muzzle`의 실제 시각 총구에서 탄환이 생성되며, 커스텀 총구가 없으면 기존 직렬화 총구로 폴백한다.
+- 영향을 받은 시스템: 플레이어 Pistol·Rifle·Shotgun 탄환 생성 위치, 총구 시각과 발사 시작점의 일치
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponVisualPresenter.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`에 실제 탄환 생성 위치가 `WeaponController.Muzzle` 프로퍼티를 따른다는 내용을 반영했다.
+- 테스트 결과: **미실행**. 소스 참조와 `git diff --check`는 확인했으나 Unity Play Mode에서 Pistol 총구와 탄환 생성 위치가 일치하는지 아직 확인하지 않았다.
+- 남은 작업: WeaponCalibration Play Mode에서 Pistol·Rifle·Shotgun의 발사 시각 위치와 투사체 출발점을 수동 확인한다.
+
+## 2026-08-09 - 플레이어 Pistol 시각 루트 Y축 보정 제거
+
+- 변경 유형: Pistol 장착 애니메이션의 임시 시각 회전 보정 제거, Stage1 애니메이션 스모크 원복
+- 변경 내용: **구현 완료**. Pistol 장착 시에만 적용하던 `+36.1°` 시각 루트 Y축 보정, 관련 공개 상태값, 대시 회전 보정과 Stage1 스모크 검증을 제거했다. 모든 장비 프로필은 다시 기존 시각 루트 기준 회전과 대시 방향 회전만 사용한다. 게임플레이 `Player` Rigidbody 루트, 이동·조준·발사 방향, `WeaponVisualPresenter`의 총구 조준 보정은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 Pistol Idle/이동/대시 시각, Humanoid 오른손·손끝 기준축, Stage1 애니메이션 스모크
 - 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterAnimationController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage1CharacterAnimationPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
-- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.12`로 갱신해 Pistol 전용 보정 범위, 대시 적용, 비영향 게임플레이 경로와 검증 상태를 기록했다.
-- 테스트 결과: **부분 통과**. 정적으로 Pistol 프로필만 `36.1°`, 나머지 프로필은 `0°`를 반환하고 일반·대시 시각 루트 회전 모두가 동일 보정값을 사용하는지 확인했으며 `git diff --check`를 통과했다. Stage1 Play Mode 스모크는 해당 값 검증을 추가했지만 Unity 배치 실행은 이전 작업에서 사용자 승인이 거부되어 **미실행**이다.
-- 남은 작업: **확인 불가**. Play Mode에서 Pistol 장착 시 손끝·초록색 몸체 forward Ray·청록색 총구 Ray의 수평 방향, 빈손 전환 후 0° 복귀, Pistol 대시 시 시각 방향을 수동 확인해야 한다.
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.14`로 갱신해 Pistol 전용 Y축 보정 제거와 남은 정렬 과제를 기록했다.
+- 테스트 결과: **부분 통과**. Pistol 전용 보정 필드·속성·회전 적용·스모크 단언이 제거됐고 `git diff --check`를 통과했다. Unity Play Mode 스모크는 **미실행**이다.
+- 남은 작업: **계획 필요**. Pistol 손끝·몸체 forward 정렬은 시각 루트 일괄 회전 대신 기준 포즈 보정, 조준 상체 레이어 또는 IK 방식 중 하나를 정해 구현해야 한다.
 
 ## 2026-08-09 - 플레이어 몸체 전방 Debug Ray
 

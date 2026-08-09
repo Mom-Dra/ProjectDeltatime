@@ -1,11 +1,38 @@
 fileFormatVersion: 2
 guid: 18b6cd37d98692b4b9e2367037b1f60a
+AssetOrigin:
+  serializedVersion: 1
+  productId: 319039
+  packageName: Low Poly Weapons Set
+  packageVersion: 1.0
+  assetPath: Assets/MR POLY/Low Poly Weapons Set/Models/Assault Rifle.fbx
+  uploadId: 755410
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 1
+    second: {fileID: 2100000, guid: 183a47cac17117445b74dc679c40dca3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 2
+    second: {fileID: 2100000, guid: 921b1394aa4fcc14ab255f02f1022e79, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 3
+    second: {fileID: 2100000, guid: 10d8711e1d7fc174ca729b93eaaa9850, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Glass
+    second: {fileID: 2100000, guid: a36325ea3a4c47e45a574b8166d7bc11, type: 2}
   materials:
-    materialImportMode: 0
+    materialImportMode: 2
     materialName: 0
     materialSearch: 1
     materialLocation: 1
@@ -16,8 +43,6 @@ ModelImporter:
     optimizeGameObjects: 0
     removeConstantScaleCurves: 0
     motionNodeName: 
-    rigImportErrors: 
-    rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -107,10 +132,3 @@ ModelImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 319039
-  packageName: Low Poly Weapons Set
-  packageVersion: 1.0
-  assetPath: Assets/MR POLY/Low Poly Weapons Set/Models/Assault Rifle.fbx
-  uploadId: 755410

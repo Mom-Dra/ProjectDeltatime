@@ -1,11 +1,33 @@
 fileFormatVersion: 2
 guid: 7395db57e5f3c2e4aa44bd20ecee1188
+AssetOrigin:
+  serializedVersion: 1
+  productId: 319039
+  packageName: Low Poly Weapons Set
+  packageVersion: 1.0
+  assetPath: Assets/MR POLY/Low Poly Weapons Set/Models/Tactical Pistol.fbx
+  uploadId: 755410
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 1
+    second: {fileID: 2100000, guid: 8f4f86d93c7591f43bbc1a34785f8d93, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 2
+    second: {fileID: 2100000, guid: e06dab71f0e68744bb27c3bdc8fbb767, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Color 3
+    second: {fileID: 2100000, guid: 4c31d99663de8c84a8973458d5c3f82d, type: 2}
   materials:
-    materialImportMode: 0
+    materialImportMode: 2
     materialName: 0
     materialSearch: 1
     materialLocation: 1
@@ -16,8 +38,6 @@ ModelImporter:
     optimizeGameObjects: 0
     removeConstantScaleCurves: 0
     motionNodeName: 
-    rigImportErrors: 
-    rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -107,10 +127,3 @@ ModelImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 319039
-  packageName: Low Poly Weapons Set
-  packageVersion: 1.0
-  assetPath: Assets/MR POLY/Low Poly Weapons Set/Models/Tactical Pistol.fbx
-  uploadId: 755410

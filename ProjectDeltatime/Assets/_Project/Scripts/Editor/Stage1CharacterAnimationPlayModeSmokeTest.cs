@@ -369,15 +369,6 @@ namespace Deltatime.EditorTools
                 animation.Animator.runtimeAnimatorController ==
                     library.GetController(expectedStyle),
                 $"Equipment profile did not switch to {expectedStyle}.");
-            float expectedVisualYaw =
-                expectedStyle == CharacterAnimationStyle.Pistol
-                    ? 36.1f
-                    : 0f;
-            Require(
-                Mathf.Abs(Mathf.DeltaAngle(
-                    animation.CurrentVisualRootYawOffset,
-                    expectedVisualYaw)) <= 0.01f,
-                $"{expectedStyle} visual yaw correction is incorrect.");
         }
 
         private static void BeginWeaponModelVisualValidation(

@@ -103,7 +103,7 @@ namespace Deltatime.Combat
                 !Definition.IsFirearm ||
                 clock < nextUseTime ||
                 projectilePrefab == null ||
-                muzzle == null ||
+                Muzzle == null ||
                 worldTime == null)
             {
                 return false;
@@ -180,7 +180,7 @@ namespace Deltatime.Combat
                 !Definition.IsFirearm ||
                 Ammunition <= 0 ||
                 projectilePrefab == null ||
-                muzzle == null ||
+                Muzzle == null ||
                 worldTime == null)
             {
                 return false;
@@ -403,7 +403,7 @@ namespace Deltatime.Combat
             {
                 Projectile projectile = Instantiate(
                     projectilePrefab,
-                    muzzle.position,
+                    Muzzle.position,
                     Quaternion.identity);
                 projectile.Initialize(
                     worldTime,
