@@ -21,6 +21,26 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - 무기 획득 효과음 완전 제거
+
+- 변경 유형: 전투 SFX 재생 정책 수정, 런타임 사운드 라이브러리 정리
+- 변경 내용: **구현 완료**. 플레이어가 빈손일 때의 최초 무기 획득음을 포함해 모든 무기 획득·교체·교환 효과음 재생을 제거했다. `WeaponPickup`은 장비 상태만 갱신하고 음향 호출을 하지 않으며, `SoundLibrary`·`SoundManager`·빌더에서도 `SFX_Weapon_Pickup.ogg`의 런타임 참조를 제거했다. 해당 파일은 후보 음원으로 보존하되 현재 게임에서 재생하지 않는다.
+- 영향을 받은 시스템: 플레이어 무기 최초 획득·교체·교환 피드백, 적 예약 픽업, SoundLibrary 에셋 구성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/README.md`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.40`으로 갱신해 무기 획득·교체·교환 효과음이 모두 미사용임을 반영했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 모드의 `SoundLibraryBuilder.BuildAndValidateFromCommandLine`이 사운드 라이브러리를 재생성·검증했고, `SoundManagerPlayModeSmokeTest.RunFromCommandLine`은 MainScene의 BGM·전투 SFX·DEADLINE 단발 시간 왜곡·PLAY 클릭음과 Tutorial 전환을 통과했다. `DeltatimeSoundLibrary.asset`과 런타임 스크립트에서 `weaponPickupClip`·`PlayWeaponPickup` 참조가 없음을 정적으로 확인했다.
+- 남은 작업: **확인 불가**. 추후 무기 획득 피드백이 필요해질 경우 현재 `SFX_Weapon_Pickup.ogg` 대신 게임의 짧은 조작 리듬에 맞는 후보를 별도 청감 비교 후 선택한다.
+
+## 2026-08-10 - DEADLINE 시간 왜곡 단발화 및 무기 교체음 제거
+
+- 변경 유형: DEADLINE SFX 재생 정책 수정, 무기 픽업·교체 피드백 조정
+- 변경 내용: **구현 완료**. `SoundManager.PlayDeadlineEnter`의 `SFX_Deadline_Enter_TimeWarp` 재생 소스를 비반복으로 바꿔 DEADLINE 진입 때 한 번만 재생되게 했다. `WeaponPickup`은 플레이어가 빈손일 때만 획득음을 재생하고, 기존 무기를 보유한 상태에서 다른 무기로 교체·교환할 때는 효과음을 재생하지 않는다. 적의 예약 픽업은 기존처럼 플레이어 효과음을 내지 않는다.
+- 영향을 받은 시스템: DEADLINE 진입 음향, 전역 SFX 수명, 플레이어 무기 획득·교체 피드백
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/README.md`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/README.md`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.39`로 갱신해 DEADLINE 시간 왜곡의 단발 정책과 무기 최초 획득·교체의 분리된 음향 규칙을 반영했다.
+- 테스트 결과: Unity 컴파일과 `SoundManagerPlayModeSmokeTest.RunFromCommandLine`으로 DEADLINE 진입 뒤 시간 왜곡 `AudioSource.loop == false`를 검증했다. 무기 교체 무음 분기는 `WeaponPickup`의 기존 무기 정의 존재 여부 조건으로 정적 확인했다.
+- 남은 작업: **확인 불가**. 실제 플레이에서 시간 왜곡음의 길이와 DEADLINE 유지 시간의 청감, 빈손 최초 획득음과 무기 교체 무음의 체감은 수동 확인이 필요하다.
+
 ## 2026-08-10 - 적 전투 식별 원 시야 동기화
 
 - 변경 유형: 적 시야 표시 버그 수정, 리플레이 전체 시야 계약 및 PlayMode 회귀 검증 보강

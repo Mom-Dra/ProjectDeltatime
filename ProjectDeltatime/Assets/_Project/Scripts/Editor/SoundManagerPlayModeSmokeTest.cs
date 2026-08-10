@@ -103,10 +103,12 @@ namespace Deltatime.EditorTools
                 manager.PlayMeleeImpact(MeleeImpactKind.Punch, Vector3.zero);
                 manager.PlayMeleeImpact(MeleeImpactKind.Bat, Vector3.zero);
                 manager.PlayWeaponThrow(Vector3.zero);
-                manager.PlayWeaponPickup();
                 manager.PlayUiClick();
                 manager.PlayDeadlineEnter();
                 Require(manager.IsDeadlineAudioActive, "DEADLINE enter audio did not activate.");
+                Require(
+                    !manager.IsDeadlineTimeWarpLooping,
+                    "DEADLINE time-warp audio must only play once per entry.");
                 manager.PlayDeadlineRelease();
                 Require(!manager.IsDeadlineAudioActive, "DEADLINE release audio did not stop.");
 

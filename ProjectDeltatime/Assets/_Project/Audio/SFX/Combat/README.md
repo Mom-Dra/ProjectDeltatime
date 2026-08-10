@@ -9,9 +9,8 @@
 | 주먹 적중 | `Impact/SFX_Punch_Hit_01.ogg`, `02.ogg` | Kenney Impact Sounds 1.0 | 실제 적에게 피해가 적용된 위치에서 변형 한 개 재생 |
 | 야구방망이 적중 | `Impact/SFX_Bat_Hit_01.ogg`, `02.ogg` | Kenney Impact Sounds 1.0 | 실제 적에게 피해가 적용된 위치에서 변형 한 개 재생 |
 | 무기 투척 | `SFX_Weapon_Throw.ogg` | Kenney RPG Audio | 투척물 생성 성공 시 총구 위치에서 재생 |
-| 무기 획득·교환 | `SFX_Weapon_Pickup.ogg` | Kenney Digital Audio | 플레이어의 획득·교환 성공 시 전역 재생 |
 
-적중·투척은 3D 거리 감쇠와 작은 피치 변형을 사용한다. 빗나간 근접 공격과 예약된 적의 픽업에는 플레이어 피드백음을 재생하지 않는다.
+적중·투척은 3D 거리 감쇠와 작은 피치 변형을 사용한다. 무기 획득·교체·교환과 예약된 적의 픽업에는 플레이어 피드백음을 재생하지 않는다. `SFX_Weapon_Pickup.ogg`는 현재 런타임 라이브러리에 연결하지 않으며, 추후 별도 청감 검토 뒤에만 재도입한다.
 
 ## 출처 및 라이선스
 

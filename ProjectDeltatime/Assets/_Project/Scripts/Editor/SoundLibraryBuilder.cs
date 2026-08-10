@@ -59,7 +59,6 @@ namespace Deltatime.EditorTools
                     "Assets/_Project/Audio/SFX/Combat/Impact/SFX_Bat_Hit_01.ogg",
                     "Assets/_Project/Audio/SFX/Combat/Impact/SFX_Bat_Hit_02.ogg"),
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Combat/SFX_Weapon_Throw.ogg"),
-                Load<AudioClip>("Assets/_Project/Audio/SFX/Combat/SFX_Weapon_Pickup.ogg"),
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Click/click.ogg"),
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_Impact.mp3"),
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_TimeWarp.mp3"),

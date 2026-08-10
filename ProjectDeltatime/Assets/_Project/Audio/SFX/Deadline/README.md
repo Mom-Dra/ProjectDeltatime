@@ -14,13 +14,13 @@
 ## Unity 재생 기준
 
 - 모두 플레이어·HUD에 귀속된 2D 전역 효과음으로 재생한다. 월드 위치를 따르는 3D 감쇠는 사용하지 않는다.
-- 진입 충격은 0초에 재생해 Q 입력의 즉각성을 보장한다. 시간 왜곡은 별도 `AudioSource`에서 동시에 재생해 충격음을 가리지 않게 한다.
+- 진입 충격은 0초에 재생해 Q 입력의 즉각성을 보장한다. 시간 왜곡은 별도 `AudioSource`에서 동시에 한 번만 재생해 충격음을 가리지 않게 한다.
 - 해제음은 성공·실패와 관계없이 월드 하드 프리즈가 풀리는 순간 한 번만 재생한다. Tutorial 성공 전용 보상음은 별도 에셋으로 추가한다.
 - DEADLINE 활성 중에는 `SoundManager`가 BGM을 볼륨 페이드로 약 -8 dB 덕킹한다. SFX 재생 속도는 월드 시간에 연동하지 않는다.
 
 ## 구현 연결 지점
 
-`ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`의 `Activated`·`Released` 이벤트를 `SoundManager`가 씬 로드 때 자동 구독한다. 진입 시 충격음과 반복 시간 왜곡음을 시작하고, 해제 시 왜곡음을 멈춘 뒤 해제 변형 한 개를 재생한다.
+`ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`의 `Activated`·`Released` 이벤트를 `SoundManager`가 씬 로드 때 자동 구독한다. 진입 시 충격음과 단발 시간 왜곡음을 시작하고, 해제 시 시간 왜곡 재생이 남아 있으면 멈춘 뒤 해제 변형 한 개를 재생한다.
 
 ## 출처 및 라이선스
 

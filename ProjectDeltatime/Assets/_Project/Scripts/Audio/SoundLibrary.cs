@@ -34,7 +34,6 @@ namespace Deltatime.Audio
         [SerializeField] private AudioClip[] punchHitClips;
         [SerializeField] private AudioClip[] batHitClips;
         [SerializeField] private AudioClip weaponThrowClip;
-        [SerializeField] private AudioClip weaponPickupClip;
 
         [Header("UI")]
         [SerializeField] private AudioClip uiClickClip;
@@ -49,7 +48,6 @@ namespace Deltatime.Audio
         public AudioClip StageBgm => stageBgm;
         public AudioClip EndingBgm => endingBgm;
         public AudioClip WeaponThrowClip => weaponThrowClip;
-        public AudioClip WeaponPickupClip => weaponPickupClip;
         public AudioClip UiClickClip => uiClickClip;
         public AudioClip DeadlineEnterImpactClip => deadlineEnterImpactClip;
         public AudioClip DeadlineTimeWarpClip => deadlineTimeWarpClip;
@@ -91,7 +89,6 @@ namespace Deltatime.Audio
             AudioClip[] punchHits,
             AudioClip[] batHits,
             AudioClip throwClip,
-            AudioClip pickupClip,
             AudioClip uiClick,
             AudioClip deadlineImpact,
             AudioClip deadlineTimeWarp,
@@ -105,7 +102,6 @@ namespace Deltatime.Audio
             punchHitClips = punchHits;
             batHitClips = batHits;
             weaponThrowClip = throwClip;
-            weaponPickupClip = pickupClip;
             uiClickClip = uiClick;
             deadlineEnterImpactClip = deadlineImpact;
             deadlineTimeWarpClip = deadlineTimeWarp;
@@ -136,7 +132,7 @@ namespace Deltatime.Audio
             }
 
             if (!HasClips(punchHitClips) || !HasClips(batHitClips) ||
-                weaponThrowClip == null || weaponPickupClip == null ||
+                weaponThrowClip == null ||
                 uiClickClip == null ||
                 deadlineEnterImpactClip == null || deadlineTimeWarpClip == null ||
                 !HasClips(deadlineReleaseClips))

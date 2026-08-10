@@ -1,4 +1,3 @@
-using Deltatime.Audio;
 using Deltatime.Enemies;
 using UnityEngine;
 
@@ -102,11 +101,6 @@ namespace Deltatime.Combat
             else
             {
                 Initialize(previousDefinition, previousAmmunition);
-            }
-
-            if (ignoreReservation)
-            {
-                SoundManager.Instance?.PlayWeaponPickup();
             }
 
             return true;

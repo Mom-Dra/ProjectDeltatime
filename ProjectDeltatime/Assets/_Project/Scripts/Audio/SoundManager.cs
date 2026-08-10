@@ -40,6 +40,8 @@ namespace Deltatime.Audio
         public SoundLibrary Library => library;
         public AudioClip CurrentBgmClip => requestedBgmClip;
         public bool IsDeadlineAudioActive => deadlineActive;
+        public bool IsDeadlineTimeWarpLooping =>
+            deadlineWarpSource != null && deadlineWarpSource.loop;
         public int UiClickPlayCount => uiClickPlayCount;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -127,11 +129,6 @@ namespace Deltatime.Audio
                 20f);
         }
 
-        public void PlayWeaponPickup()
-        {
-            PlayGlobal(library == null ? null : library.WeaponPickupClip, 0.78f);
-        }
-
         public void PlayUiClick()
         {
             if (library == null || library.UiClickClip == null)
@@ -158,7 +155,7 @@ namespace Deltatime.Audio
             if (warpClip != null)
             {
                 deadlineWarpSource.clip = warpClip;
-                deadlineWarpSource.loop = true;
+                deadlineWarpSource.loop = false;
                 deadlineWarpSource.volume = 0.68f;
                 deadlineWarpSource.Play();
             }
