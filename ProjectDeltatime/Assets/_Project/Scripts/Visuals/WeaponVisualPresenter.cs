@@ -1,5 +1,6 @@
 using Deltatime.Combat;
 using Deltatime.Player;
+using Deltatime.Replay;
 using UnityEngine;
 
 namespace Deltatime.Visuals
@@ -125,6 +126,8 @@ namespace Deltatime.Visuals
             ApplyModelTransforms(definition);
             weapon.SetCustomHeldVisualActive(true);
             characterVisual?.RefreshRenderers();
+            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+                displayedModel.transform);
         }
 
         private void ApplyModelTransforms(WeaponDefinition definition)

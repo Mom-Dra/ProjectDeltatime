@@ -6,6 +6,7 @@ using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.Visuals;
+using Deltatime.Vision;
 using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -253,6 +254,7 @@ namespace Deltatime.EditorTools
                 "Stage5 south exterior cutaway did not initialize.");
 
             ValidateCombatIdentityRings(scene);
+            ValidateCombatIdentityRingVisibility(enemies);
             ValidateCameraBoundsAtExtremes(
                 player.transform,
                 camera,
@@ -305,6 +307,55 @@ namespace Deltatime.EditorTools
                         renderer.reflectionProbeUsage == ReflectionProbeUsage.Off,
                     $"Stage5 identity marker still uses scene lighting for {owners[i]}.");
             }
+        }
+
+        private static void ValidateCombatIdentityRingVisibility(
+            EnemyHealth[] enemies)
+        {
+            VisionCone vision = UnityEngine.Object.FindFirstObjectByType<VisionCone>();
+            Require(vision != null && !vision.HasUnlimitedVision,
+                "Stage5 identity-ring visibility requires limited player vision.");
+
+            int hiddenEnemyCount = 0;
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                EnemyCombatant combatant = enemies[i] == null
+                    ? null
+                    : enemies[i].GetComponent<EnemyCombatant>();
+                Renderer bodyRenderer = enemies[i] == null
+                    ? null
+                    : enemies[i].GetComponent<Renderer>();
+                Transform ring = enemies[i] == null
+                    ? null
+                    : enemies[i].transform.Find("Combat Identity Ring");
+                Renderer ringRenderer = ring == null
+                    ? null
+                    : ring.GetComponent<Renderer>();
+                Require(combatant != null && bodyRenderer != null &&
+                        ringRenderer != null,
+                    $"Stage5 enemy identity-ring references are missing for {enemies[i]?.name}.");
+
+                bool expectedVisible =
+                    vision.ContainsWorldPoint(bodyRenderer.bounds.center) &&
+                    !combatant.IsDead;
+                Require(ringRenderer.enabled == expectedVisible,
+                    $"Stage5 identity ring visibility diverged for {enemies[i].name}: " +
+                    $"expected={expectedVisible}, actual={ringRenderer.enabled}.");
+                Require(combatant.TryGetReplayVisibility(
+                            ringRenderer,
+                            out bool omniscientVisible) &&
+                        omniscientVisible == !combatant.IsDead,
+                    $"Stage5 identity ring is not registered for omniscient replay: " +
+                    enemies[i].name);
+
+                if (!expectedVisible)
+                {
+                    hiddenEnemyCount++;
+                }
+            }
+
+            Require(hiddenEnemyCount > 0,
+                "Stage5 identity-ring visibility smoke did not exercise an enemy outside player vision.");
         }
 
         private static void ValidateCameraBoundsAtExtremes(

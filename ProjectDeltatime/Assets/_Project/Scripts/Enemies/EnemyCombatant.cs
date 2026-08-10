@@ -13,6 +13,8 @@ namespace Deltatime.Enemies
     [RequireComponent(typeof(WeaponController))]
     public abstract class EnemyCombatant : EnemyBehavior
     {
+        private const string CombatIdentityRingName = "Combat Identity Ring";
+
         public enum CombatState
         {
             Detecting,
@@ -101,6 +103,7 @@ namespace Deltatime.Enemies
         private EquipmentMode currentEquipmentMode;
         private bool equipmentModeInitialized;
         private WeaponPickup weaponTarget;
+        private Renderer combatIdentityRingRenderer;
 
         public CombatState CurrentState { get; private set; } =
             CombatState.Detecting;
@@ -137,6 +140,12 @@ namespace Deltatime.Enemies
                 enabled = false;
                 return;
             }
+
+            Transform combatIdentityRing =
+                transform.Find(CombatIdentityRingName);
+            combatIdentityRingRenderer = combatIdentityRing == null
+                ? null
+                : combatIdentityRing.GetComponent<Renderer>();
 
             weapon.EquipmentChanged += HandleEquipmentChanged;
             if (!weapon.HasUsableWeapon)
@@ -265,6 +274,12 @@ namespace Deltatime.Enemies
             if (targetRenderer == weaponRenderer)
             {
                 visible = !IsDead && weapon != null && weapon.HasWeapon;
+                return true;
+            }
+
+            if (targetRenderer == combatIdentityRingRenderer)
+            {
+                visible = !IsDead;
                 return true;
             }
 
@@ -919,6 +934,12 @@ namespace Deltatime.Enemies
             weaponRenderer.enabled = visible &&
                                      weapon.HasWeapon &&
                                      !weapon.CustomHeldVisualActive;
+            if (!playerVision.HasUnlimitedVision &&
+                combatIdentityRingRenderer != null)
+            {
+                combatIdentityRingRenderer.enabled = visible && !IsDead;
+            }
+
             if (!visible)
             {
                 SetWarningVisible(false);

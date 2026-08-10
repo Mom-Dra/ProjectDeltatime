@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using Deltatime.Combat;
 using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
@@ -25,6 +26,7 @@ namespace Deltatime.EditorTools
         private static bool setupComplete;
         private static bool slowStarted;
         private static bool slowReleased;
+        private static bool animationSourceRemoved;
         private static bool replayRequested;
         private static bool replayValidated;
         private static bool observedSourceAdvance;
@@ -37,6 +39,10 @@ namespace Deltatime.EditorTools
         private static WorldTimeActivity activity;
         private static MethodInfo activateDeadline;
         private static MethodInfo releaseDeadline;
+        private static Animator originalAnimator;
+        private static CharacterAnimationController animationSource;
+        private static int legacyBoneTransformsPerFrame;
+        private static int trackedVisualsBeforeEquipment;
 
         static ReplayPlayModeSmokeTest()
         {
@@ -111,6 +117,7 @@ namespace Deltatime.EditorTools
             setupComplete = false;
             slowStarted = false;
             slowReleased = false;
+            animationSourceRemoved = false;
             replayRequested = false;
             replayValidated = false;
             observedSourceAdvance = false;
@@ -123,6 +130,10 @@ namespace Deltatime.EditorTools
             activity = null;
             activateDeadline = null;
             releaseDeadline = null;
+            originalAnimator = null;
+            animationSource = null;
+            legacyBoneTransformsPerFrame = 0;
+            trackedVisualsBeforeEquipment = 0;
         }
 
         private static void Tick()
@@ -154,7 +165,10 @@ namespace Deltatime.EditorTools
                     activateDeadline.Invoke(deadline, null);
                     Require(deadline.IsActive,
                         "Replay smoke could not start the strong-slow window.");
-                    TriggerAttackAnimation("strong-slow");
+                    DriveAnimationEvent(
+                        "strong-slow AttackB",
+                        "AttackB",
+                        "Assets/_Project/AutomaticRifle.asset");
                     PlayerHealth slowPlayer =
                         UnityEngine.Object.FindFirstObjectByType<PlayerHealth>();
                     Require(slowPlayer != null,
@@ -172,8 +186,17 @@ namespace Deltatime.EditorTools
                     releaseDeadline.Invoke(deadline, null);
                     activity.SetAimTurn(0f);
                     activity.Pulse(1f, 1f);
+                    DriveAnimationEvent("post-freeze Roll", "Roll", null);
                     Require(!deadline.IsActive,
                         "Replay smoke could not release the strong-slow window.");
+                }
+
+                if (slowReleased && !animationSourceRemoved && elapsed >= 2.75d)
+                {
+                    animationSourceRemoved = true;
+                    Require(animationSource != null,
+                        "Replay smoke animation source is missing before removal.");
+                    UnityEngine.Object.Destroy(animationSource);
                 }
 
                 if (slowReleased && !replayRequested && elapsed >= 3d)
@@ -200,6 +223,10 @@ namespace Deltatime.EditorTools
                         "Normalized replay source time never advanced.");
                     Require(observedAftermathRecoveryAdvance,
                         "Deadline camera recovery never advanced smoothly.");
+                    Require(replay.HasAdvancedReplayProxyAnimator,
+                        "Replay proxy Animator never advanced on the unscaled replay clock.");
+                    Require(replay.HasReplayProxyStateTransition,
+                        "Replay proxy Animator never entered a recorded animation state.");
                     SessionState.SetString(PhaseKey, "stopping");
                     EditorApplication.isPlaying = false;
                 }
@@ -233,7 +260,11 @@ namespace Deltatime.EditorTools
                 "Replay smoke dependencies are missing.");
 
             activity.Pulse(1f, 1.5f);
-            TriggerAttackAnimation("normal-speed");
+            trackedVisualsBeforeEquipment = replay.TrackedVisualCount;
+            DriveAnimationEvent(
+                "normal-speed AttackA",
+                "AttackA",
+                "Assets/_Project/MeleeWeapon.asset");
 
             PlayerHealth player = UnityEngine.Object.FindFirstObjectByType<
                 PlayerHealth>();
@@ -245,36 +276,69 @@ namespace Deltatime.EditorTools
             setupComplete = true;
         }
 
-        private static void TriggerAttackAnimation(string phase)
+        private static void DriveAnimationEvent(
+            string phase,
+            string triggerName,
+            string weaponAssetPath)
         {
             CharacterAnimationController[] animationControllers =
                 UnityEngine.Object.FindObjectsByType<
                     CharacterAnimationController>(
                     FindObjectsInactive.Exclude,
                     FindObjectsSortMode.None);
-            bool attackTriggered = false;
+            bool eventTriggered = false;
             for (int i = 0; i < animationControllers.Length; i++)
             {
                 CharacterAnimationController controller =
                     animationControllers[i];
-                attackTriggered |=
-                    controller.TryPlayMeleeAttackAnimation();
-                if (!attackTriggered &&
-                    controller.Animator != null &&
-                    HasAnimatorParameter(
-                        controller.Animator,
-                        "AttackA"))
+                if (controller.Animator == null ||
+                    !HasAnimatorParameter(controller.Animator, triggerName))
                 {
-                    // Pistol gameplay intentionally rejects its placeholder
-                    // melee attack. The smoke test drives the existing
-                    // trigger directly only to verify replay pose capture.
-                    controller.Animator.SetTrigger("AttackA");
-                    attackTriggered = true;
+                    continue;
                 }
+
+                originalAnimator ??= controller.Animator;
+                animationSource ??= controller;
+                if (weaponAssetPath != null)
+                {
+                    WeaponDefinition definition =
+                        AssetDatabase.LoadAssetAtPath<
+                            WeaponDefinition>(weaponAssetPath);
+                    WeaponController weapon =
+                        controller.GetComponent<WeaponController>();
+                    Require(definition != null && weapon != null,
+                        $"Replay smoke weapon is missing: {weaponAssetPath}.");
+                    weapon.Equip(
+                        definition,
+                        definition.AmmunitionCapacity);
+                }
+
+                controller.SetFloatParameter(
+                    Animator.StringToHash("MoveX"),
+                    triggerName == "Roll" ? -0.5f : 0.75f);
+                controller.SetFloatParameter(
+                    Animator.StringToHash("MoveY"),
+                    triggerName == "Roll" ? 0.8f : 0.35f);
+                controller.SetTriggerParameter(
+                    Animator.StringToHash(triggerName));
+                SkinnedMeshRenderer[] skinned =
+                    controller.VisualRoot.GetComponentsInChildren<
+                        SkinnedMeshRenderer>(true);
+                legacyBoneTransformsPerFrame = 0;
+                for (int rendererIndex = 0;
+                     rendererIndex < skinned.Length;
+                     rendererIndex++)
+                {
+                    legacyBoneTransformsPerFrame +=
+                        skinned[rendererIndex].bones.Length;
+                }
+
+                eventTriggered = true;
+                break;
             }
 
-            Require(attackTriggered,
-                $"Replay smoke could not trigger a {phase} attack Animator state.");
+            Require(eventTriggered,
+                $"Replay smoke could not trigger {phase}.");
         }
 
         private static bool HasAnimatorParameter(
@@ -312,15 +376,52 @@ namespace Deltatime.EditorTools
                 $"{replay.LongestDeadlineCinematicDuration:0.000}s.");
             Require(
                 replay.TrackedAnimatedVisualCount >= 1 &&
-                replay.RecordedAnimatedPoseCount >
-                replay.TrackedAnimatedVisualCount &&
+                replay.RecordedAnimatedPoseCount == 0 &&
                 replay.HasRecordedAnimatedMotion &&
                 replay.ActiveAnimatedReplayVisualCount >= 1,
-                $"Animated replay proxy is incomplete: tracked=" +
-                $"{replay.TrackedAnimatedVisualCount}, poses=" +
-                $"{replay.RecordedAnimatedPoseCount}, motion=" +
-                $"{replay.HasRecordedAnimatedMotion}, active=" +
+                $"Animator replay proxy is incomplete: tracked=" +
+                $"{replay.TrackedAnimatedVisualCount}, bonePoses=" +
+                $"{replay.RecordedAnimatedPoseCount}, events=" +
+                $"{replay.RecordedAnimationEventCount}, active=" +
                 $"{replay.ActiveAnimatedReplayVisualCount}.");
+            ReplayMemoryStatistics memory = replay.GetMemoryStatistics();
+            Require(
+                memory.BonePoseCount == 0 &&
+                memory.TrackedActorCount >= 1 &&
+                memory.AnimationEventCount >= 7 &&
+                replay.RecordedAnimationControllerChangeCount >= 2 &&
+                memory.AnimationCheckpointCount >= 2 &&
+                memory.AnimationTransformSampleCount >= 1 &&
+                memory.EstimatedBytes > 0 &&
+                legacyBoneTransformsPerFrame > 0 &&
+                replay.TrackedVisualCount >=
+                trackedVisualsBeforeEquipment + 2,
+                $"Replay memory diagnostics are incomplete: actors=" +
+                $"{memory.TrackedActorCount}, events={memory.AnimationEventCount}, " +
+                $"checkpoints={memory.AnimationCheckpointCount}, transforms=" +
+                $"{memory.AnimationTransformSampleCount}, bones=" +
+                $"{memory.BonePoseCount}, legacyBonesPerFrame=" +
+                $"{legacyBoneTransformsPerFrame}.");
+            Require(
+                replay.HasRecordedAnimationTrigger(
+                    Animator.StringToHash("AttackA")) &&
+                replay.HasRecordedAnimationTrigger(
+                    Animator.StringToHash("AttackB")) &&
+                replay.HasRecordedAnimationTrigger(
+                    Animator.StringToHash("Roll")),
+                "Replay did not retain AttackA, AttackB, and Roll trigger order.");
+            Animator proxyAnimator = replay.FirstReplayProxyAnimator;
+            Require(
+                animationSourceRemoved && animationSource == null &&
+                proxyAnimator != null &&
+                proxyAnimator != originalAnimator &&
+                ReplayAnimatorProxyRegistry.IsProxy(proxyAnimator) &&
+                !ReplayAnimatorProxyRegistry.IsProxy(originalAnimator) &&
+                proxyAnimator.updateMode == AnimatorUpdateMode.UnscaledTime &&
+                Mathf.Approximately(proxyAnimator.speed, 0f) &&
+                replay.AreReplayProxyGameplayComponentsDisabled,
+                "Replay animation did not survive source removal on a distinct " +
+                "manual-unscaled proxy Animator.");
             Require(CountReplayHitFlashes() >= 2,
                 "Replay did not retain both normal and strong-slow hit VFX event tracks.");
             Require(Mathf.Approximately(Time.timeScale, 1f),

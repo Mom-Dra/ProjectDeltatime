@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Deltatime.Combat;
+using Deltatime.Replay;
 using UnityEngine;
 
 namespace Deltatime.Visuals
@@ -26,6 +27,11 @@ namespace Deltatime.Visuals
             AnimatorStateInfo stateInfo,
             int layerIndex)
         {
+            if (ReplayAnimatorProxyRegistry.IsProxy(animator))
+            {
+                return;
+            }
+
             impactedAnimators.Remove(animator.GetInstanceID());
         }
 
@@ -34,6 +40,11 @@ namespace Deltatime.Visuals
             AnimatorStateInfo stateInfo,
             int layerIndex)
         {
+            if (ReplayAnimatorProxyRegistry.IsProxy(animator))
+            {
+                return;
+            }
+
             int animatorId = animator.GetInstanceID();
             if (stateInfo.normalizedTime < impactNormalizedTime ||
                 impactedAnimators.Contains(animatorId))
@@ -51,6 +62,11 @@ namespace Deltatime.Visuals
             AnimatorStateInfo stateInfo,
             int layerIndex)
         {
+            if (ReplayAnimatorProxyRegistry.IsProxy(animator))
+            {
+                return;
+            }
+
             impactedAnimators.Remove(animator.GetInstanceID());
         }
     }

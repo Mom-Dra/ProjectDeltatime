@@ -13,6 +13,8 @@ namespace Deltatime.EditorTools
             {
                 ValidateNormalAndSlowRecordingsHaveEqualReplayLength();
                 ValidateVariableScaleEventOrder();
+                ValidateHardFreezeCompression();
+                ValidateRecordingBudgetPolicy();
                 if (!Mathf.Approximately(Time.timeScale, 1f))
                 {
                     throw new InvalidOperationException(
@@ -95,6 +97,54 @@ namespace Deltatime.EditorTools
                 clock.ReplayElapsedTime,
                 0.125f,
                 "Variable-scale normalized duration");
+        }
+
+        private static void ValidateHardFreezeCompression()
+        {
+            ReplayRecordingClock clock = default;
+            clock.Advance(0.5f, 0.5f);
+            float beforeFreeze = clock.ReplayElapsedTime;
+            for (int i = 0; i < 200; i++)
+            {
+                clock.Advance(0.05f, 0f);
+            }
+
+            RequireApproximately(
+                clock.ReplayElapsedTime,
+                beforeFreeze,
+                "Hard-freeze replay duration");
+            RequireApproximately(
+                clock.SourceElapsedTime,
+                10.5f,
+                "Hard-freeze source duration");
+        }
+
+        private static void ValidateRecordingBudgetPolicy()
+        {
+            ReplayRecordingLimitReason none = ReplayRecordingBudget.Evaluate(
+                59f,
+                1024L,
+                60f,
+                2048L);
+            ReplayRecordingLimitReason duration =
+                ReplayRecordingBudget.Evaluate(
+                    60f,
+                    1024L,
+                    60f,
+                    2048L);
+            ReplayRecordingLimitReason memory =
+                ReplayRecordingBudget.Evaluate(
+                    59f,
+                    2048L,
+                    60f,
+                    2048L);
+            if (none != ReplayRecordingLimitReason.None ||
+                duration != ReplayRecordingLimitReason.SourceDuration ||
+                memory != ReplayRecordingLimitReason.MemoryBudget)
+            {
+                throw new InvalidOperationException(
+                    "Replay recording budget policy did not stop explicitly at its limits.");
+            }
         }
 
         private static void RequireApproximately(

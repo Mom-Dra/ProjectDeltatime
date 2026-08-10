@@ -2,6 +2,7 @@ using Deltatime.Combat;
 using Deltatime.Enemies;
 using Deltatime.InputSystem;
 using Deltatime.Player;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using UnityEngine;
 
@@ -49,6 +50,7 @@ namespace Deltatime.Visuals
         private float rollVisualTimeRemaining;
 
         public Animator Animator => animator;
+        public Transform VisualRoot => visualRoot;
         public CharacterAnimationStyle CurrentStyle => currentStyle;
         public bool IsEnemy => enemyMotor != null;
 
@@ -62,6 +64,10 @@ namespace Deltatime.Visuals
         private void OnEnable()
         {
             Subscribe();
+            StageReplayController.ActiveRecorder?.RegisterAnimationSource(this);
+            StageReplayController.ActiveRecorder?.RecordAnimatorActive(
+                this,
+                true);
         }
 
         private void Update()
@@ -83,6 +89,9 @@ namespace Deltatime.Visuals
 
         private void OnDisable()
         {
+            StageReplayController.ActiveRecorder?.RecordAnimatorActive(
+                this,
+                false);
             Unsubscribe();
         }
 
@@ -232,7 +241,7 @@ namespace Deltatime.Visuals
 
             currentStyle = nextStyle;
             currentController = nextController;
-            animator.runtimeAnimatorController = nextController;
+            SetRuntimeAnimatorController(nextController);
             if (nextController != null && animator.isActiveAndEnabled)
             {
                 animator.Rebind();
@@ -281,12 +290,12 @@ namespace Deltatime.Visuals
                 : transform.InverseTransformDirection(
                     worldDirection.normalized);
             float deltaTime = UnityEngine.Time.unscaledDeltaTime;
-            animator.SetFloat(
+            SetFloatParameter(
                 MoveXHash,
                 localDirection.x * magnitude,
                 directionDamping,
                 deltaTime);
-            animator.SetFloat(
+            SetFloatParameter(
                 MoveYHash,
                 localDirection.z * magnitude,
                 directionDamping,
@@ -301,9 +310,9 @@ namespace Deltatime.Visuals
                 rollDirection = playerDash.DashDirection;
                 rollDirection.y = 0f;
                 rollVisualTimeRemaining = rollVisualDuration;
-                animator.ResetTrigger(AttackAHash);
-                animator.ResetTrigger(AttackBHash);
-                animator.SetTrigger(RollHash);
+                ResetTriggerParameter(AttackAHash);
+                ResetTriggerParameter(AttackBHash);
+                SetTriggerParameter(RollHash);
             }
 
             if (rollVisualTimeRemaining > 0f)
@@ -348,8 +357,92 @@ namespace Deltatime.Visuals
 
             int trigger = useAlternateAttack ? AttackBHash : AttackAHash;
             useAlternateAttack = !useAlternateAttack;
-            animator.SetTrigger(trigger);
+            SetTriggerParameter(trigger);
             return true;
+        }
+
+        /// <summary>
+        /// Extensible Animator adapter used by gameplay and replay recording.
+        /// Continuous parameters are sampled without duplicates by the replay
+        /// track; triggers are emitted explicitly because Animator does not expose
+        /// a reliable readable trigger value after controller evaluation.
+        /// </summary>
+        public void SetFloatParameter(
+            int parameterHash,
+            float value,
+            float dampTime = 0f,
+            float deltaTime = 0f)
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            if (dampTime > 0f && deltaTime > 0f)
+            {
+                animator.SetFloat(
+                    parameterHash,
+                    value,
+                    dampTime,
+                    deltaTime);
+            }
+            else
+            {
+                animator.SetFloat(parameterHash, value);
+            }
+        }
+
+        public void SetBoolParameter(int parameterHash, bool value)
+        {
+            if (animator != null)
+            {
+                animator.SetBool(parameterHash, value);
+            }
+        }
+
+        public void SetIntegerParameter(int parameterHash, int value)
+        {
+            if (animator != null)
+            {
+                animator.SetInteger(parameterHash, value);
+            }
+        }
+
+        public void SetTriggerParameter(int parameterHash)
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            animator.SetTrigger(parameterHash);
+            StageReplayController.ActiveRecorder?.RecordAnimatorTrigger(
+                this,
+                parameterHash,
+                true);
+        }
+
+        public void ResetTriggerParameter(int parameterHash)
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            animator.ResetTrigger(parameterHash);
+            StageReplayController.ActiveRecorder?.RecordAnimatorTrigger(
+                this,
+                parameterHash,
+                false);
+        }
+
+        private void SetRuntimeAnimatorController(
+            RuntimeAnimatorController controller)
+        {
+            animator.runtimeAnimatorController = controller;
+            StageReplayController.ActiveRecorder?.RecordAnimatorController(
+                this,
+                controller);
         }
 
         private void HandleAttackPerformed()

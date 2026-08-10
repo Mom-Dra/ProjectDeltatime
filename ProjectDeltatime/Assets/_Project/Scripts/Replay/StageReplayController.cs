@@ -7,6 +7,7 @@ using Deltatime.Player;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
 using Deltatime.Vision;
+using Deltatime.Visuals;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -34,14 +35,27 @@ namespace Deltatime.Replay
         [SerializeField, Min(0f)] private float endHoldDuration = 0.65f;
         [SerializeField] private bool loop = true;
 
+        [Header("Recording Budget")]
+        [Tooltip("Maximum wall-clock recording duration. Recording stops with an " +
+                 "explicit warning; captured data remains replayable.")]
+        [SerializeField, Min(1f)] private float maximumSourceRecordingDuration =
+            300f;
+        [Tooltip("Estimated replay payload budget in MiB. The final sample is " +
+                 "kept and recording stops explicitly when the budget is reached.")]
+        [SerializeField, Min(1)] private int memoryBudgetMegabytes = 64;
+        [SerializeField, Min(0.25f)] private float animationCheckpointInterval =
+            2f;
+
         [Header("Renderer Discovery")]
         [Tooltip("Optional dynamic gameplay roots captured every replay sample. " +
-                 "When empty, replay retains its legacy full-renderer scan.")]
+                 "When empty, replay uses an initial cache plus explicit runtime registration.")]
         [SerializeField] private Transform[] rendererDiscoveryRoots =
             Array.Empty<Transform>();
         [Tooltip("Full-scene fallback interval for transient renderers outside the " +
-                 "configured dynamic roots. Zero retains the legacy per-sample scan.")]
-        [SerializeField, Min(0f)] private float fallbackRendererDiscoveryInterval;
+                 "configured dynamic roots. Zero disables repeated scans after the " +
+                 "initial cache; spawned replay visuals should register explicitly.")]
+        [SerializeField, Min(0f)] private float fallbackRendererDiscoveryInterval =
+            1f;
 
         [Header("Deadline Replay Camera")]
         // Compatibility: existing scenes serialize these legacy pacing values.
@@ -89,21 +103,28 @@ namespace Deltatime.Replay
         private readonly Dictionary<int, VisualTrack> tracksByInstanceId =
             new Dictionary<int, VisualTrack>();
         private readonly List<VisualTrack> tracks = new List<VisualTrack>();
+        private readonly Dictionary<int, ReplayAnimationTrack>
+            animationTracksByInstanceId =
+                new Dictionary<int, ReplayAnimationTrack>();
+        private readonly List<ReplayAnimationTrack> animationTracks =
+            new List<ReplayAnimationTrack>();
+        private readonly HashSet<int> animationRendererIds = new HashSet<int>();
         private readonly Dictionary<int, LightTrack> lightTracksByInstanceId =
             new Dictionary<int, LightTrack>();
         private readonly List<LightTrack> lightTracks = new List<LightTrack>();
         private readonly HashSet<int> visibleRendererIds = new HashSet<int>();
+        private readonly HashSet<int> explicitlyRegisteredRendererIds =
+            new HashSet<int>();
         private readonly List<Renderer> rendererCandidates = new List<Renderer>();
         private readonly HashSet<int> rendererCandidateIds = new HashSet<int>();
         private readonly List<Renderer> fallbackRendererCandidates =
             new List<Renderer>();
         private readonly List<Renderer> immediateRegistrationBuffer =
             new List<Renderer>(8);
+        private readonly List<Renderer> dynamicRendererBuffer =
+            new List<Renderer>(64);
         private readonly List<MonoBehaviour> disabledBehaviours =
             new List<MonoBehaviour>();
-        private readonly Dictionary<Animator, AnimatorCullingMode>
-            recordedAnimatorCullingModes =
-                new Dictionary<Animator, AnimatorCullingMode>();
 
         private Transform replayRoot;
         private Light omniscientFillLight;
@@ -120,6 +141,8 @@ namespace Deltatime.Replay
         private bool lastCapturedDeadlineState;
         private float nextFallbackRendererDiscoveryTime;
         private bool fallbackRendererDiscoveryInitialized;
+        private bool recordingLimitReached;
+        private ReplayRecordingLimitReason recordingLimitReason;
 
         public bool IsReplaying { get; private set; }
         public bool IsOmniscientViewEnabled { get; private set; }
@@ -229,42 +252,18 @@ namespace Deltatime.Replay
             omniscientFillLight.gameObject.activeInHierarchy;
         public int TrackedLightCount => lightTracks.Count;
         public int TrackedVisualCount => tracks.Count;
-        public int TrackedAnimatedVisualCount
-        {
-            get
-            {
-                int count = 0;
-                for (int i = 0; i < tracks.Count; i++)
-                {
-                    if (tracks[i].IsAnimated)
-                    {
-                        count++;
-                    }
-                }
-
-                return count;
-            }
-        }
-        public int RecordedAnimatedPoseCount
-        {
-            get
-            {
-                int count = 0;
-                for (int i = 0; i < tracks.Count; i++)
-                {
-                    count += tracks[i].RecordedBonePoseCount;
-                }
-
-                return count;
-            }
-        }
+        public int TrackedAnimatedVisualCount => animationTracks.Count;
+        // Compatibility diagnostic retained for existing tooling. Bone-pose
+        // recording was removed; this value is now guaranteed to remain zero.
+        public int RecordedAnimatedPoseCount => 0;
         public bool HasRecordedAnimatedMotion
         {
             get
             {
-                for (int i = 0; i < tracks.Count; i++)
+                for (int i = 0; i < animationTracks.Count; i++)
                 {
-                    if (tracks[i].HasRecordedBoneMotion)
+                    if (animationTracks[i].HasAdvancedState ||
+                        animationTracks[i].EventCount > 0)
                     {
                         return true;
                     }
@@ -278,9 +277,9 @@ namespace Deltatime.Replay
             get
             {
                 int count = 0;
-                for (int i = 0; i < tracks.Count; i++)
+                for (int i = 0; i < animationTracks.Count; i++)
                 {
-                    if (tracks[i].IsAnimated && tracks[i].IsProxyActive)
+                    if (animationTracks[i].IsProxyActive)
                     {
                         count++;
                     }
@@ -351,12 +350,108 @@ namespace Deltatime.Replay
                 ? Mathf.Max(0f, playbackTime - firstPresentationTime)
                 : 0f;
         public float CurrentSourceTimestamp { get; private set; }
+        public bool IsRecording => enabled && !IsReplaying &&
+                                   !recordingLimitReached;
+        public bool RecordingLimitReached => recordingLimitReached;
+        public ReplayRecordingLimitReason RecordingLimitReason =>
+            recordingLimitReason;
+        public float MaximumSourceRecordingDuration =>
+            maximumSourceRecordingDuration;
+        public long MemoryBudgetBytes => memoryBudgetMegabytes * 1024L * 1024L;
+        public int RecordedAnimationEventCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    count += animationTracks[i].EventCount;
+                }
+
+                return count;
+            }
+        }
+        public int RecordedAnimationCheckpointCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    count += animationTracks[i].CheckpointCount;
+                }
+
+                return count;
+            }
+        }
+        public int RecordedAnimationControllerChangeCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    count += animationTracks[i].ControllerChangeCount;
+                }
+
+                return count;
+            }
+        }
+        public Animator FirstReplayProxyAnimator => animationTracks.Count == 0
+            ? null
+            : animationTracks[0].ProxyAnimator;
+        public bool HasAdvancedReplayProxyAnimator
+        {
+            get
+            {
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    if (animationTracks[i].HasAdvancedState)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+        public bool HasReplayProxyStateTransition
+        {
+            get
+            {
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    if (animationTracks[i].HasObservedTransition ||
+                        animationTracks[i].HasObservedStateChange)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+        public bool AreReplayProxyGameplayComponentsDisabled
+        {
+            get
+            {
+                for (int i = 0; i < animationTracks.Count; i++)
+                {
+                    if (animationTracks[i].HasEnabledGameplayComponents)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
 
         /// <summary>
         /// Configures an opt-in hybrid renderer discovery path.  Gameplay roots are
         /// inspected at the normal replay sample rate, while transient objects outside
-        /// them are found by a lower-frequency fallback scan.  Empty roots preserve
-        /// the legacy all-renderer scan used by stages 1 through 5.
+        /// them are found by a lower-frequency fallback scan. Empty roots use an
+        /// initial cache; a zero fallback interval then relies on explicit registration.
         /// </summary>
         public void ConfigureRendererDiscovery(
             Transform[] dynamicRoots,
@@ -365,6 +460,198 @@ namespace Deltatime.Replay
             rendererDiscoveryRoots = dynamicRoots ?? Array.Empty<Transform>();
             fallbackRendererDiscoveryInterval = Mathf.Max(0f, fallbackInterval);
             ResetRendererDiscoveryCache();
+        }
+
+        public void ConfigureRecordingBudget(
+            float maximumSourceDuration,
+            int budgetMegabytes)
+        {
+            if (cameraSamples.Count > 0 || timingSamples.Count > 0)
+            {
+                Debug.LogWarning(
+                    "Replay recording budget can only be changed before capture starts.",
+                    this);
+                return;
+            }
+
+            maximumSourceRecordingDuration = Mathf.Max(
+                1f,
+                maximumSourceDuration);
+            memoryBudgetMegabytes = Mathf.Max(1, budgetMegabytes);
+        }
+
+        public ReplayMemoryStatistics GetMemoryStatistics()
+        {
+            long estimatedBytes = cameraSamples.Count * 52L +
+                                  timingSamples.Count * 20L +
+                                  replaySegments.Count * 96L;
+            int animationEvents = 0;
+            int animationCheckpoints = 0;
+            int animationTransforms = 0;
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                ReplayAnimationTrack track = animationTracks[i];
+                estimatedBytes += track.EstimatedBytes;
+                animationEvents += track.EventCount;
+                animationCheckpoints += track.CheckpointCount;
+                animationTransforms += track.TransformSampleCount;
+            }
+
+            int visualSamples = 0;
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                estimatedBytes += tracks[i].EstimatedBytes;
+                visualSamples += tracks[i].SampleCount;
+            }
+
+            for (int i = 0; i < lightTracks.Count; i++)
+            {
+                estimatedBytes += lightTracks[i].EstimatedBytes;
+            }
+
+            return new ReplayMemoryStatistics(
+                estimatedBytes,
+                animationTracks.Count,
+                animationEvents,
+                animationCheckpoints,
+                animationTransforms,
+                visualSamples,
+                cameraSamples.Count,
+                timingSamples.Count,
+                recordingClock.SourceElapsedTime,
+                recordingClock.ReplayElapsedTime,
+                recordingLimitReached,
+                recordingLimitReason);
+        }
+
+        public bool HasRecordedAnimationTrigger(int parameterHash)
+        {
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                if (animationTracks[i].HasTriggerEvent(parameterHash))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool RegisterAnimationSource(
+            CharacterAnimationController source)
+        {
+            if (!enabled || IsReplaying || recordingLimitReached ||
+                source == null || source.Animator == null ||
+                source.VisualRoot == null)
+            {
+                return false;
+            }
+
+            int instanceId = source.GetInstanceID();
+            if (animationTracksByInstanceId.ContainsKey(instanceId))
+            {
+                return false;
+            }
+
+            EnsureReplayRoot();
+            ReplayAnimationTrack track = new ReplayAnimationTrack(
+                source,
+                replayRoot,
+                animationCheckpointInterval);
+            if (!track.IsValid)
+            {
+                track.Dispose();
+                Debug.LogWarning(
+                    $"Replay skipped animated visual '{source.name}' because its " +
+                    "Animator/visual hierarchy could not be cloned safely.",
+                    source);
+                return false;
+            }
+
+            animationTracksByInstanceId.Add(instanceId, track);
+            animationTracks.Add(track);
+            Renderer[] renderers =
+                source.VisualRoot.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] is SkinnedMeshRenderer)
+                {
+                    animationRendererIds.Add(renderers[i].GetInstanceID());
+                }
+            }
+
+            track.Capture(
+                recordingClock.SourceElapsedTime,
+                recordingClock.ReplayElapsedTime,
+                true);
+            return true;
+        }
+
+        public void RecordAnimatorController(
+            CharacterAnimationController source,
+            RuntimeAnimatorController controller)
+        {
+            if (!TryGetAnimationTrack(source, out ReplayAnimationTrack track))
+            {
+                return;
+            }
+
+            track.RecordController(
+                controller,
+                recordingClock.SourceElapsedTime,
+                recordingClock.ReplayElapsedTime);
+        }
+
+        public void RecordAnimatorTrigger(
+            CharacterAnimationController source,
+            int parameterHash,
+            bool set)
+        {
+            if (!TryGetAnimationTrack(source, out ReplayAnimationTrack track))
+            {
+                return;
+            }
+
+            track.RecordTrigger(
+                parameterHash,
+                set,
+                recordingClock.SourceElapsedTime,
+                recordingClock.ReplayElapsedTime);
+        }
+
+        public void RecordAnimatorActive(
+            CharacterAnimationController source,
+            bool active)
+        {
+            if (!TryGetAnimationTrack(source, out ReplayAnimationTrack track))
+            {
+                return;
+            }
+
+            track.RecordActive(
+                active,
+                recordingClock.SourceElapsedTime,
+                recordingClock.ReplayElapsedTime);
+        }
+
+        private bool TryGetAnimationTrack(
+            CharacterAnimationController source,
+            out ReplayAnimationTrack track)
+        {
+            track = null;
+            if (source == null || IsReplaying || recordingLimitReached)
+            {
+                return false;
+            }
+
+            int instanceId = source.GetInstanceID();
+            if (animationTracksByInstanceId.TryGetValue(instanceId, out track))
+            {
+                return true;
+            }
+
+            RegisterAnimationSource(source);
+            return animationTracksByInstanceId.TryGetValue(instanceId, out track);
         }
 
         private void Awake()
@@ -419,7 +706,20 @@ namespace Deltatime.Replay
         {
             if (enabled)
             {
+                DiscoverInitialAnimationSources();
                 CaptureFrame(true);
+            }
+        }
+
+        private void DiscoverInitialAnimationSources()
+        {
+            CharacterAnimationController[] controllers =
+                FindObjectsByType<CharacterAnimationController>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                RegisterAnimationSource(controllers[i]);
             }
         }
 
@@ -433,6 +733,16 @@ namespace Deltatime.Replay
             }
 
             recordingClock.Advance(realDeltaTime, worldTime.WorldDeltaTime);
+            if (recordingLimitReached)
+            {
+                if (replayRequested)
+                {
+                    BeginReplay();
+                }
+
+                return;
+            }
+
             // Replay display time is a third clock: source real time records
             // when a pose happened, world time records simulation progress,
             // and this zero-based clock records how long the same progress
@@ -452,17 +762,69 @@ namespace Deltatime.Replay
             if (captureDue || deadlineStateChanged)
             {
                 CaptureFrame(deadlineStateChanged);
+                CheckRecordingBudget();
             }
 
-            if (replayRequested)
+            if (!recordingLimitReached &&
+                recordingClock.SourceElapsedTime >=
+                maximumSourceRecordingDuration)
             {
                 if (!captureDue && !deadlineStateChanged)
                 {
                     CaptureFrame(false);
                 }
 
+                StopRecording(ReplayRecordingLimitReason.SourceDuration);
+            }
+
+            if (replayRequested)
+            {
+                if (!recordingLimitReached &&
+                    !captureDue && !deadlineStateChanged)
+                {
+                    CaptureFrame(false);
+                }
+
                 BeginReplay();
             }
+        }
+
+        private void CheckRecordingBudget()
+        {
+            if (recordingLimitReached)
+            {
+                return;
+            }
+
+            ReplayMemoryStatistics statistics = GetMemoryStatistics();
+            ReplayRecordingLimitReason reason = ReplayRecordingBudget.Evaluate(
+                statistics.SourceDuration,
+                statistics.EstimatedBytes,
+                maximumSourceRecordingDuration,
+                MemoryBudgetBytes);
+            if (reason != ReplayRecordingLimitReason.None)
+            {
+                StopRecording(reason);
+            }
+        }
+
+        private void StopRecording(ReplayRecordingLimitReason reason)
+        {
+            if (recordingLimitReached)
+            {
+                return;
+            }
+
+            recordingLimitReached = true;
+            recordingLimitReason = reason;
+            ReplayMemoryStatistics statistics = GetMemoryStatistics();
+            Debug.LogWarning(
+                $"Replay recording stopped explicitly ({reason}). Captured data " +
+                $"remains available: source={statistics.SourceDuration:0.0}s, " +
+                $"replay={statistics.ReplayDuration:0.0}s, estimated=" +
+                $"{statistics.EstimatedBytes / (1024f * 1024f):0.00} MiB. " +
+                "The recording was not silently trimmed.",
+                this);
         }
 
         public void Configure(
@@ -557,6 +919,7 @@ namespace Deltatime.Replay
 
             tracksByInstanceId.Add(instanceId, track);
             tracks.Add(track);
+            explicitlyRegisteredRendererIds.Add(instanceId);
             track.Capture(recordingClock.SourceElapsedTime, true);
             return true;
         }
@@ -596,6 +959,13 @@ namespace Deltatime.Replay
         {
             captureRate = Mathf.Max(1f, captureRate);
             endHoldDuration = Mathf.Max(0f, endHoldDuration);
+            maximumSourceRecordingDuration = Mathf.Max(
+                1f,
+                maximumSourceRecordingDuration);
+            memoryBudgetMegabytes = Mathf.Max(1, memoryBudgetMegabytes);
+            animationCheckpointInterval = Mathf.Max(
+                0.25f,
+                animationCheckpointInterval);
             deadlineCinematicPlaybackRate = Mathf.Clamp(
                 deadlineCinematicPlaybackRate,
                 0.05f,
@@ -655,6 +1025,14 @@ namespace Deltatime.Replay
                 recordingClock.ReplayElapsedTime,
                 deadlineActive));
 
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                animationTracks[i].Capture(
+                    timestamp,
+                    recordingClock.ReplayElapsedTime,
+                    forceKeyframe);
+            }
+
             CollectRendererCandidates();
             visibleRendererIds.Clear();
 
@@ -685,7 +1063,15 @@ namespace Deltatime.Replay
                 VisualTrack track = tracks[i];
                 if (!visibleRendererIds.Contains(track.InstanceId))
                 {
-                    track.CaptureHidden(timestamp, forceKeyframe);
+                    if (explicitlyRegisteredRendererIds.Contains(
+                            track.InstanceId))
+                    {
+                        track.Capture(timestamp, forceKeyframe);
+                    }
+                    else
+                    {
+                        track.CaptureHidden(timestamp, forceKeyframe);
+                    }
                 }
             }
 
@@ -702,12 +1088,26 @@ namespace Deltatime.Replay
 
             if (!UsesOptimizedRendererDiscovery)
             {
-                Renderer[] renderers = FindObjectsByType<Renderer>(
-                    FindObjectsInactive.Exclude,
-                    FindObjectsSortMode.None);
-                for (int i = 0; i < renderers.Length; i++)
+                if (!fallbackRendererDiscoveryInitialized ||
+                    (fallbackRendererDiscoveryInterval > 0f &&
+                     recordingClock.SourceElapsedTime >=
+                     nextFallbackRendererDiscoveryTime))
                 {
-                    AddRendererCandidate(renderers[i]);
+                    RefreshFallbackRendererCandidates();
+                }
+
+                for (int i = fallbackRendererCandidates.Count - 1;
+                     i >= 0;
+                     i--)
+                {
+                    Renderer candidate = fallbackRendererCandidates[i];
+                    if (candidate == null)
+                    {
+                        fallbackRendererCandidates.RemoveAt(i);
+                        continue;
+                    }
+
+                    AddRendererCandidate(candidate);
                 }
 
                 return;
@@ -715,9 +1115,9 @@ namespace Deltatime.Replay
 
             CollectDynamicRootRenderers();
             if (!fallbackRendererDiscoveryInitialized ||
-                fallbackRendererDiscoveryInterval <= 0f ||
-                recordingClock.SourceElapsedTime >=
-                nextFallbackRendererDiscoveryTime)
+                (fallbackRendererDiscoveryInterval > 0f &&
+                 recordingClock.SourceElapsedTime >=
+                 nextFallbackRendererDiscoveryTime))
             {
                 RefreshFallbackRendererCandidates();
             }
@@ -745,12 +1145,15 @@ namespace Deltatime.Replay
                     continue;
                 }
 
-                Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
-                for (int j = 0; j < renderers.Length; j++)
+                dynamicRendererBuffer.Clear();
+                root.GetComponentsInChildren(true, dynamicRendererBuffer);
+                for (int j = 0; j < dynamicRendererBuffer.Count; j++)
                 {
-                    AddRendererCandidate(renderers[j]);
+                    AddRendererCandidate(dynamicRendererBuffer[j]);
                 }
             }
+
+            dynamicRendererBuffer.Clear();
         }
 
         private void RefreshFallbackRendererCandidates()
@@ -815,6 +1218,7 @@ namespace Deltatime.Replay
         {
             return candidate != null &&
                    !candidate.transform.IsChildOf(replayRoot) &&
+                   !animationRendererIds.Contains(candidate.GetInstanceID()) &&
                    candidate.GetComponentInParent<ReplayExcluded>() == null &&
                    CanRecord(candidate);
         }
@@ -1085,13 +1489,21 @@ namespace Deltatime.Replay
             if (cameraSamples.Count == 0 ||
                 timingSamples.Count < 2 ||
                 replaySegments.Count == 0 ||
-                tracks.Count == 0)
+                (tracks.Count == 0 && animationTracks.Count == 0))
             {
                 Debug.LogWarning("Replay could not start because no frames were captured.", this);
                 return;
             }
 
             SaveReplayLightingState();
+            replayRoot.gameObject.SetActive(true);
+            IsReplaying = true;
+            float replayTimeOrigin = timingSamples[0].ReplayTimestamp;
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                animationTracks[i].PrepareForReplay(replayTimeOrigin);
+            }
+
             DisableLiveSimulation();
 
             for (int i = 0; i < tracks.Count; i++)
@@ -1099,13 +1511,16 @@ namespace Deltatime.Replay
                 tracks[i].HideSource();
             }
 
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                animationTracks[i].HideSource();
+            }
+
             for (int i = 0; i < lightTracks.Count; i++)
             {
                 lightTracks[i].HideSource();
             }
 
-            replayRoot.gameObject.SetActive(true);
-            IsReplaying = true;
             IsOmniscientViewEnabled = false;
             omniscientFillLight.enabled = false;
             playbackTime = firstPresentationTime;
@@ -1184,6 +1599,13 @@ namespace Deltatime.Replay
                 tracks[i].Apply(
                     replayPosition.SourceTimestamp,
                     IsOmniscientViewEnabled);
+            }
+
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                animationTracks[i].Apply(
+                    presentationTimestamp,
+                    replayPosition.SourceTimestamp);
             }
 
             if (IsOmniscientViewEnabled)
@@ -1354,7 +1776,6 @@ namespace Deltatime.Replay
 
         private VisualTrack CreateTrack(Renderer source)
         {
-            PrepareAnimatorForPoseCapture(source);
             Renderer proxy = CreateProxyRenderer(source);
             if (proxy == null)
             {
@@ -1371,41 +1792,6 @@ namespace Deltatime.Replay
                 proxy,
                 visionCone,
                 enemy);
-        }
-
-        private void PrepareAnimatorForPoseCapture(Renderer source)
-        {
-            if (!(source is SkinnedMeshRenderer))
-            {
-                return;
-            }
-
-            Animator animator = source.GetComponentInParent<Animator>(true);
-            if (animator == null ||
-                recordedAnimatorCullingModes.ContainsKey(animator))
-            {
-                return;
-            }
-
-            recordedAnimatorCullingModes.Add(animator, animator.cullingMode);
-            // Replay records the rendered bone result rather than replaying
-            // triggers against a live controller.  Hidden/off-screen actors
-            // must therefore keep producing bone transforms while recording.
-            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        }
-
-        private void RestoreAnimatorCullingModes()
-        {
-            foreach (KeyValuePair<Animator, AnimatorCullingMode> pair in
-                     recordedAnimatorCullingModes)
-            {
-                if (pair.Key != null)
-                {
-                    pair.Key.cullingMode = pair.Value;
-                }
-            }
-
-            recordedAnimatorCullingModes.Clear();
         }
 
         private static Light CreateProxyLight(
@@ -1443,7 +1829,6 @@ namespace Deltatime.Replay
         private static bool CanRecord(Renderer source)
         {
             return source is MeshRenderer ||
-                   source is SkinnedMeshRenderer ||
                    source is LineRenderer;
         }
 
@@ -1452,27 +1837,6 @@ namespace Deltatime.Replay
             if (source is LineRenderer sourceLine)
             {
                 return CreateLineProxy(sourceLine);
-            }
-
-            if (source is SkinnedMeshRenderer skinned)
-            {
-                if (skinned.sharedMesh == null)
-                {
-                    return null;
-                }
-
-                GameObject skinnedProxyObject = new GameObject();
-                SkinnedMeshRenderer skinnedProxy =
-                    skinnedProxyObject.AddComponent<SkinnedMeshRenderer>();
-                skinnedProxy.sharedMesh = skinned.sharedMesh;
-                skinnedProxy.quality = skinned.quality;
-                skinnedProxy.updateWhenOffscreen = true;
-                skinnedProxy.localBounds = skinned.localBounds;
-                skinnedProxy.skinnedMotionVectors = false;
-                CopyRendererSettings(source, skinnedProxy);
-                skinnedProxy.sharedMaterials =
-                    CloneMaterials(source.sharedMaterials);
-                return skinnedProxy;
             }
 
             Mesh mesh = null;
@@ -1547,13 +1911,11 @@ namespace Deltatime.Replay
             IsReplayCameraLocked = false;
             CurrentCameraRecoveryBlend = 1f;
             CurrentSourceTimestamp = 0f;
-            RestoreAnimatorCullingModes();
         }
 
         private void OnDestroy()
         {
             RestoreReplayLightingState();
-            RestoreAnimatorCullingModes();
             if (ActiveRecorder == this)
             {
                 ActiveRecorder = null;
@@ -1562,6 +1924,11 @@ namespace Deltatime.Replay
             for (int i = 0; i < tracks.Count; i++)
             {
                 tracks[i].Dispose();
+            }
+
+            for (int i = 0; i < animationTracks.Count; i++)
+            {
+                animationTracks[i].Dispose();
             }
         }
 
@@ -1827,7 +2194,7 @@ namespace Deltatime.Replay
             private readonly Light source;
             private readonly Light proxy;
             private readonly List<LightSample> samples =
-                new List<LightSample>(512);
+                new List<LightSample>(64);
 
             public bool IsProxyActive =>
                 proxy != null &&
@@ -1837,6 +2204,7 @@ namespace Deltatime.Replay
                 source != null &&
                 source.enabled &&
                 source.gameObject.activeInHierarchy;
+            public long EstimatedBytes => samples.Count * 64L;
 
             public LightTrack(Light sourceLight, Light proxyLight)
             {
@@ -2011,8 +2379,6 @@ namespace Deltatime.Replay
         {
             private readonly Renderer source;
             private readonly Renderer proxy;
-            private readonly SkinnedMeshRenderer sourceSkinned;
-            private readonly SkinnedMeshRenderer proxySkinned;
             private readonly LineRenderer sourceLine;
             private readonly LineRenderer proxyLine;
             private readonly Mesh proxyMesh;
@@ -2021,28 +2387,35 @@ namespace Deltatime.Replay
             private readonly EnemyCombatant replayVisibilityOwner;
             private readonly bool supportsOmniscientVisibility;
             private readonly List<VisualSample> samples =
-                new List<VisualSample>(512);
+                new List<VisualSample>(128);
             private readonly List<Material> sourceMaterials =
                 new List<Material>(4);
             private readonly List<Material> proxyMaterials =
                 new List<Material>(4);
-            private readonly Transform proxyBoneRoot;
-            private readonly Transform[] sourceBones;
-            private readonly Transform[] proxyBones;
-            private readonly BonePose[] bonePoseBuffer;
-            private readonly List<BonePose> bonePoses;
             private Color[] materialColorBuffer = Array.Empty<Color>();
             private Vector3[] linePositionBuffer;
-            private bool hasRecordedBoneMotion;
-            private int lastRecordedBonePoseOffset = -1;
 
             public int InstanceId { get; }
             public bool IsVisionCone => isVisionCone;
-            public bool IsAnimated => sourceBones.Length > 0;
-            public int RecordedBonePoseCount => sourceBones.Length == 0
-                ? 0
-                : bonePoses.Count / sourceBones.Length;
-            public bool HasRecordedBoneMotion => hasRecordedBoneMotion;
+            public int SampleCount => samples.Count;
+            public long EstimatedBytes
+            {
+                get
+                {
+                    long bytes = 64L * samples.Count;
+                    for (int i = 0; i < samples.Count; i++)
+                    {
+                        bytes += samples[i].MaterialColors == null
+                            ? 0L
+                            : samples[i].MaterialColors.Length * 16L;
+                        bytes += samples[i].LinePositions == null
+                            ? 0L
+                            : samples[i].LinePositions.Length * 12L;
+                    }
+
+                    return bytes;
+                }
+            }
             public bool SupportsOmniscientVisibility =>
                 supportsOmniscientVisibility;
             public bool IsReplayExcluded =>
@@ -2060,8 +2433,6 @@ namespace Deltatime.Replay
             {
                 source = sourceRenderer;
                 proxy = proxyRenderer;
-                sourceSkinned = sourceRenderer as SkinnedMeshRenderer;
-                proxySkinned = proxyRenderer as SkinnedMeshRenderer;
                 sourceLine = sourceRenderer as LineRenderer;
                 proxyLine = proxyRenderer as LineRenderer;
                 visionCone = sourceVisionCone;
@@ -2080,45 +2451,6 @@ namespace Deltatime.Replay
                 supportsOmniscientVisibility =
                     enemy != null &&
                     enemy.TryGetReplayVisibility(sourceRenderer, out _);
-                if (sourceSkinned != null && proxySkinned != null)
-                {
-                    sourceBones = sourceSkinned.bones ?? Array.Empty<Transform>();
-                    proxyBones = new Transform[sourceBones.Length];
-                    bonePoseBuffer = new BonePose[sourceBones.Length];
-                    bonePoses = new List<BonePose>(
-                        Mathf.Max(sourceBones.Length, sourceBones.Length * 512));
-
-                    GameObject boneRootObject = new GameObject(
-                        $"Replay Bones - {sourceRenderer.gameObject.name}");
-                    proxyBoneRoot = boneRootObject.transform;
-                    proxyBoneRoot.SetParent(proxyRenderer.transform.parent, false);
-                    for (int i = 0; i < sourceBones.Length; i++)
-                    {
-                        GameObject boneObject = new GameObject(
-                            sourceBones[i] == null
-                                ? $"Missing Bone {i}"
-                                : sourceBones[i].name);
-                        Transform proxyBone = boneObject.transform;
-                        proxyBone.SetParent(proxyBoneRoot, false);
-                        proxyBones[i] = proxyBone;
-                    }
-
-                    proxySkinned.bones = proxyBones;
-                    int rootBoneIndex = Array.IndexOf(
-                        sourceBones,
-                        sourceSkinned.rootBone);
-                    proxySkinned.rootBone = rootBoneIndex >= 0
-                        ? proxyBones[rootBoneIndex]
-                        : proxyBoneRoot;
-                }
-                else
-                {
-                    sourceBones = Array.Empty<Transform>();
-                    proxyBones = Array.Empty<Transform>();
-                    bonePoseBuffer = Array.Empty<BonePose>();
-                    bonePoses = new List<BonePose>(0);
-                }
-
                 InstanceId = sourceRenderer.GetInstanceID();
                 proxy.enabled = false;
             }
@@ -2167,7 +2499,6 @@ namespace Deltatime.Replay
                 Vector3 position = source.transform.position;
                 Quaternion rotation = source.transform.rotation;
                 Vector3 scale = source.transform.lossyScale;
-                int bonePoseOffset = CaptureBonePose();
                 if (!forceKeyframe &&
                     samples.Count > 0 &&
                     samples[samples.Count - 1].Matches(
@@ -2179,8 +2510,7 @@ namespace Deltatime.Replay
                         materialColorBuffer,
                          linePositionBuffer,
                          startColor,
-                         endColor,
-                         bonePoseOffset))
+                         endColor))
                 {
                     return;
                 }
@@ -2210,60 +2540,7 @@ namespace Deltatime.Replay
                     recordedMaterialColors,
                     recordedLinePositions,
                     startColor,
-                    endColor,
-                    bonePoseOffset));
-            }
-
-            private int CaptureBonePose()
-            {
-                if (sourceBones.Length == 0)
-                {
-                    return -1;
-                }
-
-                for (int i = 0; i < sourceBones.Length; i++)
-                {
-                    bonePoseBuffer[i] = BonePose.Capture(sourceBones[i]);
-                }
-
-                if (lastRecordedBonePoseOffset >= 0 &&
-                    BonePosesMatch(lastRecordedBonePoseOffset))
-                {
-                    return lastRecordedBonePoseOffset;
-                }
-
-                int offset = bonePoses.Count;
-                for (int i = 0; i < bonePoseBuffer.Length; i++)
-                {
-                    bonePoses.Add(bonePoseBuffer[i]);
-                }
-
-                if (lastRecordedBonePoseOffset >= 0)
-                {
-                    hasRecordedBoneMotion = true;
-                }
-
-                lastRecordedBonePoseOffset = offset;
-                return offset;
-            }
-
-            private bool BonePosesMatch(int offset)
-            {
-                if (offset < 0 ||
-                    offset + bonePoseBuffer.Length > bonePoses.Count)
-                {
-                    return false;
-                }
-
-                for (int i = 0; i < bonePoseBuffer.Length; i++)
-                {
-                    if (!bonePoses[offset + i].Matches(bonePoseBuffer[i]))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
+                    endColor));
             }
 
             public void CaptureHidden(float timestamp, bool forceKeyframe)
@@ -2347,7 +2624,6 @@ namespace Deltatime.Replay
                 proxy.enabled = true;
                 proxy.transform.SetPositionAndRotation(sample.Position, sample.Rotation);
                 proxy.transform.localScale = sample.Scale;
-                ApplyBonePose(sample.BonePoseOffset);
                 ApplyMaterialColors(sample.MaterialColors);
                 ApplyLine(sample.LinePositions, sample.StartColor, sample.EndColor);
                 RebuildReplayVisionCone(sample.Position, sample.Rotation);
@@ -2364,10 +2640,6 @@ namespace Deltatime.Replay
                     Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
                 proxy.transform.localScale =
                     Vector3.Lerp(previous.Scale, next.Scale, blend);
-                ApplyInterpolatedBonePose(
-                    previous.BonePoseOffset,
-                    next.BonePoseOffset,
-                    blend);
                 ApplyInterpolatedMaterialColors(
                     previous.MaterialColors,
                     next.MaterialColors,
@@ -2376,48 +2648,6 @@ namespace Deltatime.Replay
                 RebuildReplayVisionCone(
                     Vector3.Lerp(previous.Position, next.Position, blend),
                     Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
-            }
-
-            private void ApplyBonePose(int offset)
-            {
-                if (offset < 0 ||
-                    offset + proxyBones.Length > bonePoses.Count)
-                {
-                    return;
-                }
-
-                for (int i = 0; i < proxyBones.Length; i++)
-                {
-                    bonePoses[offset + i].Apply(proxyBones[i]);
-                }
-            }
-
-            private void ApplyInterpolatedBonePose(
-                int previousOffset,
-                int nextOffset,
-                float blend)
-            {
-                if (previousOffset < 0 ||
-                    previousOffset + proxyBones.Length > bonePoses.Count)
-                {
-                    return;
-                }
-
-                if (nextOffset < 0 ||
-                    nextOffset + proxyBones.Length > bonePoses.Count)
-                {
-                    ApplyBonePose(previousOffset);
-                    return;
-                }
-
-                for (int i = 0; i < proxyBones.Length; i++)
-                {
-                    BonePose.ApplyInterpolated(
-                        proxyBones[i],
-                        bonePoses[previousOffset + i],
-                        bonePoses[nextOffset + i],
-                        blend);
-                }
             }
 
             private void RebuildReplayVisionCone(
@@ -2512,10 +2742,6 @@ namespace Deltatime.Replay
                     Destroy(filter.sharedMesh);
                 }
 
-                if (proxyBoneRoot != null)
-                {
-                    Destroy(proxyBoneRoot.gameObject);
-                }
             }
 
             private void ReadMaterialColors()
@@ -2609,111 +2835,6 @@ namespace Deltatime.Replay
             }
         }
 
-        private readonly struct BonePose
-        {
-            public readonly bool Valid;
-            public readonly Vector3 Position;
-            public readonly Quaternion Rotation;
-            public readonly Vector3 Scale;
-
-            private BonePose(
-                bool valid,
-                Vector3 position,
-                Quaternion rotation,
-                Vector3 scale)
-            {
-                Valid = valid;
-                Position = position;
-                Rotation = rotation;
-                Scale = scale;
-            }
-
-            public static BonePose Capture(Transform bone)
-            {
-                return bone == null
-                    ? new BonePose(
-                        false,
-                        Vector3.zero,
-                        Quaternion.identity,
-                        Vector3.one)
-                    : new BonePose(
-                        true,
-                        bone.position,
-                        bone.rotation,
-                        bone.lossyScale);
-            }
-
-            public bool Matches(BonePose other)
-            {
-                return Valid == other.Valid &&
-                       (!Valid ||
-                        ((Position - other.Position).sqrMagnitude <=
-                         0.00000001f &&
-                         Quaternion.Dot(Rotation, other.Rotation) >=
-                         0.999999f &&
-                         (Scale - other.Scale).sqrMagnitude <=
-                         0.00000001f));
-            }
-
-            public void Apply(Transform bone)
-            {
-                if (!Valid || bone == null)
-                {
-                    return;
-                }
-
-                bone.SetPositionAndRotation(Position, Rotation);
-                bone.localScale = GetLocalScale(bone, Scale);
-            }
-
-            public static void ApplyInterpolated(
-                Transform bone,
-                BonePose previous,
-                BonePose next,
-                float blend)
-            {
-                if (!previous.Valid)
-                {
-                    next.Apply(bone);
-                    return;
-                }
-
-                if (!next.Valid)
-                {
-                    previous.Apply(bone);
-                    return;
-                }
-
-                bone.SetPositionAndRotation(
-                    Vector3.Lerp(previous.Position, next.Position, blend),
-                    Quaternion.Slerp(previous.Rotation, next.Rotation, blend));
-                bone.localScale = GetLocalScale(
-                    bone,
-                    Vector3.Lerp(previous.Scale, next.Scale, blend));
-            }
-
-            private static Vector3 GetLocalScale(
-                Transform bone,
-                Vector3 worldScale)
-            {
-                Transform parent = bone.parent;
-                Vector3 parentScale = parent == null
-                    ? Vector3.one
-                    : parent.lossyScale;
-                return new Vector3(
-                    SafeDivide(worldScale.x, parentScale.x),
-                    SafeDivide(worldScale.y, parentScale.y),
-                    SafeDivide(worldScale.z, parentScale.z));
-            }
-
-            private static float SafeDivide(float value, float divisor)
-            {
-                return Mathf.Abs(divisor) <= 0.000001f
-                    ? value
-                    : value / divisor;
-            }
-        }
-
         private readonly struct VisualSample
         {
             public float Time { get; }
@@ -2727,8 +2848,6 @@ namespace Deltatime.Replay
             public Vector3[] LinePositions { get; }
             public Color StartColor { get; }
             public Color EndColor { get; }
-            public int BonePoseOffset { get; }
-
             public VisualSample(
                 float time,
                 bool visible,
@@ -2739,8 +2858,7 @@ namespace Deltatime.Replay
                 Color[] materialColors,
                 Vector3[] linePositions,
                 Color startColor,
-                Color endColor,
-                int bonePoseOffset)
+                Color endColor)
             {
                 Time = time;
                 Visible = visible;
@@ -2752,7 +2870,6 @@ namespace Deltatime.Replay
                 LinePositions = linePositions;
                 StartColor = startColor;
                 EndColor = endColor;
-                BonePoseOffset = bonePoseOffset;
             }
 
             public static VisualSample Hidden(float time)
@@ -2767,8 +2884,7 @@ namespace Deltatime.Replay
                     null,
                     null,
                     Color.white,
-                    Color.white,
-                    -1);
+                    Color.white);
             }
 
             public bool IsVisible(bool omniscientView)
@@ -2785,8 +2901,7 @@ namespace Deltatime.Replay
                 Color[] materialColors,
                 Vector3[] linePositions,
                 Color startColor,
-                Color endColor,
-                int bonePoseOffset)
+                Color endColor)
             {
                 if (Visible != visible ||
                     OmniscientVisible != omniscientVisible ||
@@ -2794,8 +2909,7 @@ namespace Deltatime.Replay
                     Quaternion.Dot(Rotation, rotation) < 0.999999f ||
                     !Approximately(Scale, scale) ||
                     !ColorsMatch(MaterialColors, materialColors) ||
-                    !PositionsMatch(LinePositions, linePositions) ||
-                    BonePoseOffset != bonePoseOffset)
+                    !PositionsMatch(LinePositions, linePositions))
                 {
                     return false;
                 }
