@@ -6,6 +6,16 @@
 
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
+
+## 2026-08-10 - Stage5 이후 EndingScene 직행 및 Stage6 임시 제외
+
+- 변경 유형: 진행 경로 수정, Build Settings 수정
+- 변경 내용: **구현 완료**. 본편 진행 목록을 `Stage1 → Stage2 → Stage5 → EndingScene → MainScene`으로 변경했다. Stage5 클리어 후 `StageController`가 `EndingScene`을 다음 목적지로 선택하도록 `StageSceneFlow`에서 Stage6를 임시 제외했으며, `GameBuildSceneCatalog`와 직렬화된 `EditorBuildSettings.asset`에서도 Stage6 씬을 제외했다. Stage6 씬·에셋·스크립트는 삭제하지 않고 보존한다.
+- 영향을 받은 시스템: StageController의 다음 씬 전환, 본편 플레이 경로, Unity Build Settings, Stage5/EndingScene 빌드 도구
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Level/StageSceneFlow.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/GameBuildSceneCatalog.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.52로 갱신하고 Stage6 에셋 보존·진행/빌드 임시 제외 상태와 현재 경로를 기록했다.
+- 테스트 결과: **부분 구현**. StageSceneFlow·빌드 카탈로그·직렬화된 Build Settings의 정적 대조는 통과했다. `dotnet build ProjectDeltatime.sln`은 기존 생성 C# 프로젝트의 누락 파일 `Assets/TutorialInfo/Scripts/Readme.cs` 참조로 실패했다. Unity PlayMode 클리어 입력 검증은 실행 중인 Unity 인스턴스가 있어 **미실행/확인 불가**다.
+- 남은 작업: **계획 필요**. Stage6를 다시 활성화할 때 `StageSceneFlow`, `GameBuildSceneCatalog`, `ProjectSettings/EditorBuildSettings.asset`에 Stage6를 복원하고 Stage5→Stage6→EndingScene 경로를 재검증해야 한다.
 - 실행하지 않은 테스트는 `미실행`, 결과를 확인할 수 없으면 `확인 불가`로 적는다.
 - 기획서에 영향이 있으면 `docs/PROJECT_DESIGN_DOCUMENT.md`의 변경 위치를 구체적으로 적는다.
 - 여러 기능이 독립적으로 바뀌면 날짜가 같아도 항목을 나눈다.

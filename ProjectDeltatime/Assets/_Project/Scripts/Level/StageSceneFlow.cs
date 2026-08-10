@@ -14,8 +14,7 @@ namespace Deltatime.Level
         {
             "Stage1",
             "Stage2",
-            "Stage5",
-            "Stage6"
+            "Stage5"
         };
 
         public static bool TryGetNextDestination(

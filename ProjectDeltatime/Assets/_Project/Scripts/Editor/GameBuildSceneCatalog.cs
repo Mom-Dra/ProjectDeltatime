@@ -16,7 +16,6 @@ namespace Deltatime.EditorTools
             "Assets/_Project/Scenes/Stage1.unity",
             "Assets/_Project/Scenes/Stage2.unity",
             "Assets/_Project/Scenes/Stage5.unity",
-            "Assets/_Project/Scenes/Stage6.unity",
             "Assets/_Project/Scenes/EndingScene.unity"
         };
 
