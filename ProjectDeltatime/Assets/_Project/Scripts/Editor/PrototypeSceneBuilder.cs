@@ -394,10 +394,184 @@ namespace Deltatime.EditorTools
             Debug.Log("Stage1 animated characters applied and validated: 4/4 actors.");
         }
 
+        [MenuItem("Tools/Prototype/Animation/Apply Synty Enemy Prefabs To Stage 2")]
         public static void ApplyStage2Characters()
         {
-            ApplyPrototypeSceneCharacters(Stage2ScenePath);
-            Debug.Log("Stage2 animated characters applied: player business model and 3 enemy actors.");
+            Scene scene = EditorSceneManager.OpenScene(
+                Stage2ScenePath,
+                OpenSceneMode.Single);
+            EnsureStage2PlayerCharacter(scene);
+            AttachStage2EnemyCharacters(scene);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, Stage2ScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save {Stage2ScenePath} with Synty enemy prefabs.");
+            }
+
+            ValidateScene(scene, Stage2DeadlineCharges);
+            ValidateStage1CharacterAnimations(scene);
+            ValidateStage2SyntyEnemyPrefabs(scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log(
+                "Stage2 Synty enemy prefabs applied and validated: " +
+                "Bartender, Bouncer, Party Male.");
+        }
+
+        private static void EnsureStage2PlayerCharacter(Scene scene)
+        {
+            RemoveCharacterVisual("Player", "Stage1 Character - Player");
+            AttachStage1Character(
+                scene,
+                "Player",
+                PlayerCharacterPath,
+                "Player Character - Business Male",
+                AccentMaterialPath);
+        }
+
+        private static void AttachStage2EnemyCharacters(Scene scene)
+        {
+            AttachStage2EnemyCharacter(
+                scene,
+                "Enemy West",
+                WestEnemyCharacterPath,
+                "Stage2 Character - West Gunner",
+                "Stage1 Character - West Gunner",
+                EnemyMaterialPath);
+            AttachStage2EnemyCharacter(
+                scene,
+                "Enemy Center",
+                CenterEnemyCharacterPath,
+                "Stage2 Character - Center Chaser",
+                "Stage1 Character - Center Chaser",
+                ChaserMaterialPath);
+            AttachStage2EnemyCharacter(
+                scene,
+                "Enemy East",
+                EastEnemyCharacterPath,
+                "Stage2 Character - East Gunner",
+                "Stage1 Character - East Gunner",
+                EnemyMaterialPath);
+        }
+
+        private static void AttachStage2EnemyCharacter(
+            Scene scene,
+            string ownerName,
+            string prefabPath,
+            string visualName,
+            string legacyVisualName,
+            string identityMaterialPath)
+        {
+            RemoveCharacterVisual(ownerName, legacyVisualName);
+            AttachStage1Character(
+                scene,
+                ownerName,
+                prefabPath,
+                visualName,
+                identityMaterialPath);
+        }
+
+        private static void RemoveCharacterVisual(
+            string ownerName,
+            string visualName)
+        {
+            GameObject owner = GameObject.Find(ownerName);
+            if (owner == null)
+            {
+                throw new InvalidOperationException(
+                    $"Stage2 character setup requires {ownerName}.");
+            }
+
+            Transform visual = owner.transform.Find(visualName);
+            if (visual != null)
+            {
+                UnityEngine.Object.DestroyImmediate(visual.gameObject);
+            }
+        }
+
+        private static void ValidateStage2SyntyEnemyPrefabs(Scene scene)
+        {
+            ValidateStage2SyntyEnemyPrefab(
+                scene,
+                "Enemy West",
+                "Stage2 Character - West Gunner",
+                WestEnemyCharacterPath,
+                "Stage1 Character - West Gunner");
+            ValidateStage2SyntyEnemyPrefab(
+                scene,
+                "Enemy Center",
+                "Stage2 Character - Center Chaser",
+                CenterEnemyCharacterPath,
+                "Stage1 Character - Center Chaser");
+            ValidateStage2SyntyEnemyPrefab(
+                scene,
+                "Enemy East",
+                "Stage2 Character - East Gunner",
+                EastEnemyCharacterPath,
+                "Stage1 Character - East Gunner");
+        }
+
+        private static void ValidateStage2SyntyEnemyPrefab(
+            Scene scene,
+            string ownerName,
+            string visualName,
+            string prefabPath,
+            string legacyVisualName)
+        {
+            GameObject owner = GameObject.Find(ownerName);
+            Transform visual = owner == null
+                ? null
+                : owner.transform.Find(visualName);
+            CharacterVisualController visualController = owner == null
+                ? null
+                : owner.GetComponent<CharacterVisualController>();
+            CharacterAnimationController animationController = owner == null
+                ? null
+                : owner.GetComponent<CharacterAnimationController>();
+            Animator animator = animationController == null
+                ? null
+                : animationController.Animator;
+            Renderer proxyRenderer = owner == null
+                ? null
+                : owner.GetComponent<Renderer>();
+            bool hasEnabledVisualCollider = false;
+            if (visual != null)
+            {
+                Collider[] colliders =
+                    visual.GetComponentsInChildren<Collider>(true);
+                for (int i = 0; i < colliders.Length; i++)
+                {
+                    hasEnabledVisualCollider |= colliders[i].enabled;
+                }
+            }
+
+            bool isExpectedPrefab = visual != null &&
+                PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(
+                    visual.gameObject) == prefabPath;
+            bool hasLegacyVisual = owner != null &&
+                owner.transform.Find(legacyVisualName) != null;
+            bool proxyShadowsOnly = proxyRenderer != null &&
+                proxyRenderer.shadowCastingMode == ShadowCastingMode.ShadowsOnly;
+            if (owner == null ||
+                visual == null ||
+                !isExpectedPrefab ||
+                hasLegacyVisual ||
+                visualController == null ||
+                visualController.VisualRoot != visual ||
+                animator == null ||
+                !animator.enabled ||
+                !proxyShadowsOnly ||
+                hasEnabledVisualCollider)
+            {
+                throw new InvalidOperationException(
+                    $"Stage2 Synty enemy validation failed for {ownerName} in " +
+                    $"{scene.path}: prefab={isExpectedPrefab}, " +
+                    $"legacyVisual={hasLegacyVisual}, " +
+                    $"visualBound={visualController?.VisualRoot == visual}, " +
+                    $"animator={animator != null && animator.enabled}, " +
+                    $"proxyShadowsOnly={proxyShadowsOnly}, " +
+                    $"enabledVisualCollider={hasEnabledVisualCollider}.");
+            }
         }
 
         private static void ApplyPrototypeSceneCharacters(string scenePath)
@@ -1793,7 +1967,7 @@ namespace Deltatime.EditorTools
             }
 
             definition.ConfigureFirearmPrototype(
-                "Pistol",
+                "권총",
                 8,
                 0.24f,
                 17f,
@@ -1827,7 +2001,7 @@ namespace Deltatime.EditorTools
             }
 
             definition.ConfigureFirearmPrototype(
-                "Automatic Rifle",
+                "자동소총",
                 30,
                 0.12f,
                 16f,
@@ -1857,7 +2031,7 @@ namespace Deltatime.EditorTools
             }
 
             definition.ConfigureFirearmPrototype(
-                "Shotgun",
+                "샷건",
                 6,
                 0.75f,
                 16f,
@@ -1865,7 +2039,7 @@ namespace Deltatime.EditorTools
                 0.075f,
                 1,
                 WeaponFireMode.SemiAutomatic,
-                8,
+                4,
                 18f,
                 1f,
                 307,
@@ -1890,7 +2064,7 @@ namespace Deltatime.EditorTools
             }
 
             definition.ConfigureMeleePrototype(
-                "Melee Weapon",
+                "근접 무기",
                 0.72f,
                 3,
                 1.45f,
@@ -2041,37 +2215,7 @@ namespace Deltatime.EditorTools
 
         private static void AddStageScenesToBuildSettings()
         {
-            List<EditorBuildSettingsScene> existingScenes =
-                new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            List<EditorBuildSettingsScene> stageScenes =
-                new List<EditorBuildSettingsScene>();
-
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(
-                    TutorialScenePath) != null)
-            {
-                stageScenes.Add(new EditorBuildSettingsScene(
-                    TutorialScenePath,
-                    true));
-            }
-
-            stageScenes.Add(new EditorBuildSettingsScene(Stage1ScenePath, true));
-            stageScenes.Add(new EditorBuildSettingsScene(Stage2ScenePath, true));
-
-            for (int i = 0; i < existingScenes.Count; i++)
-            {
-                string path = existingScenes[i].path;
-                if (path == Stage1ScenePath ||
-                    path == Stage2ScenePath ||
-                    path == TutorialScenePath ||
-                    path == Scenes + "/PrototypeRoom.unity")
-                {
-                    continue;
-                }
-
-                stageScenes.Add(existingScenes[i]);
-            }
-
-            EditorBuildSettings.scenes = stageScenes.ToArray();
+            GameBuildSceneCatalog.Apply();
         }
 
         private static void ValidateStage1CharacterAnimations(Scene scene)
@@ -2281,7 +2425,7 @@ namespace Deltatime.EditorTools
                 Mathf.Approximately(shotgunDefinition.FireInterval, 0.75f) &&
                 Mathf.Approximately(shotgunDefinition.ProjectileSpeed, 16f) &&
                 shotgunDefinition.Damage == 1 &&
-                shotgunDefinition.ProjectileCount == 8 &&
+                shotgunDefinition.ProjectileCount == 4 &&
                 Mathf.Approximately(shotgunDefinition.SpreadAngle, 18f) &&
                 Mathf.Approximately(shotgunDefinition.SpreadJitterAngle, 1f) &&
                 shotgunDefinition.SpreadSeed == 307 &&

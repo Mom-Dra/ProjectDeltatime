@@ -24,6 +24,17 @@ namespace Deltatime.EditorTools
 {
     public static class TutorialSceneBuilder
     {
+        private static readonly string[] KoreanFloorLabelTexts =
+        {
+            "01 시간",
+            "02 대시",
+            "03 근접",
+            "04 권총",
+            "05 투척",
+            "06 DEADLINE",
+            "출구"
+        };
+
         private const string Root = "Assets/_Project";
         private const string Scenes = Root + "/Scenes";
         private const string TutorialScenePath = Scenes + "/Tutorial.unity";
@@ -109,18 +120,6 @@ namespace Deltatime.EditorTools
         private const int ExpectedEnemyCount = 5;
         private const int ExpectedAnimatedActorCount = 6;
         private const int ExpectedSyntyPrefabCount = 262;
-
-        private static readonly string[] OrderedBuildScenes =
-        {
-            MainScenePath,
-            TutorialScenePath,
-            Scenes + "/Stage1.unity",
-            Scenes + "/Stage2.unity",
-            Scenes + "/Stage3.unity",
-            Scenes + "/Stage4.unity",
-            Scenes + "/Stage5.unity",
-            Scenes + "/Stage6.unity"
-        };
 
         [MenuItem("Tools/Prototype/Build Tutorial")]
         public static void BuildTutorial()
@@ -1151,23 +1150,13 @@ namespace Deltatime.EditorTools
                     accentMaterial);
             }
 
-            string[] labels =
-            {
-                "01  TIME",
-                "02  DASH",
-                "03  MELEE",
-                "04  PISTOL",
-                "05  THROW",
-                "06  DEADLINE",
-                "EXIT"
-            };
             float[] labelPositions = { -30f, -19f, -7f, 6f, 23f, 47f, 59f };
-            for (int i = 0; i < labels.Length; i++)
+            for (int i = 0; i < KoreanFloorLabelTexts.Length; i++)
             {
                 CreateFloorLabel(
                     deck.transform,
                     $"Bay Label {i + 1:00}",
-                    labels[i],
+                    KoreanFloorLabelTexts[i],
                     new Vector3(-2.3f, 0.052f, labelPositions[i]),
                     new Color(0.2f, 0.82f, 1f, 1f));
             }
@@ -1257,6 +1246,15 @@ namespace Deltatime.EditorTools
                 Quaternion.Euler(90f, 0f, 0f));
             TextMesh label = labelObject.AddComponent<TextMesh>();
             label.text = text;
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Require(fontSettings != null && fontSettings.BoldFont != null,
+                "Tutorial floor labels require KoreanUiFontSettings with Noto Sans KR Bold.");
+            label.font = fontSettings.BoldFont;
+            MeshRenderer labelRenderer = label.GetComponent<MeshRenderer>();
+            Require(labelRenderer != null,
+                "Tutorial floor labels require a MeshRenderer.");
+            labelRenderer.sharedMaterial = fontSettings.BoldFont.material;
+            labelRenderer.enabled = true;
             label.anchor = TextAnchor.MiddleLeft;
             label.alignment = TextAlignment.Left;
             label.characterSize = 0.07f;
@@ -1930,40 +1928,7 @@ namespace Deltatime.EditorTools
 
         private static void ConfigureBuildSettings()
         {
-            List<EditorBuildSettingsScene> existing =
-                new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            List<EditorBuildSettingsScene> ordered =
-                new List<EditorBuildSettingsScene>();
-            for (int i = 0; i < OrderedBuildScenes.Length; i++)
-            {
-                if (AssetDatabase.LoadAssetAtPath<SceneAsset>(
-                        OrderedBuildScenes[i]) != null)
-                {
-                    ordered.Add(new EditorBuildSettingsScene(
-                        OrderedBuildScenes[i],
-                        true));
-                }
-            }
-
-            for (int i = 0; i < existing.Count; i++)
-            {
-                bool known = false;
-                for (int j = 0; j < OrderedBuildScenes.Length; j++)
-                {
-                    if (existing[i].path == OrderedBuildScenes[j])
-                    {
-                        known = true;
-                        break;
-                    }
-                }
-
-                if (!known)
-                {
-                    ordered.Add(existing[i]);
-                }
-            }
-
-            EditorBuildSettings.scenes = ordered.ToArray();
+            GameBuildSceneCatalog.Apply();
         }
 
         private static void ValidateTutorialScene(Scene scene)
@@ -2218,16 +2183,7 @@ namespace Deltatime.EditorTools
 
         private static void ValidateBuildSettings()
         {
-            EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
-            Require(scenes.Length >= OrderedBuildScenes.Length,
-                "Build Settings do not contain MainScene, Tutorial, and Stage1 through Stage6.");
-            for (int i = 0; i < OrderedBuildScenes.Length; i++)
-            {
-                Require(scenes[i].enabled &&
-                        scenes[i].path == OrderedBuildScenes[i],
-                    $"Build index {i} is {scenes[i].path}; " +
-                    $"expected {OrderedBuildScenes[i]}.");
-            }
+            GameBuildSceneCatalog.Validate();
         }
 
         private static GameObject CreatePrimitive(

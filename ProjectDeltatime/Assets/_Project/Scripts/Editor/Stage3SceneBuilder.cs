@@ -947,36 +947,7 @@ namespace Deltatime.EditorTools
 
         private static void AddStage3ToBuildSettings()
         {
-            List<EditorBuildSettingsScene> existing =
-                new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            List<EditorBuildSettingsScene> ordered =
-                new List<EditorBuildSettingsScene>();
-            AddBuildSceneIfPresent(
-                ordered,
-                "Assets/_Project/Scenes/Tutorial.unity");
-            AddBuildSceneIfPresent(
-                ordered,
-                "Assets/_Project/Scenes/Stage1.unity");
-            AddBuildSceneIfPresent(
-                ordered,
-                "Assets/_Project/Scenes/Stage2.unity");
-            ordered.Add(new EditorBuildSettingsScene(Stage3ScenePath, true));
-
-            for (int i = 0; i < existing.Count; i++)
-            {
-                string path = existing[i].path;
-                if (path == "Assets/_Project/Scenes/Tutorial.unity" ||
-                    path == "Assets/_Project/Scenes/Stage1.unity" ||
-                    path == "Assets/_Project/Scenes/Stage2.unity" ||
-                    path == Stage3ScenePath)
-                {
-                    continue;
-                }
-
-                ordered.Add(existing[i]);
-            }
-
-            EditorBuildSettings.scenes = ordered.ToArray();
+            GameBuildSceneCatalog.Apply();
         }
 
         private static void AddBuildSceneIfPresent(

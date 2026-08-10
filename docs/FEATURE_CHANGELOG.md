@@ -21,6 +21,56 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - 샷건 펠릿 수 4발 밸런스 조정
+
+- 변경 유형: 샷건 발사체 수 하향 조정, 무기 데이터·재생성 검증·기획 문서 갱신
+- 변경 내용: **구현 완료**. 샷건 한 발의 펠릿 수를 8개에서 4개로 낮췄다. 펠릿별 피해 1, 총 퍼짐 18도(반각 9도의 원형 콘), 펠릿별 반경 지터 최대 1도, 시드 307, 탄창 6, 발사 간격 0.75초, 탄속 16, 최대 사거리 14m와 플레이어 이동 반동 0m는 유지한다. `PrototypeSceneBuilder`의 생성값과 저장 데이터 검증 기대값도 4로 통일했다.
+- 영향을 받은 시스템: 샷건 일반 발사·`DEADLINE` 준비 발사, 적 샷건 발사, 결정적 원형 콘 산포, Stage1/Stage2 재생성·정적 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Shotgun.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.45로 갱신해 현재 샷건 동작 설명·무기 데이터 표를 4펠릿으로 바꾸고 변경 이력에 밸런스 조정을 기록했다. 과거 8펠릿 도입 이력은 보존했다.
+- 테스트 결과: **정적 검증 통과**. `Shotgun.asset`의 `projectileCount: 4`, `PrototypeSceneBuilder`의 생성값 4·저장 데이터 검증 기대값 4와 기존 피해·산포·지터·시드·탄창·발사 간격·사거리를 대조했고 `git diff --check`도 통과했다. Unity 배치 컴파일은 프로젝트가 이미 열려 있어 실행할 수 없어 **확인 불가**다. 기존 사용자 변경이 있는 `Stage2.unity`를 보호하기 위해 `PrototypeSceneBuilder.BuildAndValidateFromCommandLine`과 Play Mode 스모크는 **미실행**이다.
+- 남은 작업: **확인 불가**. 실제 플레이에서 4펠릿 샷건의 근거리 피해 체감과 난이도 밸런스는 수동 확인이 필요하다.
+
+## 2026-08-10 - Tutorial 바닥 표지 렌더 복구 및 인게임 HUD 여백 보정
+
+- 변경 유형: Tutorial TextMesh 렌더 머티리얼 복구, 한글 HUD 레이아웃·글자 크기 조정, 정적 참조 검증 보강
+- 변경 내용: **구현 완료**. `Bay Label 01`~`07`의 한글 문구와 Noto Sans KR Bold `TextMesh.font`를 유지하면서 각 `MeshRenderer.sharedMaterial`을 같은 Bold 폰트 머티리얼로 연결하고 Renderer를 활성화했다. 생성 경로와 한글화 재적용 경로가 모두 폰트·머티리얼을 함께 설정하며 정적 검증도 이를 확인한다. `GameHud`의 좌상단 상태 패널은 `330×248`, 상태 글자는 14pt 및 `300×188` 영역으로 조정했다. 중앙 스테이지 결과와 `DEADLINE` 패널은 24pt 텍스트, 확대된 패널과 내부 여백으로 한글 3줄의 상하 잘림을 방지한다.
+- 영향을 받은 시스템: Tutorial 바닥 TextMesh와 MeshRenderer, Noto Sans KR Bold 렌더링, GameHud 상태·결과·DEADLINE 피드백 레이아웃
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/KoreanUiLocalizationBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.44`로 갱신해 바닥 표지의 폰트 머티리얼 복구, HUD 고정 치수와 사용자 수동 확인 범위를 반영했다.
+- 테스트 결과: **미실행**. 사용자 요청에 따라 자동 테스트와 배치 검증을 실행하지 않았다. 실제 Game View에서 표지 가시성과 좌상단·중앙 패널의 줄바꿈·잘림은 사용자가 직접 확인할 예정이다.
+- 남은 작업: **확인 불가**. 사용자 수동 확인 전까지 실제 해상도별 HUD 가독성과 Tutorial 바닥 표지의 카메라 거리별 가시성은 확인 불가다.
+
+## 2026-08-10 - UI 한글화 및 Noto Sans KR 적용
+
+- 변경 유형: 공용 UI 폰트 에셋·TMP 기본 폰트 등록, 메인 메뉴·게임플레이 HUD·튜토리얼 HUD·무기 표시·바닥 표지 한글화, 에디터 적용/정적 검증 진입점 추가
+- 변경 내용: **구현 완료**. Noto Sans KR Regular·Bold 참조와 Bold 기반 동적 SDF TMP 폰트 에셋을 공용 `KoreanUiFontSettings`로 등록했다. MainScene의 `PLAY`는 `게임 시작`으로 바꾸고 TMP 폰트를 연결했다. `GameHud`·`TutorialHud`의 사용자 표시 문구와 무기 표시는 한글화했으며, 네 무기 정의는 `권총`·`자동소총`·`샷건`·`근접 무기`로 통일했다. 튜토리얼 바닥 표지는 Bold 폰트로 `01 시간`, `02 대시`, `03 근접`, `04 권총`, `05 투척`, `06 DEADLINE`, `출구`를 표시한다. `DEADLINE`은 고유명 영문 표기를 유지한다. `KoreanUiLocalizationBuilder`는 같은 변경을 반복 적용해도 같은 결과가 되도록 적용 및 정적 참조 검증 메뉴/명령줄 진입점을 제공한다.
+- 영향을 받은 시스템: TMP 기본 글꼴과 MainScene 버튼, 런타임 IMGUI 게임플레이·튜토리얼 HUD, `WeaponDefinition` 표시명, Tutorial TextMesh 바닥 표지, 로컬라이제이션 에디터 작업 경로
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Font/Noto_Sans_KR/NotoSansKR-Regular.otf`, `ProjectDeltatime/Assets/_Project/Font/Noto_Sans_KR/NotoSansKR-Bold.otf`, `ProjectDeltatime/Assets/_Project/Font/Noto_Sans_KR/NotoSansKR-Bold SDF.asset`, `ProjectDeltatime/Assets/_Project/Resources/KoreanUiFontSettings.asset`, `ProjectDeltatime/Assets/TextMesh Pro/Resources/TMP Settings.asset`, `ProjectDeltatime/Assets/_Project/Scripts/UI/KoreanUiFontSettings.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/KoreanUiLocalizationBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.43`으로 갱신해 공용 폰트, 한글 사용자 표기, `DEADLINE` 영문 유지, 적용/정적 검증 경로와 수동 확인 범위를 기록했다.
+- 테스트 결과: **미실행**. 사용자 요청에 따라 자동 테스트와 배치 검증을 실행하지 않았다. 실제 Game View의 한글 글리프, 줄바꿈, 잘림은 사용자가 직접 확인할 예정이다.
+- 남은 작업: **확인 불가**. 사용자의 Game View 수동 확인 전까지 해상도별 텍스트 레이아웃과 동적 TMP 글리프 생성 결과는 확인 불가다. 언어 전환과 범용 로컬라이제이션 시스템은 이번 범위 밖이며 **계획 필요**다.
+
+## 2026-08-10 - 사망 리플레이·선택 스테이지 진행 및 엔딩 화면
+
+- 변경 유형: 리플레이 결과 처리 확장, 입력·HUD·씬 흐름 추가, Build Settings 정리, 엔딩 UI 추가
+- 변경 내용: **구현 완료**. `StageSceneFlow`가 `Stage1 → Stage2 → Stage5 → Stage6 → EndingScene` 목적지를 중앙 관리한다. `N`의 `NextStage` 입력을 추가해 클리어 리플레이 중에만 다음 목적지로 즉시 이동하게 했고, Stage6 뒤에는 `EndingScene`을 연다. `StageController`는 플레이어 사망 시에도 전투를 비활성화한 뒤 리플레이를 요청하며, 사망 리플레이에서는 `N`을 무시하고 `R`로 현재 스테이지를 재시작한다. 클리어·사망 리플레이 모두 `V` 시야 전환을 유지하고 HUD는 결과별 `N`·`R` 안내를 표시한다. MainScene의 기존 배경·로고를 복제한 `EndingScene`은 `STAGE CLEAR`, `Press N to return to Main Menu`를 표시하며 `N`으로 MainScene을 연다. Build Settings와 관련 씬 빌더는 `MainScene`, `Tutorial`, `Stage1`, `Stage2`, `Stage5`, `Stage6`, `EndingScene`만 유지하고 Stage3·Stage4 에셋은 삭제하지 않은 채 현재 빌드와 진행에서 제외한다.
+- 영향을 받은 시스템: Player Input System 생성 래퍼, 스테이지 상태·전투 비활성화, 리플레이 시야 전환, HUD 결과 안내, 씬 전환·Build Settings, MainScene 기반 완료 화면
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerInputReader.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageSceneFlow.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/EndingSceneController.cs`, `ProjectDeltatime/Assets/_Project/Scenes/EndingScene.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/EndingSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/GameBuildSceneCatalog.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.42`로 갱신해 현재 고정 진행 경로, 사망/클리어 리플레이의 키 정책, EndingScene, Stage3·Stage4의 비삭제·비진행 상태, Build Settings 구성과 수동 검증 범위를 반영했다.
+- 테스트 결과: **미실행**. 사용자 요청에 따라 자동·Play Mode 테스트와 수동 플레이를 실행하지 않았다. `EndingSceneBuilder.BuildFromCommandLine`으로 EndingScene 에셋을 생성했지만, 이후 입력 조건을 조정했으므로 해당 실행 결과를 현재 변경의 검증 근거로 사용하지 않는다.
+- 남은 작업: **확인 불가**. 사용자가 사망 후 리플레이와 `R` 재시작, 클리어 리플레이의 `N` 진행 순서, Stage6 뒤 EndingScene 및 EndingScene의 `N` 복귀, 리플레이의 `V` 시야 전환과 결과별 HUD 안내를 수동으로 확인해야 한다.
+
+## 2026-08-10 - Stage2 Synty 적 프리팹 적용
+
+- 변경 유형: Stage2 적 시각 교체, 씬 생성·정적 검증 보강
+- 변경 내용: **구현 완료**. `Enemy West`·`Enemy Center`·`Enemy East`의 Capsule 전투 프록시 아래에 Synty Polygon Nightclubs의 Bartender Male·Bouncer Male·Party Male 02 프리팹 시각을 각각 연결했다. 전투 프록시의 Collider·Rigidbody·AI·무기 참조는 유지하고 MeshRenderer만 `ShadowsOnly`로 바꿨으며, 프리팹 내부 Collider는 비활성화했다. `PrototypeSceneBuilder.ApplyStage2Characters`는 Stage2의 기존 플레이어 Business Male 시각을 유지하면서 과거 Stage1 이름의 중복 시각 자식을 정리하고 적만 멱등 교체한다.
+- 영향을 받은 시스템: Stage2 적 시각, Humanoid Animator·캐릭터 애니메이션, 적 피격/가시성 피드백, Capsule 전투 프록시, Stage2 씬 생성 경로
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs/Prefabs/Characters/SM_Chr_Bartender_Male_01.prefab`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs/Prefabs/Characters/SM_Chr_Bouncer_Male_01.prefab`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs/Prefabs/Characters/SM_Chr_Party_Male_02.prefab`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.41`로 갱신해 Stage2 적의 Synty 프리팹 구성, 보존하는 Capsule 프록시 역할, 정적 검증 및 통합 스모크 결과를 기록했다.
+- 테스트 결과: Unity 6000.1.13f1 배치 컴파일과 `PrototypeSceneBuilder.ApplyStage2Characters`가 통과했다. 세 프리팹 참조, `CharacterVisualController` 바인딩, Animator, `ShadowsOnly` 프록시, 시각 Collider 비활성화를 정적으로 검증했다. `PrototypePlayModeSmokeTest.RunFromCommandLine`은 이번 변경과 별개인 투척 무기 수치·6m 착지 및 리플레이 본 포즈 기록 검사에서 실패했다. 로그: `ProjectDeltatime/Stage2CharacterReplacement.log`, `ProjectDeltatime/Stage2SyntyEnemySmoke.log`.
+- 남은 작업: **확인 불가**. 실제 Game View에서 세 적의 크기·회전·무기 손 그립 및 전투 중 애니메이션 체감, 그리고 기존 스모크 실패 원인의 별도 수정·재실행이 필요하다.
+
 ## 2026-08-10 - 무기 획득 효과음 완전 제거
 
 - 변경 유형: 전투 SFX 재생 정책 수정, 런타임 사운드 라이브러리 정리

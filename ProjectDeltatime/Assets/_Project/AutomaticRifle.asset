@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AutomaticRifle
   m_EditorClassIdentifier: 
   kind: 0
-  displayName: Automatic Rifle
+  displayName: 자동소총
   animationStyle: 2
   ammunitionCapacity: 30
   fireInterval: 0.12

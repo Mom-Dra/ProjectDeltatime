@@ -18,6 +18,7 @@ namespace Deltatime.EditorTools
     {
         private const string MainScenePath = "Assets/_Project/Scenes/MainScene.unity";
         private const string PlaySceneName = "Tutorial";
+        private const string PlayButtonText = "게임 시작";
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private static readonly Vector2 TitleSize = new Vector2(600f, 400f);
         private static readonly Vector2 TitlePosition = new Vector2(72f, -56f);
@@ -38,7 +39,7 @@ namespace Deltatime.EditorTools
             ConfigureTitle(canvasTransform);
             ConfigurePlayButton(canvasTransform);
             ConfigureEventSystem(scene);
-            AddMainSceneToBuildSettings();
+            GameBuildSceneCatalog.Apply();
 
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene))
@@ -97,8 +98,12 @@ namespace Deltatime.EditorTools
                 "PlayButton must keep a transparent clickable background graphic.");
             Require(playButton.transition == Selectable.Transition.None,
                 "PlayButton must not tint a visible background during interaction.");
-            Require(playLabel.text == "PLAY" && playLabel.color == Color.white,
-                "PlayButton must use a white PLAY label.");
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Require(fontSettings != null &&
+                    playLabel.text == PlayButtonText &&
+                    playLabel.font == fontSettings.TextMeshProFont &&
+                    playLabel.color == Color.white,
+                "PlayButton must use the Korean game-start text and Noto Sans KR TMP font.");
             Require(playFeedback.Label == playLabel && Mathf.Approximately(playFeedback.HoverScale, PlayHoverScale),
                 "PlayButton must scale its Play label while hovered.");
             Require(playFeedback.PressedColor == PlayPressedColor,
@@ -208,9 +213,11 @@ namespace Deltatime.EditorTools
             button.navigation = new Navigation { mode = Navigation.Mode.None };
 
             TextMeshProUGUI label = GetOrCreatePlayLabel(buttonTransform);
-            Require(TMP_Settings.defaultFontAsset != null, "TextMeshPro default font asset is required for PlayLabel.");
-            label.font = TMP_Settings.defaultFontAsset;
-            label.text = "PLAY";
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Require(fontSettings != null && fontSettings.TextMeshProFont != null,
+                "Main menu requires KoreanUiFontSettings with a TMP font asset.");
+            label.font = fontSettings.TextMeshProFont;
+            label.text = PlayButtonText;
             label.fontStyle = FontStyles.Bold;
             label.fontSize = 30;
             label.alignment = TextAlignmentOptions.Center;
@@ -254,14 +261,6 @@ namespace Deltatime.EditorTools
         {
             EventSystem eventSystem = FindRequiredComponent<EventSystem>(scene, "EventSystem");
             eventSystem.firstSelectedGameObject = null;
-        }
-
-        private static void AddMainSceneToBuildSettings()
-        {
-            List<EditorBuildSettingsScene> scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            scenes.RemoveAll(scene => scene.path == MainScenePath);
-            scenes.Insert(0, new EditorBuildSettingsScene(MainScenePath, true));
-            EditorBuildSettings.scenes = scenes.ToArray();
         }
 
         private static void ValidateResponsiveLayout()

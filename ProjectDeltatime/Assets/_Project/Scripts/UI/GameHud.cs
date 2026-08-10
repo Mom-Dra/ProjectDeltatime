@@ -48,15 +48,15 @@ namespace Deltatime.UI
             EnsureStyles();
 
             string weaponName = weapon.Definition == null
-                ? "UNARMED"
-                : weapon.Definition.DisplayName.ToUpperInvariant();
+                ? "빈손"
+                : weapon.Definition.DisplayName;
             string ammunition = weapon.Definition == null
                 ? "--"
                 : weapon.Definition.IsMelee
-                    ? "MELEE"
+                    ? "근접"
                     : $"{weapon.Ammunition}/{weapon.Definition.AmmunitionCapacity}";
             string dashState = playerDash.CooldownRemaining <= 0f
-                ? "READY"
+                ? "준비 완료"
                 : $"{playerDash.CooldownRemaining:0.0}s";
             string deadlineCharges =
                 $"{deadline.ChargesRemaining}/{deadline.MaxCharges}";
@@ -67,36 +67,44 @@ namespace Deltatime.UI
                     ? $"{deadlineCharges} | {deadline.CooldownRemaining:0.00}w"
                     : deadlineCharges;
 
+            bool isDeathReplay = replay.IsReplaying &&
+                                 stage.CurrentState ==
+                                 StageController.StageState.PlayerDead;
             string replayView = replay.IsOmniscientViewEnabled
-                ? "FULL"
-                : "DARK";
-            string replaySpeedLabel = "REPLAY NORMALIZED 1.00x";
+                ? "전체"
+                : "암흑";
+            string replaySpeedLabel = "리플레이 정규화 1.00x";
             if (replay.CurrentPlaybackPhase ==
                 StageReplayController.ReplayPlaybackPhase.Deadline)
             {
-                replaySpeedLabel = "DEADLINE • NORMALIZED 1.00x";
+                replaySpeedLabel = "DEADLINE · 정규화 1.00x";
             }
             else if (replay.CurrentPlaybackPhase ==
                      StageReplayController.ReplayPlaybackPhase.DeadlineAftermath)
             {
-                replaySpeedLabel = "DEADLINE AFTERMATH • NORMALIZED 1.00x";
+                replaySpeedLabel = "DEADLINE 이후 · 정규화 1.00x";
             }
             string timeStatus = replay.IsReplaying
-                ? $"STAGE CLEAR  •  {replaySpeedLabel}\nREPLAY TIME  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\nVIEW  {replayView}"
-                : $"REAL TIME  {stage.RealPlayTime:0.0}s\nWORLD  {worldTime.CurrentTimeScale:0.00}x";
+                ? $"스테이지 클리어  ·  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\n시야  {replayView}"
+                : $"실시간  {stage.RealPlayTime:0.0}s\n월드  {worldTime.CurrentTimeScale:0.00}x";
+            if (isDeathReplay)
+            {
+                timeStatus = $"사망  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\n시야  {replayView}";
+            }
+
             string status =
-                $"ENEMIES  {stage.RemainingEnemyCount}\n" +
-                $"HEALTH  {playerHealth.CurrentHealth}/{playerHealth.MaximumHealth}\n" +
+                $"적  {stage.RemainingEnemyCount}\n" +
+                $"체력  {playerHealth.CurrentHealth}/{playerHealth.MaximumHealth}\n" +
                 $"{timeStatus}\n" +
-                $"DASH  {dashState}\n" +
+                $"대시  {dashState}\n" +
                 $"DEADLINE  {deadlineState}\n" +
-                $"WEAPON  {weaponName}  {ammunition}";
+                $"무기  {weaponName}  {ammunition}";
 
-            Rect statusPanel = new Rect(18f, 18f, 300f, 222f);
+            Rect statusPanel = new Rect(18f, 18f, 330f, 248f);
             GUI.DrawTexture(statusPanel, panelTexture);
-            GUI.Label(new Rect(32f, 28f, 270f, 166f), status, statusStyle);
+            GUI.Label(new Rect(32f, 28f, 300f, 188f), status, statusStyle);
 
-            Rect barBackground = new Rect(32f, 212f, 270f, 10f);
+            Rect barBackground = new Rect(32f, 228f, 300f, 10f);
             GUI.DrawTexture(barBackground, whiteTexture);
             Color previousColor = GUI.color;
             GUI.color = accentColor;
@@ -116,33 +124,54 @@ namespace Deltatime.UI
             switch (stage.CurrentState)
             {
                 case StageController.StageState.Cleared:
-                    message = "ROOM CLEAR\nPress R to restart";
+                    message = "구역 클리어\nN: 다음 스테이지\nR: 다시 시작";
                     break;
                 case StageController.StageState.Replaying:
-                    message = null;
+                    message = "스테이지 클리어\n리플레이 재생 중\nN: 다음 스테이지\nR: 다시 시작";
                     break;
                 case StageController.StageState.PlayerDead:
-                    message = "YOU DIED\nPress R to restart";
+                    message = replay.IsReplaying
+                        ? "사망했습니다\n리플레이 재생 중\nR: 다시 시작"
+                        : "사망했습니다\nR: 다시 시작";
                     break;
             }
 
             if (!string.IsNullOrEmpty(message))
             {
                 Rect messagePanel = new Rect(
-                    (Screen.width - 420f) * 0.5f,
-                    (Screen.height - 150f) * 0.5f,
-                    420f,
-                    150f);
+                    (Screen.width - 460f) * 0.5f,
+                    (Screen.height - 168f) * 0.5f,
+                    460f,
+                    168f);
                 GUI.DrawTexture(messagePanel, panelTexture);
-                GUI.Label(messagePanel, message, messageStyle);
+                GUI.Label(
+                    new Rect(
+                        messagePanel.x + 20f,
+                        messagePanel.y + 16f,
+                        messagePanel.width - 40f,
+                        messagePanel.height - 32f),
+                    message,
+                    messageStyle);
             }
 
             DrawDeadlineFeedback();
 
-            string controls = replay.IsReplaying
-                ? "V Toggle Full View  |  R Restart"
-                : "WASD Move  |  Mouse Aim  |  LMB Attack / Hold Auto Rifle  |  RMB Throw\n" +
-                  "Q Deadline  |  Space Dash  |  E Catch / Pick up / Swap  |  R Restart";
+            string controls;
+            if (replay.IsReplaying)
+            {
+                controls = stage.CanAdvanceToNextStage
+                    ? "V: 전체 시야 전환  |  N: 다음 스테이지  |  R: 다시 시작"
+                    : "V: 전체 시야 전환  |  R: 다시 시작";
+            }
+            else if (stage.CanAdvanceToNextStage)
+            {
+                controls = "N: 다음 스테이지  |  R: 다시 시작";
+            }
+            else
+            {
+                controls = "WASD 이동  |  마우스 조준  |  LMB 공격 / 자동소총 연사  |  RMB 투척\n" +
+                           "Q DEADLINE  |  Space 대시  |  E 잡기 / 획득 / 교체  |  R 다시 시작";
+            }
             GUI.Label(
                 new Rect(18f, Screen.height - 64f, Screen.width - 36f, 52f),
                 controls,
@@ -175,6 +204,15 @@ namespace Deltatime.UI
             }
 
             whiteTexture = Texture2D.whiteTexture;
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Font regularFont = fontSettings == null ? null : fontSettings.RegularFont;
+            Font boldFont = fontSettings == null ? null : fontSettings.BoldFont;
+            if (regularFont == null || boldFont == null)
+            {
+                Debug.LogError(
+                    "Korean UI font settings are missing. Run Tools/UI/Apply Korean Localization.",
+                    this);
+            }
             panelTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
             {
                 name = "Runtime HUD Panel"
@@ -184,7 +222,8 @@ namespace Deltatime.UI
 
             statusStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 17,
+                font = boldFont,
+                fontSize = 14,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = textColor },
                 alignment = TextAnchor.UpperLeft
@@ -192,12 +231,13 @@ namespace Deltatime.UI
 
             messageStyle = new GUIStyle(statusStyle)
             {
-                fontSize = 32,
+                fontSize = 24,
                 alignment = TextAnchor.MiddleCenter
             };
 
             controlsStyle = new GUIStyle(GUI.skin.label)
             {
+                font = regularFont,
                 fontSize = 14,
                 normal = { textColor = new Color(textColor.r, textColor.g, textColor.b, 0.85f) },
                 alignment = TextAnchor.LowerCenter
@@ -209,19 +249,26 @@ namespace Deltatime.UI
             if (deadline.IsActive)
             {
                 string causes = deadline.RejectedActionFeedback
-                    ? "CAUSES FULL"
-                    : $"CAUSES {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
+                    ? "원인 가득 참"
+                    : $"원인 {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
                 string text =
                     "DEADLINE\n" +
                     $"{causes}\n" +
-                    "MOVE TO RELEASE";
+                    "이동하여 실행";
                 Rect panel = new Rect(
                     (Screen.width - 480f) * 0.5f,
                     Screen.height * 0.62f,
                     480f,
-                    132f);
+                    142f);
                 GUI.DrawTexture(panel, panelTexture);
-                GUI.Label(panel, text, messageStyle);
+                GUI.Label(
+                    new Rect(
+                        panel.x + 20f,
+                        panel.y + 8f,
+                        panel.width - 40f,
+                        panel.height - 16f),
+                    text,
+                    messageStyle);
                 return;
             }
 
@@ -233,7 +280,7 @@ namespace Deltatime.UI
                 return;
             }
 
-            const string warning = "PRESS Q TO DEADLINE";
+            const string warning = "Q를 눌러 DEADLINE 발동";
             Rect warningPanel = new Rect(
                 (Screen.width - 460f) * 0.5f,
                 28f,

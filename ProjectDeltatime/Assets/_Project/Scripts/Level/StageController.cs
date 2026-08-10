@@ -29,6 +29,9 @@ namespace Deltatime.Level
         public int RemainingEnemyCount => livingEnemies.Count;
         public float RealPlayTime { get; private set; }
         public bool CombatAllowed => CurrentState == StageState.Active;
+        public bool CanAdvanceToNextStage =>
+            CurrentState == StageState.Cleared ||
+            CurrentState == StageState.Replaying;
 
         private void OnEnable()
         {
@@ -53,12 +56,18 @@ namespace Deltatime.Level
             if (input != null && input.RestartPressed)
             {
                 RestartStage();
+                return;
             }
 
-            if (CurrentState == StageState.Replaying &&
+            if (input != null && input.NextStagePressed)
+            {
+                TryAdvanceToNextStage();
+            }
+
+            if (replay != null &&
+                replay.IsReplaying &&
                 input != null &&
-                input.ReplayVisionTogglePressed &&
-                replay != null)
+                input.ReplayVisionTogglePressed)
             {
                 replay.SetOmniscientView(
                     !replay.IsOmniscientViewEnabled);
@@ -111,6 +120,38 @@ namespace Deltatime.Level
             replay = replayController;
         }
 
+        public bool TryAdvanceToNextStage()
+        {
+            if (!CanAdvanceToNextStage)
+            {
+                return false;
+            }
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (!StageSceneFlow.TryGetNextDestination(
+                    activeScene.name,
+                    out string destinationSceneName))
+            {
+                Debug.LogError(
+                    $"{nameof(StageController)} cannot advance from " +
+                    $"'{activeScene.name}' because it is not in the playable stage route.",
+                    this);
+                return false;
+            }
+
+            if (!Application.CanStreamedLevelBeLoaded(destinationSceneName))
+            {
+                Debug.LogError(
+                    $"{nameof(StageController)} could not load " +
+                    $"'{destinationSceneName}'. Add it to Build Settings.",
+                    this);
+                return false;
+            }
+
+            SceneManager.LoadScene(destinationSceneName);
+            return true;
+        }
+
         private void HandlePlayerDied()
         {
             if (CurrentState != StageState.Active)
@@ -123,6 +164,8 @@ namespace Deltatime.Level
             {
                 playerCombat.SetCombatEnabled(false);
             }
+
+            replay?.RequestReplay();
         }
 
         private void RestartStage()

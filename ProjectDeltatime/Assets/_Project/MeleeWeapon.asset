@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MeleeWeapon
   m_EditorClassIdentifier: 
   kind: 1
-  displayName: Melee Weapon
+  displayName: 근접 무기
   animationStyle: 3
   ammunitionCapacity: 0
   fireInterval: 0.72

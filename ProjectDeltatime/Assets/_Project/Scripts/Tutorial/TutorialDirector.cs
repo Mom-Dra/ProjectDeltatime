@@ -147,13 +147,13 @@ namespace Deltatime.Tutorial
                     case TutorialStep.Melee:
                         return "E로 근접 무기를 줍고, 표적을 향해 LMB로 공격하세요.";
                     case TutorialStep.Pistol:
-                        return "E로 Pistol을 교체하고, 마우스로 조준한 뒤 LMB로 사격하세요.";
+                        return "E로 권총을 교체하고, 마우스로 조준한 뒤 LMB로 사격하세요.";
                     case TutorialStep.ThrowAndRecover:
                         return !observedThrowOutcome
-                            ? "LMB 사격이 아니라 RMB로 Pistol을 던져 적을 기절시키고 무장을 해제하세요."
+                            ? "LMB 사격이 아니라 RMB로 권총을 던져 적을 기절시키고 무장을 해제하세요."
                             : "성공! 공중의 적 무기를 E로 잡으면 바로 DEADLINE으로 진행합니다.";
                     case TutorialStep.DeadlineApproach:
-                        return "Pistol을 장비했습니다. 북쪽 포위전 중앙으로 이동하세요.";
+                        return "권총을 장비했습니다. 북쪽 포위전 중앙으로 이동하세요.";
                     case TutorialStep.Deadline:
                         if (deadlineSucceeded)
                         {
@@ -172,7 +172,7 @@ namespace Deltatime.Tutorial
 
                         return "WASD로 이동하여 원인과 월드를 실행하고 북쪽으로 탈출하세요.";
                     default:
-                        return "튜토리얼 완료 — 잠시 후 Stage1으로 이동합니다.";
+                        return "튜토리얼 완료 — 잠시 후 스테이지 1로 이동합니다.";
                 }
             }
         }
@@ -199,12 +199,12 @@ namespace Deltatime.Tutorial
                     case TutorialStep.Pistol:
                     {
                         string pistolSupply = pistolDispenser == null
-                            ? "Pistol 지급기 없음"
+                            ? "권총 지급기 없음"
                             : pistolDispenser.HasExpectedLoadout
-                                ? "Pistol 장비 완료"
+                                ? "권총 장비 완료"
                                 : pistolDispenser.HasSpawnedPickup
-                                    ? "Pistol 생성됨"
-                                    : "Pistol 보급 중";
+                                    ? "권총 생성됨"
+                                    : "권총 보급 중";
                         return $"권총 적중 {pistolTarget?.AcceptedHitCount ?? 0}/1  |  {pistolSupply}";
                     }
                     case TutorialStep.ThrowAndRecover:

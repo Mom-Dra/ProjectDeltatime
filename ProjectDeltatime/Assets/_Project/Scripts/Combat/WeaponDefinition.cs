@@ -21,7 +21,7 @@ namespace Deltatime.Combat
     public sealed class WeaponDefinition : ScriptableObject
     {
         [SerializeField] private WeaponKind kind = WeaponKind.Firearm;
-        [SerializeField] private string displayName = "Pistol";
+        [SerializeField] private string displayName = "권총";
         [SerializeField] private CharacterAnimationStyle animationStyle =
             CharacterAnimationStyle.Pistol;
         [SerializeField, Min(0)] private int ammunitionCapacity = 8;
@@ -111,6 +111,18 @@ namespace Deltatime.Combat
         public bool IsMelee => kind == WeaponKind.Melee;
         public bool IsAutomatic =>
             IsFirearm && fireMode == WeaponFireMode.Automatic;
+
+        public void SetDisplayName(string weaponName)
+        {
+            if (string.IsNullOrWhiteSpace(weaponName))
+            {
+                throw new System.ArgumentException(
+                    "Weapon display name cannot be empty.",
+                    nameof(weaponName));
+            }
+
+            displayName = weaponName;
+        }
 
         public void ConfigureFirearmPrototype(
             string weaponName,

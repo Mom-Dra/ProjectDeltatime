@@ -1,6 +1,7 @@
 using Deltatime.Combat;
 using Deltatime.Player;
 using Deltatime.TimeSystem;
+using Deltatime.UI;
 using UnityEngine;
 
 namespace Deltatime.Tutorial
@@ -46,8 +47,8 @@ namespace Deltatime.Tutorial
             GUI.DrawTexture(statusPanel, panelTexture);
             GUI.Label(
                 new Rect(32f, 28f, 255f, 98f),
-                $"WORLD  {worldTime.CurrentTimeScale:0.00}x\n" +
-                $"WEAPON  {weaponName}{ammunition}\n" +
+                $"월드  {worldTime.CurrentTimeScale:0.00}x\n" +
+                $"무기  {weaponName}{ammunition}\n" +
                 $"DEADLINE  {deadline.ChargesRemaining}/{deadline.MaxCharges}",
                 statusStyle);
 
@@ -59,7 +60,7 @@ namespace Deltatime.Tutorial
                     560f,
                     190f);
                 GUI.DrawTexture(completePanel, panelTexture);
-                GUI.Label(completePanel, "튜토리얼 완료\n잠시 후 Stage1으로 이동합니다", completeStyle);
+                GUI.Label(completePanel, "튜토리얼 완료\n잠시 후 스테이지 1로 이동합니다", completeStyle);
                 return;
             }
 
@@ -109,20 +110,33 @@ namespace Deltatime.Tutorial
             panelTexture.SetPixel(0, 0, new Color(0.015f, 0.025f, 0.045f, 0.9f));
             panelTexture.Apply();
 
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Font regularFont = fontSettings == null ? null : fontSettings.RegularFont;
+            Font boldFont = fontSettings == null ? null : fontSettings.BoldFont;
+            if (regularFont == null || boldFont == null)
+            {
+                Debug.LogError(
+                    "Korean UI font settings are missing. Run Tools/UI/Apply Korean Localization.",
+                    this);
+            }
+
             titleStyle = new GUIStyle(GUI.skin.label)
             {
+                font = boldFont,
                 fontSize = 23,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.2f, 1f, 1f, 1f) }
             };
             instructionStyle = new GUIStyle(GUI.skin.label)
             {
+                font = regularFont,
                 fontSize = 18,
                 wordWrap = true,
                 normal = { textColor = new Color(0.92f, 0.96f, 1f, 1f) }
             };
             statusStyle = new GUIStyle(GUI.skin.label)
             {
+                font = regularFont,
                 fontSize = 15,
                 normal = { textColor = new Color(0.75f, 0.88f, 0.96f, 1f) }
             };

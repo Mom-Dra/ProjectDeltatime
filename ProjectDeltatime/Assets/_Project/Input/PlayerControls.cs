@@ -167,6 +167,15 @@ namespace Deltatime.InputSystem
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""NextStage"",
+                    ""type"": ""Button"",
+                    ""id"": ""9b14c702-1e25-4d0e-8ef5-9c39042d465a"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""ReplayVisionToggle"",
                     ""type"": ""Button"",
                     ""id"": ""5ad0f7cc-91df-426a-ae08-58d78e14f27f"",
@@ -311,6 +320,17 @@ namespace Deltatime.InputSystem
                 },
                 {
                     ""name"": """",
+                    ""id"": ""70d1a9e5-2dbf-41ce-ac12-a9597ee853ad"",
+                    ""path"": ""<Keyboard>/n"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""NextStage"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""59f544d3-8119-43cd-bef2-c4205c38a7bf"",
                     ""path"": ""<Keyboard>/v"",
                     ""interactions"": """",
@@ -352,6 +372,7 @@ namespace Deltatime.InputSystem
             m_Gameplay_Deadline = m_Gameplay.FindAction("Deadline", throwIfNotFound: true);
             m_Gameplay_Interact = m_Gameplay.FindAction("Interact", throwIfNotFound: true);
             m_Gameplay_Restart = m_Gameplay.FindAction("Restart", throwIfNotFound: true);
+            m_Gameplay_NextStage = m_Gameplay.FindAction("NextStage", throwIfNotFound: true);
             m_Gameplay_ReplayVisionToggle = m_Gameplay.FindAction("ReplayVisionToggle", throwIfNotFound: true);
         }
 
@@ -441,6 +462,7 @@ namespace Deltatime.InputSystem
         private readonly InputAction m_Gameplay_Deadline;
         private readonly InputAction m_Gameplay_Interact;
         private readonly InputAction m_Gameplay_Restart;
+        private readonly InputAction m_Gameplay_NextStage;
         private readonly InputAction m_Gameplay_ReplayVisionToggle;
         /// <summary>
         /// Provides access to input actions defined in input action map "Gameplay".
@@ -485,6 +507,10 @@ namespace Deltatime.InputSystem
             /// Provides access to the underlying input action "Gameplay/Restart".
             /// </summary>
             public InputAction @Restart => m_Wrapper.m_Gameplay_Restart;
+            /// <summary>
+            /// Provides access to the underlying input action "Gameplay/NextStage".
+            /// </summary>
+            public InputAction @NextStage => m_Wrapper.m_Gameplay_NextStage;
             /// <summary>
             /// Provides access to the underlying input action "Gameplay/ReplayVisionToggle".
             /// </summary>
@@ -539,6 +565,9 @@ namespace Deltatime.InputSystem
                 @Restart.started += instance.OnRestart;
                 @Restart.performed += instance.OnRestart;
                 @Restart.canceled += instance.OnRestart;
+                @NextStage.started += instance.OnNextStage;
+                @NextStage.performed += instance.OnNextStage;
+                @NextStage.canceled += instance.OnNextStage;
                 @ReplayVisionToggle.started += instance.OnReplayVisionToggle;
                 @ReplayVisionToggle.performed += instance.OnReplayVisionToggle;
                 @ReplayVisionToggle.canceled += instance.OnReplayVisionToggle;
@@ -577,6 +606,9 @@ namespace Deltatime.InputSystem
                 @Restart.started -= instance.OnRestart;
                 @Restart.performed -= instance.OnRestart;
                 @Restart.canceled -= instance.OnRestart;
+                @NextStage.started -= instance.OnNextStage;
+                @NextStage.performed -= instance.OnNextStage;
+                @NextStage.canceled -= instance.OnNextStage;
                 @ReplayVisionToggle.started -= instance.OnReplayVisionToggle;
                 @ReplayVisionToggle.performed -= instance.OnReplayVisionToggle;
                 @ReplayVisionToggle.canceled -= instance.OnReplayVisionToggle;
@@ -689,6 +721,13 @@ namespace Deltatime.InputSystem
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnRestart(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "NextStage" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnNextStage(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "ReplayVisionToggle" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

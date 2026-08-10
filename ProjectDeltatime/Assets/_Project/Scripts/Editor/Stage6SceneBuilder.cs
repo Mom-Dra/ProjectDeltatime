@@ -1882,48 +1882,7 @@ namespace Deltatime.EditorTools
 
         private static void AddStage6ToBuildSettings()
         {
-            List<EditorBuildSettingsScene> existing =
-                new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            List<EditorBuildSettingsScene> ordered =
-                new List<EditorBuildSettingsScene>();
-            string[] expected =
-            {
-                "Assets/_Project/Scenes/Tutorial.unity",
-                "Assets/_Project/Scenes/Stage1.unity",
-                "Assets/_Project/Scenes/Stage2.unity",
-                "Assets/_Project/Scenes/Stage3.unity",
-                "Assets/_Project/Scenes/Stage4.unity",
-                Stage5ScenePath,
-                Stage6ScenePath
-            };
-            for (int i = 0; i < expected.Length; i++)
-            {
-                if (i == expected.Length - 1 ||
-                    AssetDatabase.LoadAssetAtPath<SceneAsset>(expected[i]) != null)
-                {
-                    ordered.Add(new EditorBuildSettingsScene(expected[i], true));
-                }
-            }
-
-            for (int i = 0; i < existing.Count; i++)
-            {
-                bool stageScene = false;
-                for (int j = 0; j < expected.Length; j++)
-                {
-                    if (existing[i].path == expected[j])
-                    {
-                        stageScene = true;
-                        break;
-                    }
-                }
-
-                if (!stageScene)
-                {
-                    ordered.Add(existing[i]);
-                }
-            }
-
-            EditorBuildSettings.scenes = ordered.ToArray();
+            GameBuildSceneCatalog.Apply();
         }
 
         private static void ValidateStage6Scene(
@@ -2597,24 +2556,7 @@ namespace Deltatime.EditorTools
 
         private static void ValidateBuildOrder()
         {
-            string[] expected =
-            {
-                "Assets/_Project/Scenes/Tutorial.unity",
-                "Assets/_Project/Scenes/Stage1.unity",
-                "Assets/_Project/Scenes/Stage2.unity",
-                "Assets/_Project/Scenes/Stage3.unity",
-                "Assets/_Project/Scenes/Stage4.unity",
-                Stage5ScenePath,
-                Stage6ScenePath
-            };
-            EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
-            Require(scenes.Length >= expected.Length,
-                "Build settings do not contain Tutorial through Stage6.");
-            for (int i = 0; i < expected.Length; i++)
-            {
-                Require(scenes[i].enabled && scenes[i].path == expected[i],
-                    $"Build index {i} is {scenes[i].path}; expected {expected[i]}.");
-            }
+            GameBuildSceneCatalog.Validate();
         }
 
         private static int CountActiveCameras(Scene scene)

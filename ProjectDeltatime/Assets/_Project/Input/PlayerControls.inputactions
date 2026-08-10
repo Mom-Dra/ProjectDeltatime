@@ -78,6 +78,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "NextStage",
+                    "type": "Button",
+                    "id": "9b14c702-1e25-4d0e-8ef5-9c39042d465a",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "ReplayVisionToggle",
                     "type": "Button",
                     "id": "5ad0f7cc-91df-426a-ae08-58d78e14f27f",
@@ -217,6 +226,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Restart",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "70d1a9e5-2dbf-41ce-ac12-a9597ee853ad",
+                    "path": "<Keyboard>/n",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "NextStage",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

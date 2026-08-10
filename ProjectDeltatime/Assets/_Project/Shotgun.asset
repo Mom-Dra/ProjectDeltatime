@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shotgun
   m_EditorClassIdentifier: 
   kind: 0
-  displayName: Shotgun
+  displayName: 샷건
   animationStyle: 2
   ammunitionCapacity: 6
   fireInterval: 0.75
@@ -21,7 +21,7 @@ MonoBehaviour:
   damage: 1
   projectileRadius: 0.075
   fireMode: 0
-  projectileCount: 8
+  projectileCount: 4
   spreadAngle: 18
   spreadJitterAngle: 1
   spreadSeed: 307
