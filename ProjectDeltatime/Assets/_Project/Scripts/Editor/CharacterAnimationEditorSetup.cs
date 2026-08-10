@@ -61,7 +61,7 @@ namespace Deltatime.EditorTools
                 driver = owner.AddComponent<CharacterAnimationController>();
             }
 
-            driver.Configure(primaryAnimator, library);
+            driver.Configure(primaryAnimator, library, visual.transform);
             primaryAnimator.runtimeAnimatorController =
                 library.GetController(initialStyle);
 

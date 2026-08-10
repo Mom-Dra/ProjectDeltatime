@@ -62,10 +62,11 @@ namespace Deltatime.EditorTools
         private const string ThrownWeaponPrefabPath = Prefabs + "/ThrownWeapon.prefab";
         private const string InterceptableWeaponPrefabPath =
             Prefabs + "/InterceptableWeapon.prefab";
+        private const string PlayerCharacterPath =
+            "Assets/Synty/PolygonGeneric/Prefabs/Characters/" +
+            "SM_Gen_Chr_Business_Male_01.prefab";
         private const string CharacterRoot =
             "Assets/Synty/PolygonNightclubs/Prefabs/Characters";
-        private const string PlayerCharacterPath =
-            CharacterRoot + "/SM_Chr_Party_Female_01.prefab";
         private const string WestEnemyCharacterPath =
             CharacterRoot + "/SM_Chr_Bartender_Male_01.prefab";
         private const string CenterEnemyCharacterPath =
@@ -323,6 +324,7 @@ namespace Deltatime.EditorTools
             }
 
             ApplyStage1Characters();
+            ApplyStage2Characters();
             AddStageScenesToBuildSettings();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -388,22 +390,36 @@ namespace Deltatime.EditorTools
         [MenuItem("Tools/Prototype/Animation/Apply Characters To Stage 1")]
         public static void ApplyStage1Characters()
         {
+            ApplyPrototypeSceneCharacters(Stage1ScenePath);
+            Debug.Log("Stage1 animated characters applied and validated: 4/4 actors.");
+        }
+
+        public static void ApplyStage2Characters()
+        {
+            ApplyPrototypeSceneCharacters(Stage2ScenePath);
+            Debug.Log("Stage2 animated characters applied: player business model and 3 enemy actors.");
+        }
+
+        private static void ApplyPrototypeSceneCharacters(string scenePath)
+        {
             Scene scene = EditorSceneManager.OpenScene(
-                Stage1ScenePath,
+                scenePath,
                 OpenSceneMode.Single);
             AttachStage1Characters(scene);
             EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, Stage1ScenePath))
+            if (!EditorSceneManager.SaveScene(scene, scenePath))
             {
                 throw new InvalidOperationException(
-                    $"Failed to save {Stage1ScenePath} with animated characters.");
+                    $"Failed to save {scenePath} with animated characters.");
             }
 
-            ValidateScene(scene, Stage1DeadlineCharges);
-            ValidateStage1CharacterAnimations(scene);
+            if (scenePath == Stage1ScenePath)
+            {
+                ValidateScene(scene, Stage1DeadlineCharges);
+                ValidateStage1CharacterAnimations(scene);
+            }
+
             AssetDatabase.SaveAssets();
-            Debug.Log(
-                "Stage1 animated characters applied and validated: 4/4 actors.");
         }
 
         public static void ApplyStage1CharactersFromCommandLine()

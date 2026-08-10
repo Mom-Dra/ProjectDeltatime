@@ -45,7 +45,8 @@ namespace Deltatime.EditorTools
         private const int DeadlineCharges = 2;
 
         private const string PlayerCharacterPath =
-            CharacterRoot + "/SM_Chr_Party_Female_03.prefab";
+            "Assets/Synty/PolygonGeneric/Prefabs/Characters/" +
+            "SM_Gen_Chr_Business_Male_01.prefab";
         private const string WestGunnerCharacterPath =
             CharacterRoot + "/SM_Chr_Bartender_Male_01.prefab";
         private const string NorthChaserCharacterPath =

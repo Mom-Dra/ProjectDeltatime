@@ -90,8 +90,23 @@ namespace Deltatime.Visuals
             Animator targetAnimator,
             CharacterAnimationLibrary animationLibrary)
         {
+            Configure(
+                targetAnimator,
+                animationLibrary,
+                targetAnimator == null ? null : targetAnimator.transform);
+        }
+
+        public void Configure(
+            Animator targetAnimator,
+            CharacterAnimationLibrary animationLibrary,
+            Transform targetVisualRoot)
+        {
             animator = targetAnimator;
             library = animationLibrary;
+            visualRoot = targetVisualRoot == null
+                ? (targetAnimator == null ? null : targetAnimator.transform)
+                : targetVisualRoot;
+            hasVisualRootRestRotation = false;
             rollVisualDuration = Mathf.Max(0.5f, rollVisualDuration);
             CacheSources();
             ConfigureAnimator();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Deltatime.Combat;
 using Deltatime.Enemies;
 using Deltatime.InputSystem;
@@ -10,11 +11,13 @@ using Deltatime.TimeSystem;
 using Deltatime.Tutorial;
 using Deltatime.UI;
 using Deltatime.Vision;
+using Deltatime.Visuals;
 using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace Deltatime.EditorTools
@@ -40,8 +43,43 @@ namespace Deltatime.EditorTools
             Root + "/Materials/PrototypeAccent3D.mat";
         private const string EnemyMaterialPath =
             Root + "/Materials/PrototypeEnemy3D.mat";
+        private const string SyntyBuildingsRoot =
+            "Assets/Synty/PolygonNightclubs/Prefabs/Buildings";
+        private const string SyntyPropsRoot =
+            "Assets/Synty/PolygonNightclubs/Prefabs/Props";
+        private const string SyntyModularPropsRoot =
+            SyntyPropsRoot + "/Modular";
+        private const string SyntyFloorPath =
+            SyntyBuildingsRoot + "/SM_Bld_Floor_Combined_01.prefab";
+        private const string SyntyWallFeaturePath =
+            SyntyBuildingsRoot + "/SM_Bld_Wall_Feature_01.prefab";
+        private const string SyntyWallFeatureAlternatePath =
+            SyntyBuildingsRoot + "/SM_Bld_Wall_Feature_03.prefab";
+        private const string SyntyPillarPath =
+            SyntyBuildingsRoot + "/SM_Bld_Pillar_01.prefab";
+        private const string SyntyBarPath =
+            SyntyModularPropsRoot + "/SM_Prop_Bar_02.prefab";
+        private const string SyntyBenchPath =
+            SyntyModularPropsRoot + "/SM_Prop_Bench_01_Straight_01.prefab";
+        private const string SyntyBoxStackAPath =
+            SyntyPropsRoot + "/SM_Prop_Box_Stack_01.prefab";
+        private const string SyntyBoxStackBPath =
+            SyntyPropsRoot + "/SM_Prop_Box_Stack_04.prefab";
+        private const string SyntyFloorLightPath =
+            SyntyPropsRoot + "/SM_Prop_Floor_Light_02.prefab";
+        private const string SyntyExitSignPath =
+            SyntyPropsRoot + "/SM_Prop_Exit_Sign_01.prefab";
+        private const string SyntyDjBoothPath =
+            SyntyPropsRoot + "/SM_Prop_DJ_Booth_01.prefab";
+        private const string SyntyFridgePath =
+            SyntyPropsRoot + "/SM_Prop_Drinks_Fridge_01.prefab";
+        private const string SyntyDumpsterPath =
+            SyntyPropsRoot + "/SM_Prop_Dumpster_01.prefab";
+        private const string SyntyVisualRootName = "Synty Tutorial Set";
         private const int VisionObstacleLayer = 8;
         private const int ExpectedEnemyCount = 5;
+        private const int ExpectedAnimatedActorCount = 6;
+        private const int MinimumSyntyPrefabCount = 120;
 
         private static readonly string[] OrderedBuildScenes =
         {
@@ -211,6 +249,7 @@ namespace Deltatime.EditorTools
                 out WeaponController throwEnemyWeapon,
                 out EnemyWeaponDrop throwEnemyDrop,
                 out EnemyCombatant[] deadlineEnemies);
+            ConfigureTutorialCharacterAnimations(scene);
 
             GameObject systems = FindSceneRoot(scene, "Systems");
             Require(systems != null, "Tutorial Systems root is missing.");
@@ -311,6 +350,82 @@ namespace Deltatime.EditorTools
             ValidateSavedTutorial();
         }
 
+        public static void CapturePreviewFromCommandLine()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                TutorialScenePath,
+                OpenSceneMode.Single);
+            ValidateTutorialScene(scene);
+            Camera camera = FindSceneComponent<Camera>(scene);
+            Require(camera != null, "Tutorial preview requires its gameplay camera.");
+
+            string firstPath = Path.Combine(
+                Path.GetTempPath(),
+                "ProjectDeltatime-Tutorial-South.png");
+            string secondPath = Path.Combine(
+                Path.GetTempPath(),
+                "ProjectDeltatime-Tutorial-North.png");
+            CapturePreviewSegment(camera, -25f, firstPath);
+            CapturePreviewSegment(camera, 47f, secondPath);
+            Debug.Log(
+                $"Tutorial preview captured: {firstPath} and {secondPath}");
+        }
+
+        private static void CapturePreviewSegment(
+            Camera camera,
+            float centerZ,
+            string outputPath)
+        {
+            const int size = 768;
+            RenderTexture texture = new RenderTexture(
+                size,
+                size,
+                24,
+                RenderTextureFormat.ARGB32);
+            Texture2D image = new Texture2D(
+                size,
+                size,
+                TextureFormat.RGB24,
+                false);
+            RenderTexture previousActive = RenderTexture.active;
+            RenderTexture previousTarget = camera.targetTexture;
+            Vector3 previousPosition = camera.transform.position;
+            Quaternion previousRotation = camera.transform.rotation;
+            bool previousOrthographic = camera.orthographic;
+            float previousOrthographicSize = camera.orthographicSize;
+            float previousFieldOfView = camera.fieldOfView;
+            float previousFarClip = camera.farClipPlane;
+            try
+            {
+                camera.transform.SetPositionAndRotation(
+                    new Vector3(0f, 13.5f, centerZ - 12.5f),
+                    Quaternion.Euler(46f, 0f, 0f));
+                camera.orthographic = false;
+                camera.fieldOfView = 49f;
+                camera.farClipPlane = 100f;
+                camera.targetTexture = texture;
+                camera.Render();
+                RenderTexture.active = texture;
+                image.ReadPixels(new Rect(0f, 0f, size, size), 0, 0);
+                image.Apply();
+                File.WriteAllBytes(outputPath, image.EncodeToPNG());
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                camera.targetTexture = previousTarget;
+                camera.transform.SetPositionAndRotation(
+                    previousPosition,
+                    previousRotation);
+                camera.orthographic = previousOrthographic;
+                camera.orthographicSize = previousOrthographicSize;
+                camera.fieldOfView = previousFieldOfView;
+                camera.farClipPlane = previousFarClip;
+                UnityEngine.Object.DestroyImmediate(texture);
+                UnityEngine.Object.DestroyImmediate(image);
+            }
+        }
+
         private static void RemovePrototypeContent(Scene scene)
         {
             GameObject industrialRoom = FindSceneRoot(scene, "Industrial Room");
@@ -370,7 +485,7 @@ namespace Deltatime.EditorTools
             Material accentMaterial)
         {
             GameObject root = new GameObject("Tutorial Environment");
-            CreatePrimitive(
+            GameObject floorProxy = CreatePrimitive(
                 root.transform,
                 "Tutorial Floor",
                 PrimitiveType.Cube,
@@ -379,6 +494,7 @@ namespace Deltatime.EditorTools
                 floorMaterial,
                 true,
                 0);
+            floorProxy.GetComponent<Renderer>().enabled = false;
             CreateWall(
                 root.transform,
                 "West Tutorial Wall",
@@ -443,7 +559,303 @@ namespace Deltatime.EditorTools
             CreatePointLight(root.transform, "Pistol Lesson Light", new Vector3(0f, 4f, 7f), new Color(0.1f, 0.9f, 1f, 1f));
             CreatePointLight(root.transform, "Throw Lesson Light", new Vector3(0f, 4f, 24f), new Color(1f, 0.72f, 0.08f, 1f));
             CreatePointLight(root.transform, "Deadline Arena Light", new Vector3(0f, 5f, 47f), new Color(0.9f, 0.08f, 0.12f, 1f), 1.2f, 16f);
+            ConfigureProxyRenderers(root);
+            CreateSyntyEnvironment(root.transform, zoneCenters);
             return root;
+        }
+
+        private static void ConfigureProxyRenderers(GameObject root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                string objectName = renderer.gameObject.name;
+                if (objectName == "Tutorial Floor")
+                {
+                    renderer.enabled = false;
+                }
+                else if (objectName.EndsWith("Tutorial Wall", StringComparison.Ordinal) ||
+                         objectName.StartsWith("Pistol Firing Rail", StringComparison.Ordinal))
+                {
+                    renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+                    renderer.receiveShadows = false;
+                }
+            }
+        }
+
+        private static void CreateSyntyEnvironment(
+            Transform environment,
+            float[] zoneCenters)
+        {
+            RequireSyntyTutorialAssets();
+            GameObject visualRoot = new GameObject(SyntyVisualRootName);
+            visualRoot.transform.SetParent(environment, false);
+
+            const int floorRows = 20;
+            for (int row = 0; row < floorRows; row++)
+            {
+                float z = -33.5f + row * 5f;
+                for (int column = -1; column <= 1; column++)
+                {
+                    PlaceSyntyVisual(
+                        visualRoot.transform,
+                        SyntyFloorPath,
+                        $"Floor {row + 1:00}-{column + 2}",
+                        new Vector3(column * 5f, -0.1f, z),
+                        Quaternion.identity,
+                        new Vector3(2f, 1f, 2f));
+                }
+
+                string wallPath = row % 2 == 0
+                    ? SyntyWallFeaturePath
+                    : SyntyWallFeatureAlternatePath;
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    wallPath,
+                    $"West Wall {row + 1:00}",
+                    new Vector3(-7f, 0f, z),
+                    Quaternion.Euler(0f, -90f, 0f),
+                    new Vector3(2f, 1f, 1f));
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    wallPath,
+                    $"East Wall {row + 1:00}",
+                    new Vector3(7f, 0f, z),
+                    Quaternion.Euler(0f, 90f, 0f),
+                    new Vector3(2f, 1f, 1f));
+            }
+
+            for (int column = -1; column <= 1; column++)
+            {
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyWallFeatureAlternatePath,
+                    $"South Wall {column + 2}",
+                    new Vector3(column * 5f, 0f, -36f),
+                    Quaternion.Euler(0f, 180f, 0f),
+                    new Vector3(2f, 1f, 1f));
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyWallFeaturePath,
+                    $"North Wall {column + 2}",
+                    new Vector3(column * 5f, 0f, 61f),
+                    Quaternion.identity,
+                    new Vector3(2f, 1f, 1f));
+            }
+
+            for (int i = 0; i < zoneCenters.Length; i++)
+            {
+                float z = zoneCenters[i];
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyPillarPath,
+                    $"West Zone Pillar {i + 1}",
+                    new Vector3(-6.7f, 0f, z),
+                    Quaternion.identity,
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyPillarPath,
+                    $"East Zone Pillar {i + 1}",
+                    new Vector3(6.7f, 0f, z),
+                    Quaternion.identity,
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyFloorLightPath,
+                    $"West Route Light {i + 1}",
+                    new Vector3(-4.8f, 0f, z),
+                    Quaternion.identity,
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyFloorLightPath,
+                    $"East Route Light {i + 1}",
+                    new Vector3(4.8f, 0f, z),
+                    Quaternion.Euler(0f, 180f, 0f),
+                    Vector3.one);
+            }
+
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyDjBoothPath,
+                "World Time Control Booth",
+                new Vector3(-5.25f, 0f, -29.5f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyFridgePath,
+                "World Time Equipment Cabinet",
+                new Vector3(5.35f, 0f, -29.5f),
+                Quaternion.Euler(0f, -90f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBenchPath,
+                "Melee Briefing Bench",
+                new Vector3(-5.4f, 0f, -7f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBoxStackAPath,
+                "Melee Equipment Stack",
+                new Vector3(5.35f, 0f, -7f),
+                Quaternion.Euler(0f, -20f, 0f),
+                Vector3.one);
+
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntyBarPath,
+                "Pistol Range West Cover",
+                new Vector3(-3.7f, 0f, 5.5f),
+                Quaternion.identity,
+                new Vector3(2f, 1f, 1f));
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntyBarPath,
+                "Pistol Range East Cover",
+                new Vector3(3.7f, 0f, 5.5f),
+                Quaternion.identity,
+                new Vector3(2f, 1f, 1f));
+
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBoxStackBPath,
+                "Throw Lane West Stack",
+                new Vector3(-5.4f, 0f, 21f),
+                Quaternion.Euler(0f, 12f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBoxStackAPath,
+                "Throw Lane East Stack",
+                new Vector3(5.4f, 0f, 29f),
+                Quaternion.Euler(0f, -18f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyDumpsterPath,
+                "Deadline Arena West Cover",
+                new Vector3(-5.45f, 0f, 39.2f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBenchPath,
+                "Deadline Arena East Cover",
+                new Vector3(5.5f, 0f, 54.5f),
+                Quaternion.Euler(0f, -90f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntyExitSignPath,
+                "Tutorial Exit Sign",
+                new Vector3(0f, 2.15f, 60.7f),
+                Quaternion.identity,
+                new Vector3(1.8f, 1.8f, 1.8f));
+        }
+
+        private static void RequireSyntyTutorialAssets()
+        {
+            string[] paths =
+            {
+                SyntyFloorPath,
+                SyntyWallFeaturePath,
+                SyntyWallFeatureAlternatePath,
+                SyntyPillarPath,
+                SyntyBarPath,
+                SyntyBenchPath,
+                SyntyBoxStackAPath,
+                SyntyBoxStackBPath,
+                SyntyFloorLightPath,
+                SyntyExitSignPath,
+                SyntyDjBoothPath,
+                SyntyFridgePath,
+                SyntyDumpsterPath
+            };
+            for (int i = 0; i < paths.Length; i++)
+            {
+                Require(
+                    AssetDatabase.LoadAssetAtPath<GameObject>(paths[i]) != null,
+                    $"Tutorial Synty prefab is missing: {paths[i]}");
+            }
+        }
+
+        private static GameObject PlaceSyntyProp(
+            Transform parent,
+            string path,
+            string name,
+            Vector3 placement,
+            Quaternion rotation,
+            Vector3 scale)
+        {
+            GameObject visual = PlaceSyntyVisual(
+                parent,
+                path,
+                name,
+                placement,
+                rotation,
+                scale);
+            Bounds bounds = CalculateRendererBounds(visual);
+            GameObject collision = new GameObject(name + " Collision");
+            collision.layer = VisionObstacleLayer;
+            collision.transform.SetParent(parent, false);
+            collision.transform.position = bounds.center;
+            BoxCollider collider = collision.AddComponent<BoxCollider>();
+            collider.size = new Vector3(
+                Mathf.Max(0.2f, bounds.size.x * 0.88f),
+                Mathf.Max(0.3f, bounds.size.y),
+                Mathf.Max(0.2f, bounds.size.z * 0.88f));
+            return visual;
+        }
+
+        private static GameObject PlaceSyntyVisual(
+            Transform parent,
+            string path,
+            string name,
+            Vector3 placement,
+            Quaternion rotation,
+            Vector3 scale)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            GameObject instance = PrefabUtility.InstantiatePrefab(
+                prefab,
+                parent) as GameObject;
+            Require(instance != null, $"Failed to instantiate Tutorial Synty prefab: {path}");
+            instance.name = name;
+            instance.transform.SetPositionAndRotation(Vector3.zero, rotation);
+            instance.transform.localScale = scale;
+
+            Collider[] colliders = instance.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                colliders[i].enabled = false;
+            }
+
+            Bounds bounds = CalculateRendererBounds(instance);
+            Vector3 offset = new Vector3(
+                placement.x - bounds.center.x,
+                placement.y - bounds.min.y,
+                placement.z - bounds.center.z);
+            instance.transform.position += offset;
+            return instance;
+        }
+
+        private static Bounds CalculateRendererBounds(GameObject root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            Require(renderers.Length > 0,
+                $"Tutorial Synty prefab has no Renderer: {root.name}");
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                bounds.Encapsulate(renderers[i].bounds);
+            }
+
+            return bounds;
         }
 
         private static TutorialGate CreateGate(
@@ -616,6 +1028,48 @@ namespace Deltatime.EditorTools
             enemy.enabled = false;
         }
 
+        private static void ConfigureTutorialCharacterAnimations(Scene scene)
+        {
+            CharacterAnimationLibrary library =
+                AssetDatabase.LoadAssetAtPath<CharacterAnimationLibrary>(
+                    CharacterAnimationEditorSetup.LibraryPath);
+            Require(library != null,
+                "Tutorial requires the generated character animation library.");
+
+            List<GameObject> owners = new List<GameObject>();
+            PlayerHealth player = FindSceneComponent<PlayerHealth>(scene);
+            Require(player != null, "Tutorial player is missing during character setup.");
+            owners.Add(player.gameObject);
+            EnemyHealth[] enemies = FindSceneComponents<EnemyHealth>(scene);
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                owners.Add(enemies[i].gameObject);
+            }
+
+            Require(owners.Count == ExpectedAnimatedActorCount,
+                $"Tutorial character setup found {owners.Count} actors; " +
+                $"expected {ExpectedAnimatedActorCount}.");
+            for (int i = 0; i < owners.Count; i++)
+            {
+                GameObject owner = owners[i];
+                CharacterVisualController visual =
+                    owner.GetComponent<CharacterVisualController>();
+                Require(visual != null && visual.VisualRoot != null,
+                    $"Tutorial actor {owner.name} has no inherited Synty character model.");
+                Require(
+                    CharacterAnimationEditorSetup.ConfigureCharacter(
+                        owner,
+                        visual.VisualRoot.gameObject),
+                    $"Failed to configure Tutorial Animator on {owner.name}.");
+                visual.Configure(visual.VisualRoot);
+                owner.GetComponent<EnemyCombatant>()?.ConfigureVisual(visual);
+                owner.GetComponent<EnemyHealth>()?.ConfigureVisual(visual);
+                owner.GetComponent<PlayerHealth>()?.ConfigureVisual(visual);
+                EditorUtility.SetDirty(owner);
+                EditorUtility.SetDirty(visual);
+            }
+        }
+
         private static TutorialTrigger CreateTrigger(
             string name,
             Vector3 position,
@@ -785,6 +1239,10 @@ namespace Deltatime.EditorTools
             Camera[] cameras = FindSceneComponents<Camera>(scene);
             NavMeshSurface surface = FindSceneComponent<NavMeshSurface>(scene);
             GameHud gameHud = FindSceneComponent<GameHud>(scene);
+            CharacterAnimationController[] animationControllers =
+                FindSceneComponents<CharacterAnimationController>(scene);
+            CharacterVisualController[] characterVisuals =
+                FindSceneComponents<CharacterVisualController>(scene);
             WeaponController playerWeapon = players.Length == 1
                 ? players[0].GetComponent<WeaponController>()
                 : null;
@@ -836,9 +1294,108 @@ namespace Deltatime.EditorTools
                 "Tutorial must use its dedicated TutorialNavigation.asset.");
             Require(gameHud == null,
                 "Legacy GameHud must be removed from Tutorial.");
+            Require(animationControllers.Length == ExpectedAnimatedActorCount &&
+                    characterVisuals.Length == ExpectedAnimatedActorCount,
+                $"Tutorial requires {ExpectedAnimatedActorCount} animated Synty actors; " +
+                $"found {animationControllers.Length} animation drivers and " +
+                $"{characterVisuals.Length} character visuals.");
 
+            ValidateTutorialArtAndCharacters(scene, animationControllers);
+            ValidateTutorialNavigationRoute(surface);
             ValidateVisionObstaclePolicy(scene);
             ValidateBuildSettings();
+        }
+
+        private static void ValidateTutorialArtAndCharacters(
+            Scene scene,
+            CharacterAnimationController[] animationControllers)
+        {
+            GameObject environment = FindSceneRoot(scene, "Tutorial Environment");
+            Transform visualRoot = environment == null
+                ? null
+                : environment.transform.Find(SyntyVisualRootName);
+            Require(visualRoot != null,
+                $"Tutorial is missing its {SyntyVisualRootName} root.");
+
+            int prefabCount = 0;
+            for (int i = 0; i < visualRoot.childCount; i++)
+            {
+                GameObject child = visualRoot.GetChild(i).gameObject;
+                if (PrefabUtility.GetCorrespondingObjectFromSource(child) != null)
+                {
+                    prefabCount++;
+                }
+            }
+
+            Require(prefabCount >= MinimumSyntyPrefabCount,
+                $"Tutorial contains {prefabCount} Synty prefab instances; " +
+                $"expected at least {MinimumSyntyPrefabCount}.");
+            Require(visualRoot.Find("Pistol Range West Cover") != null &&
+                    visualRoot.Find("Pistol Range East Cover") != null &&
+                    visualRoot.Find("Tutorial Exit Sign") != null,
+                "Tutorial Synty landmarks are incomplete.");
+
+            for (int i = 0; i < animationControllers.Length; i++)
+            {
+                CharacterAnimationController controller =
+                    animationControllers[i];
+                Animator animator = controller.Animator;
+                CharacterVisualController visual =
+                    controller.GetComponent<CharacterVisualController>();
+                Require(animator != null && animator.enabled &&
+                        animator.runtimeAnimatorController != null &&
+                        animator.applyRootMotion == false &&
+                        animator.updateMode == AnimatorUpdateMode.UnscaledTime,
+                    $"Tutorial Animator is not configured on {controller.name}.");
+                Require(visual != null && visual.VisualRoot != null &&
+                        visual.VisualRoot.GetComponentsInChildren<
+                            SkinnedMeshRenderer>(true).Length > 0,
+                    $"Tutorial actor {controller.name} has no rendered Synty model.");
+            }
+        }
+
+        private static void ValidateTutorialNavigationRoute(
+            NavMeshSurface surface)
+        {
+            Require(surface != null && surface.navMeshData != null,
+                "Tutorial navigation route validation requires baked NavMesh data.");
+            Vector3[] checkpoints =
+            {
+                new Vector3(0f, 0.75f, -34f),
+                new Vector3(0f, 0.75f, -18f),
+                new Vector3(0f, 0.75f, -7f),
+                new Vector3(0f, 0.75f, 6f),
+                new Vector3(0f, 0.75f, 23f),
+                new Vector3(0f, 0.75f, 47f),
+                new Vector3(0f, 0.75f, 59.5f)
+            };
+
+            NavMeshHit previousHit;
+            Require(NavMesh.SamplePosition(
+                    checkpoints[0],
+                    out previousHit,
+                    1.5f,
+                    NavMesh.AllAreas),
+                "Tutorial start is not on the baked NavMesh.");
+            for (int i = 1; i < checkpoints.Length; i++)
+            {
+                NavMeshHit nextHit;
+                Require(NavMesh.SamplePosition(
+                        checkpoints[i],
+                        out nextHit,
+                        1.5f,
+                        NavMesh.AllAreas),
+                    $"Tutorial checkpoint {i + 1} is not on the baked NavMesh.");
+                NavMeshPath path = new NavMeshPath();
+                bool foundPath = NavMesh.CalculatePath(
+                    previousHit.position,
+                    nextHit.position,
+                    NavMesh.AllAreas,
+                    path);
+                Require(foundPath && path.status == NavMeshPathStatus.PathComplete,
+                    $"Tutorial route is blocked between checkpoints {i} and {i + 1}.");
+                previousHit = nextHit;
+            }
         }
 
         private static void ValidateVisionObstaclePolicy(Scene scene)

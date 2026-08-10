@@ -21,6 +21,66 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - MainScene Play TextMeshProUGUI 전환
+
+- 변경 유형: 메인 메뉴 레이블 렌더링 컴포넌트 교체
+- 변경 내용: **구현 완료**. `PlayLabel`의 레거시 `UnityEngine.UI.Text`를 제거하고 `TextMeshProUGUI`로 전환했다. `MainSceneBuilder`는 기본 TMP 폰트 에셋, 흰색 굵은 `PLAY` 텍스트, 가운데 정렬, 줄바꿈 없음과 overflow 표시를 설정하며, 기존 hover 확대·로고 빨간색 눌림 피드백은 TMP 레이블을 직접 갱신하도록 유지한다.
+- 영향을 받은 시스템: MainScene 텍스트 렌더링, Canvas 포인터 피드백
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuButtonFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.27`로 갱신해 `TextMeshProUGUI` 렌더링 전환을 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `MainSceneBuilder.BuildAndValidateFromCommandLine`이 컴파일 오류 없이 완료됐고, TMP 레이블, feedback 레이블 참조, `1.08` hover 배율, `RGB(224, 28, 28)` 눌림 색상, 투명 입력 영역과 기존 다중 화면비 안전 영역을 검증하고 통과했다. 로그: `ProjectDeltatime/MainSceneBuildValidate.log`.
+- 남은 작업: **미실행**. 실제 Game View에서 TMP 글꼴 외형·hover 확대·눌림 색상 및 `Tutorial` 전환을 수동 확인한다.
+
+## 2026-08-10 - MainScene Play 포인터 피드백
+
+- 변경 유형: 메인 메뉴 Play 텍스트 hover·press 상호작용 추가
+- 변경 내용: **구현 완료**. `MainMenuButtonFeedback`은 투명 Play 클릭 영역의 포인터 enter/exit/down/up을 받아 레이블을 hover 중 `1.08`배로 키우고, 누르는 동안 로고 이미지에서 추출한 빨간색 `RGB(224, 28, 28)`으로 바꾼다. 버튼 배경은 계속 투명이며 mouse up 또는 exit 시 흰색·원래 크기로 복귀한다.
+- 영향을 받은 시스템: MainScene UI 상호작용, Canvas 포인터 입력, 게임 시작 흐름
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Image/logo.png`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuButtonFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.26`으로 갱신해 흰색 텍스트 기본 상태, `1.08` hover 확대, 로고 빨간색 눌림 상태와 복귀 동작을 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `MainSceneBuilder.BuildAndValidateFromCommandLine`이 feedback 레이블 연결, `1.08` hover 배율, `RGB(224, 28, 28)` 눌림 색상, 투명·입력 가능 `Image`, 버튼 상태 전환 없음과 기존 다중 화면비 안전 영역을 검증하고 통과했다. 로그: `ProjectDeltatime/MainSceneBuildValidate.log`.
+- 남은 작업: **미실행**. 실제 대상 디스플레이의 Game View에서 hover 확대, 누르고 있는 동안의 빨간색 표시, release·exit 복귀 및 `Tutorial` 전환을 수동 확인한다.
+
+## 2026-08-10 - 반응형 MainScene 타이틀·Play 메뉴
+
+- 변경 유형: 메인 메뉴 씬 구성, Canvas 반응형 레이아웃 적용, 빌드 시작 씬 및 Play 씬 전환 추가
+- 변경 내용: **구현 완료**. 사용자가 만든 `MainScene`의 배경과 로고 이미지는 유지하고, 로고를 Canvas의 좌측 상단 안전 여백 `(72, 56)`에 비율 보존 배치했다. 배경은 원본 비율 `1672:941`을 유지한 채 부모를 덮도록 설정했고, Canvas는 기준 해상도 `1920×1080`, 화면 폭/높이 일치값 `0.5`의 `Scale With Screen Size`를 사용한다. 로고 아래에는 검은색 `PLAY` 텍스트가 들어간 흰색 버튼 하나만 추가했다. 버튼은 `Tutorial` 씬을 로드하며, `MainScene`은 Build Settings의 첫 번째 활성 씬이다.
+- 영향을 받은 시스템: 게임 시작 흐름, Canvas UI 입력, 해상도·화면비 대응, Build Settings 씬 순서
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Image/background.png`, `ProjectDeltatime/Assets/_Project/Image/logo.png`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.24`로 갱신해 MainScene의 시작 흐름, Canvas 기반 화면비 대응, 씬 목록 및 UI 정보 구조를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `MainSceneBuilder.BuildAndValidateFromCommandLine`이 스크립트 컴파일, Canvas 스케일러, 비율 보존 배경, 타이틀·버튼 앵커/크기, 흰색 버튼·`PLAY` 레이블, `Tutorial` 연결, Build Settings 순서를 검증했다. 추가로 1920×1080, 2560×1080, 1080×1920, 1024×768, 3840×2160 좌표계에서 타이틀과 버튼이 화면 안전 영역 안에 놓이는지 검증했다. 로그: `ProjectDeltatime/MainSceneBuildValidate.log`.
+- 남은 작업: **미실행**. 실제 대상 디스플레이에서의 Game View 시각 폴리시와 마우스·키보드로 버튼을 눌러 `Tutorial`이 로드되는 수동 확인은 아직 실행하지 않았다.
+
+## 2026-08-10 - MainScene Play 텍스트 단독 표시
+
+- 변경 유형: 메인 메뉴 Play 버튼 시각 조정
+- 변경 내용: **구현 완료**. Play 버튼의 `Image`는 알파 0의 투명 입력 영역으로 유지하고, 버튼 상태 전환을 `None`으로 설정해 포인터 hover·press에도 배경이 표시되지 않게 했다. `PLAY` 레이블은 흰색 굵은 텍스트로 표시한다. 버튼 크기·좌측 앵커·`Tutorial` 로드 동작은 유지한다.
+- 영향을 받은 시스템: MainScene UI 렌더링, Canvas 입력, 게임 시작 흐름
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.25`로 갱신해 배경 없는 흰색 Play 텍스트와 투명 입력 영역을 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `MainSceneBuilder.BuildAndValidateFromCommandLine`이 투명·입력 가능 Play Image, 상태 전환 없음, 흰색 `PLAY` 레이블, `Tutorial` 연결과 기존 다중 화면비 안전 영역을 검증하고 통과했다. 로그: `ProjectDeltatime/MainSceneBuildValidate.log`.
+- 남은 작업: **미실행**. 실제 대상 디스플레이에서의 Game View 시각 폴리시와 마우스·키보드로 버튼을 눌러 `Tutorial`이 로드되는 수동 확인은 아직 실행하지 않았다.
+
+## 2026-08-10 - 메인 플레이어 Business Male 모델 교체
+
+- 변경 유형: 메인 플레이어 시각 프리팹 교체, Humanoid Animator·무기 프레젠터 재바인딩, 씬·재생성 경로 검증 확장
+- 변경 내용: **구현 완료**. Tutorial 및 Stage1~Stage6의 `Player` 게임플레이 루트는 유지하고 시각 자식만 `Assets/Synty/PolygonGeneric/Prefabs/Characters/SM_Gen_Chr_Business_Male_01.prefab`으로 교체했다. `PlayerCharacterModelEditorSetup`은 정확한 프리팹 인스턴스, 유효한 Humanoid Avatar, `CharacterAnimationLibrary` Controller, Root Motion 비활성화, 시각 Collider 비활성화를 확인한다. `CharacterAnimationController.Configure`는 새 시각 루트를 명시적으로 받아 교체 후 대시 종료 회전이 파괴된 이전 모델을 참조하지 않게 했다. `CharacterAnimationEditorSetup`은 새 루트를 전달하고, `WeaponVisualPresenter`는 새 모델의 `RightHand`에 기존 권총·자동소총·샷건·근접 무기 시각과 `Weapon Muzzle`을 다시 장착한다. `PrototypeSceneBuilder`는 Stage2에도 캐릭터를 적용하며 Stage1·Stage3·Stage4·Stage5·Stage6 빌더의 플레이어 프리팹 경로도 같은 Business Male 모델로 갱신했다.
+- 영향을 받은 시스템: 모든 플레이 가능 씬의 플레이어 렌더링, Humanoid Animator 프로필, 대시 시각 루트, 오른손 무기·총구 프레젠터, Stage1~Stage6 재생성 경로
+- 관련 파일: `ProjectDeltatime/Assets/Synty/PolygonGeneric/Prefabs/Characters/SM_Gen_Chr_Business_Male_01.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PlayerCharacterModelEditorSetup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/CharacterAnimationEditorSetup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Visuals/CharacterAnimationController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage6SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage6.unity`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.23`으로 갱신해 모든 플레이 가능 씬의 메인 플레이어 모델, Animator·무기 연결, 정적/PlayMode 검증 범위와 남은 수동 확인 항목을 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `PlayerCharacterModelEditorSetup.ApplyBusinessMalePlayerModelFromCommandLine`이 Tutorial 및 Stage1~Stage6에서 Business Male 프리팹 경로, Humanoid Animator, Runtime Animator Controller, Root Motion 비활성화, 시각 Collider 비활성화를 검증하며 저장했다. 이어 `TutorialPlayModeSmokeTest.RunFromCommandLine`이 기존 월드 시간·투척/무장 해제·공중 회수·`DEADLINE` 진행과 애니메이션 프로필을, `Stage1CharacterAnimationPlayModeSmokeTest.RunFromCommandLine`이 장비별 Animator 전환, 오른손 무기·총구 계층, 조준 정렬, 투척/드롭 시각 및 근접 타격 프레임을 통과했다. `Stage6PlayModeSmokeTest.RunFromCommandLine`도 NavMesh 완전 경로 5/5와 런타임 초기화를 통과했고, `PrototypeSceneBuilder.CapturePreviewFromCommandLine`의 Stage1 정적 프리뷰에서 Business Male 모델의 직립 배치를 확인했다. 로그: `ProjectDeltatime/BusinessMalePlayerModelApply.log`, `ProjectDeltatime/BusinessMaleTutorialSmoke.log`, `ProjectDeltatime/BusinessMaleStage1AnimationSmoke.log`, `ProjectDeltatime/BusinessMaleStage6Smoke.log`, `ProjectDeltatime/BusinessMaleStage1Preview.log`.
+- 남은 작업: **확인 불가**. 모든 씬의 실제 게임 뷰에서 Business Male 모델의 손가락 그립, 무기·환경 메시 관통, 카메라 거리별 비율은 수동 확인이 필요하다. 권총 사격·피격·사망·투척/획득 전용 애니메이션은 기존과 같이 **미구현**이다.
+
+## 2026-08-10 - Synty 튜토리얼 맵·캐릭터 애니메이션 적용
+
+- 변경 유형: 튜토리얼 비주얼 전면 개선, 캐릭터 모델·Animator 적용, 맵 구성 및 검증 확장
+- 변경 내용: **구현 완료**. `TutorialSceneBuilder`가 최신 Stage1에서 상속한 Party Female 01 플레이어와 Bartender Male·Bouncer Male·Party Male 02 기반 적 시각을 투척 적 1명·DEADLINE 적 4명까지 유지해 총 6명의 Synty 캐릭터를 구성한다. 플레이어의 시작 장비를 비운 뒤 모든 캐릭터에 `CharacterAnimationLibrary`, `DeltatimeCharacter.controller`, 장비별 Override Controller를 다시 연결하고, 프리팹 Collider·Root Motion은 비활성화했다. 기존 7단계 직선 동선은 유지하되 `Synty Tutorial Set` 아래 PolygonNightclubs의 바닥 60개, 벽 46개, 구역 기둥·바닥등 28개, DJ 부스·냉장고·벤치·상자·바 엄폐·덤스터·출구 표지를 포함한 연결 프리팹 145개로 실내 훈련장을 재구성했다. 기존 프리미티브 바닥·외벽·사격 레일은 보이지 않는 충돌/NavMesh 프록시로 남겼고 큰 Synty 소품에는 Layer 8 `VisionObstacle` 콜라이더를 추가했다. 시작부터 출구까지 7개 체크포인트의 NavMesh 완전 경로와 캐릭터·랜드마크·프리팹 개수를 정적 검증한다.
+- 영향을 받은 시스템: Tutorial 씬 시각, 플레이어·적 Animator와 장비 프로필, 충돌체, Layer 8 시야 장애물, NavMesh, 조명·카메라 프리뷰, 튜토리얼 스모크 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Animation/DeltatimeCharacter.controller`, `ProjectDeltatime/Assets/_Project/Animation/CharacterAnimationLibrary.asset`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs/Prefabs`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.22`로 갱신해 Tutorial의 Synty 환경 구성, 캐릭터 모델·애니메이션 연결, Physics 프록시, VisionObstacle, NavMesh 경로와 최신 검증 범위를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `TutorialSceneBuilder.BuildAndValidateFromCommandLine`이 스크립트 컴파일, 씬 재생성, Synty 프리팹 145개, 애니메이션 캐릭터 6명, 전용 `TutorialNavigation.asset`, 7개 중앙 체크포인트 완전 경로, Layer 8 장애물과 빌드 순서를 검증하고 통과했다. `TutorialPlayModeSmokeTest.RunFromCommandLine`은 6개 Humanoid Animator 초기화, 비무장/근접/Pistol 프로필 전환, 근접 공격 트리거, 실제 NavMesh 이동의 `MoveX`/`MoveY` 로코모션 블렌드와 기존 월드 시간·표적·투척·공중 회수·Q `DEADLINE`·체크포인트 복구 흐름을 통과했다. 46도 게임 카메라 각도의 남쪽 훈련 구간과 북쪽 DEADLINE 아레나 프리뷰도 직접 확인했다. 전역 `Time.timeScale`은 변경하지 않았다.
+- 남은 작업: **확인 불가**. 사람이 키보드·마우스로 처음부터 Stage1 전환까지 플레이하는 최종 체감, 캐릭터 손·무기 관통, 게이트 크기와 각 구역 미술 밀도의 최종 폴리시는 수동 확인이 필요하다. 권총 사격·피격·사망·투척/획득 전용 애니메이션은 기존과 같이 **미구현**이다.
+
 ## 2026-08-09 - 플레이어 조준 방향 가이드선 제거
 
 - 변경 유형: 플레이어 조준 시각 피드백 제거

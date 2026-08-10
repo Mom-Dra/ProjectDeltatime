@@ -72,7 +72,8 @@ namespace Deltatime.EditorTools
             "Assets/_Project/Materials/PrototypeChaser3D.mat";
 
         private const string PlayerCharacterPath =
-            CharacterRoot + "/SM_Chr_Party_Male_01.prefab";
+            "Assets/Synty/PolygonGeneric/Prefabs/Characters/" +
+            "SM_Gen_Chr_Business_Male_01.prefab";
         private const string WestCharacterPath =
             CharacterRoot + "/SM_Chr_Bartender_Female_01.prefab";
         private const string CenterCharacterPath =

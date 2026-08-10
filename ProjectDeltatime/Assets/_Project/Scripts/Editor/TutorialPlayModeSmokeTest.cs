@@ -6,6 +6,7 @@ using Deltatime.Player;
 using Deltatime.TimeSystem;
 using Deltatime.Tutorial;
 using Deltatime.Vision;
+using Deltatime.Visuals;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -30,6 +31,8 @@ namespace Deltatime.EditorTools
         private static Keyboard testKeyboard;
         private static bool addedKeyboard;
         private static bool gateLayoutValidated;
+        private static bool characterVisualsValidated;
+        private static Vector3 movementProbeStart;
 
         static TutorialPlayModeSmokeTest()
         {
@@ -54,6 +57,7 @@ namespace Deltatime.EditorTools
             phase = 0;
             phaseStartedAt = EditorApplication.timeSinceStartup;
             gateLayoutValidated = false;
+            characterVisualsValidated = false;
             Application.logMessageReceived += HandleLog;
             Attach();
             EditorApplication.EnterPlaymode();
@@ -120,6 +124,11 @@ namespace Deltatime.EditorTools
                 {
                     ValidateRuntimeGateLayout();
                     gateLayoutValidated = true;
+                }
+                if (!characterVisualsValidated)
+                {
+                    ValidateRuntimeCharacterVisuals(player);
+                    characterVisualsValidated = true;
                 }
                 ValidateDeadlineBinding();
                 ValidateTutorialVision(player);
@@ -202,8 +211,11 @@ namespace Deltatime.EditorTools
                     case 3:
                         if (elapsed >= 0.2)
                         {
+                            movementProbeStart = player.transform.position;
                             QueueKeyPress(Key.W);
                             PumpGameplayInput(input, player);
+                            input.enabled = false;
+                            input.SetValidationInputState(Vector2.up, false);
                             BeginPhase(4, probe.AccumulatedDegrees);
                         }
                         break;
@@ -211,6 +223,25 @@ namespace Deltatime.EditorTools
                     case 4:
                         if (elapsed >= 0.35)
                         {
+                            CharacterAnimationController playerAnimation =
+                                player.GetComponent<CharacterAnimationController>();
+                            float moveBlendMagnitude = playerAnimation == null
+                                ? 0f
+                                : new Vector2(
+                                    playerAnimation.Animator.GetFloat("MoveX"),
+                                    playerAnimation.Animator.GetFloat("MoveY"))
+                                .magnitude;
+                            PlayerMovement playerMovement =
+                                player.GetComponent<PlayerMovement>();
+                            float displacement = Vector3.Distance(
+                                movementProbeStart,
+                                player.transform.position);
+                            Require(moveBlendMagnitude > 0.1f,
+                                "Tutorial movement input did not drive the character locomotion blend. " +
+                                $"blend={moveBlendMagnitude:0.###}, displacement={displacement:0.###}, " +
+                                $"input={input.Move}, physicallyMoving={playerMovement?.IsPhysicallyMoving}.");
+                            input.SetValidationInputState(Vector2.zero, false);
+                            input.enabled = true;
                             QueueKeyRelease(Key.W);
                             PumpGameplayInput(input, player);
                             DeadlineController deadline =
@@ -225,6 +256,7 @@ namespace Deltatime.EditorTools
                             Debug.Log(
                                 "Tutorial PlayMode smoke passed: world-time probe, typed targets, " +
                                 "throw stun/disarm/drop and airborne catch advance, unrestricted tutorial vision, " +
+                                "animated Synty actors, locomotion blend, equipment animation profiles, " +
                                 "Q activation, two-cause limit, movement release, and DEADLINE checkpoint restore.");
                             EditorApplication.ExitPlaymode();
                         }
@@ -263,6 +295,17 @@ namespace Deltatime.EditorTools
                 "Tutorial target validation setup is incomplete.");
 
             playerWeapon.Equip(melee, 0);
+            CharacterAnimationController playerAnimation =
+                player.GetComponent<CharacterAnimationController>();
+            CharacterAnimationLibrary animationLibrary =
+                AssetDatabase.LoadAssetAtPath<CharacterAnimationLibrary>(
+                    CharacterAnimationEditorSetup.LibraryPath);
+            Require(playerAnimation != null && animationLibrary != null &&
+                    playerAnimation.CurrentStyle == CharacterAnimationStyle.Melee &&
+                    playerAnimation.Animator.runtimeAnimatorController ==
+                        animationLibrary.GetController(CharacterAnimationStyle.Melee) &&
+                    playerAnimation.TryPlayMeleeAttackAnimation(),
+                "Tutorial melee equipment did not select or trigger the melee animation profile.");
             DamageHit syntheticHit = new DamageHit(
                 1,
                 meleeTarget.transform.position,
@@ -277,6 +320,10 @@ namespace Deltatime.EditorTools
                 "Melee target rejected a melee weapon hit.");
 
             playerWeapon.Equip(pistol, pistol.AmmunitionCapacity);
+            Require(playerAnimation.CurrentStyle == CharacterAnimationStyle.Pistol &&
+                    playerAnimation.Animator.runtimeAnimatorController ==
+                        animationLibrary.GetController(CharacterAnimationStyle.Pistol),
+                "Tutorial pistol equipment did not select the pistol animation profile.");
             pistolTarget.ReceiveHit(new DamageHit(
                 1,
                 pistolTarget.transform.position,
@@ -349,6 +396,59 @@ namespace Deltatime.EditorTools
                     overlay != null && !overlay.enabled &&
                     vision.ContainsWorldPoint(distantPoint),
                 "Tutorial VisionCone did not provide unrestricted visibility.");
+        }
+
+        private static void ValidateRuntimeCharacterVisuals(PlayerHealth player)
+        {
+            CharacterAnimationController[] controllers =
+                UnityEngine.Object.FindObjectsByType<CharacterAnimationController>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            Require(controllers.Length == 6,
+                $"Tutorial initialized {controllers.Length} animated actors instead of 6.");
+            for (int i = 0; i < controllers.Length; i++)
+            {
+                CharacterAnimationController controller = controllers[i];
+                Animator animator = controller.Animator;
+                CharacterVisualController visual =
+                    controller.GetComponent<CharacterVisualController>();
+                Require(animator != null && animator.enabled &&
+                        animator.isInitialized && animator.avatar != null &&
+                        animator.avatar.isHuman &&
+                        animator.runtimeAnimatorController != null &&
+                        animator.runtimeAnimatorController.animationClips.Length >= 7 &&
+                        animator.updateMode == AnimatorUpdateMode.UnscaledTime &&
+                        !animator.applyRootMotion &&
+                        HasAnimatorParameter(animator, "MoveX") &&
+                        HasAnimatorParameter(animator, "MoveY") &&
+                        HasAnimatorParameter(animator, "Roll") &&
+                        HasAnimatorParameter(animator, "AttackA") &&
+                        HasAnimatorParameter(animator, "AttackB") &&
+                        visual != null && visual.VisualRoot != null &&
+                        visual.VisualRoot.GetComponentsInChildren<
+                            SkinnedMeshRenderer>(true).Length > 0,
+                    $"Tutorial animated Synty actor is not runtime-ready on {controller.name}.");
+            }
+
+            CharacterAnimationController playerAnimation =
+                player.GetComponent<CharacterAnimationController>();
+            Require(playerAnimation != null &&
+                    playerAnimation.CurrentStyle == CharacterAnimationStyle.Unarmed,
+                "Tutorial player did not initialize with the unarmed animation profile.");
+        }
+
+        private static bool HasAnimatorParameter(Animator animator, string name)
+        {
+            AnimatorControllerParameter[] parameters = animator.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].name == name)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ValidatePistolDispenser(PlayerHealth player)
