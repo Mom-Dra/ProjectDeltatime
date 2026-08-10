@@ -21,6 +21,46 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - Tutorial 외벽 복원 및 훈련 시설 정렬
+
+- 변경 유형: Tutorial 환경 아트 재구성, 측면 외벽·조명 복원, NavMesh 재베이크·검증 갱신
+- 변경 내용: **구현 완료**. 동·서 `Tutorial Wall`을 다시 렌더링하고, `Synty Tutorial Set`에 양측 벽 패널 40개, 상부 트림 40개, 천장 에지 20개, 균일 간격의 벽 조명 20개를 복원했다. 벽 패널은 규칙적으로 반복하고 중앙 데크·게이트·바닥 진행 표지를 향한 시야를 비워 훈련 시설의 정돈된 구성으로 맞췄다. 벽 배관·환기구 같은 산발적 벽 장식은 재도입하지 않았다. 기존 외벽 Collider는 계속 Layer 8 `VisionObstacle`이며, `TutorialTargetDummy`의 빈손 Synty 시각·숨긴 원통 판정 프록시, `TutorialDirector`, 게이트·무기 지급기·HUD·월드 시간·DEADLINE 직렬화 참조는 유지했다. 환경 프리팹 검증 수는 142개에서 262개로 갱신했다.
+- 영향을 받은 시스템: Tutorial 환경 렌더링·카메라 가시성, Physics Collider, Layer 8 `VisionObstacle`, NavMesh, Tutorial 정적·PlayMode 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.31`로 갱신해 양측 외벽·트림·조명의 규칙적 배치, 262개 환경 프리팹, VisionObstacle·NavMesh 유지 및 검증 상태를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `TutorialSceneBuilder.ApplyEnvironmentRedesignFromCommandLine`이 저장 Tutorial 씬에 외벽을 적용하고 `TutorialNavigation.asset`을 재베이크했다. `TutorialSceneBuilder.CapturePreviewFromCommandLine`과 `ValidateFromCommandLine`은 양측 벽 모듈·조명, 6개 게이트, 빈손 Synty 표적 2개, Layer 8 정책 및 중앙 NavMesh 완전 경로를 검증하고 통과했다. 첫 `TutorialPlayModeSmokeTest.RunFromCommandLine`은 월드 시간 활동 샘플이 `0.02x`에 머문 단발 실패가 있었으나, 동일 저장 씬의 즉시 재실행은 WorldDeltaTime, 타입별 표적 판정, 무기 지급, 게이트, 투척·공중 회수, Vision, 애니메이션, `DEADLINE` 체크포인트 복구까지 통과했다. 로그: `ProjectDeltatime/TutorialFacilityWallRestore.log`, `ProjectDeltatime/TutorialFacilityWallPreview.log`, `ProjectDeltatime/TutorialFacilityWallFinalValidate.log`, `ProjectDeltatime/TutorialFacilityWallSmoke.log`, `ProjectDeltatime/TutorialFacilityWallSmokeRetry.log`.
+- 남은 작업: **확인 불가**. 실제 Game View에서 사람이 양측 벽의 조명 대비, 게이트 상승 시 메시 관통, 표적 피격 색 피드백 및 처음부터 Stage1 전환까지의 체감을 수동 확인할 필요가 있다. 첫 스모크의 월드 시간 활동 샘플 단발 실패가 재현되는지도 연속 실행으로 확인이 필요하다. 입력 액션·HUD·전투 밸런스·튜토리얼 진행 순서는 변경하지 않았다.
+
+## 2026-08-10 - 무기 발사음 에셋 추출 및 Unity 배치
+
+- 변경 유형: CC0 무기 발사음 선별·편집, Unity 오디오 에셋 추가, 출처·임포트 기준 문서화
+- 변경 내용: **구현 완료**. 로컬 `Prepared SFX Library`의 장시간 녹음에서 첫 발의 피크를 기준으로 권총 2종, 자동소총 단발 2종, 샷건 3종을 분리했다. 모든 출력은 48 kHz/24-bit 스테레오 PCM WAV이며, 원본보다 약 -2.5 dB의 공통 게인과 종료 20 ms 페이드아웃을 적용했다. 권총은 0.520초, 자동소총은 0.350초, 샷건은 0.930초로 잘라 현재 `WeaponDefinition`의 권총 0.24초·자동소총 0.12초·샷건 0.75초 사용 간격에 맞는 단발 큐로 준비했다. 원본 출처·라이선스·권장 Unity 임포트 설정은 같은 폴더의 `README.md`에 기록했다. 런타임 `AudioSource`/`AudioMixer` 및 발사 이벤트 연결은 **미구현**이다.
+- 영향을 받은 시스템: 권총·자동소총·샷건의 향후 발사 피드백, Unity 오디오 임포트, 에셋 라이선스 추적
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Pistol/SFX_Pistol_Fire_01.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Pistol/SFX_Pistol_Fire_02.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Rifle/SFX_Rifle_Fire_01.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Rifle/SFX_Rifle_Fire_02.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Shotgun/SFX_Shotgun_Fire_01.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Shotgun/SFX_Shotgun_Fire_02.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/Shotgun/SFX_Shotgun_Fire_03.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons/README.md`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.30`으로 갱신해 7개 발사음 에셋의 준비 상태, 포맷·길이, 런타임 연결 미구현 상태와 근거 파일을 반영했다.
+- 테스트 결과: **정적 검증 통과**. 7개 출력 WAV가 모두 48 kHz·24-bit·스테레오 PCM이며, 권총 2종 0.520초·자동소총 2종 0.350초·샷건 3종 0.930초인 것을 헤더와 프레임 수로 확인했다. Unity Editor 임포트 및 실제 재생 테스트는 **미실행**이다.
+- 남은 작업: **부분 구현**. `WeaponController`와 적 사격 경로에 무기별 무작위 발사음 재생, AudioMixer 그룹·볼륨·거리 감쇠, 피격·근접·투척·획득·UI·월드 시간/DEADLINE·BGM 사운드 에셋 선별 및 실제 Play Mode 체감 검증이 남아 있다.
+
+## 2026-08-10 - Tutorial 측면 벽 제거 및 비무장 표적 시각 교체
+
+- 변경 유형: Tutorial 환경 아트 축소, `TutorialTargetDummy` 시각 프레젠테이션 교체, NavMesh 재베이크·검증 갱신
+- 변경 내용: **구현 완료**. `Synty Tutorial Set`에서 동·서쪽 벽, 상부 트림·루프 에지, 벽 부착 조명, 벽 설비를 제거해 중앙 훈련 데크 양옆을 열었다. `East/West Tutorial Wall` 오브젝트는 씬에서 제거·명칭 교체했고, 동일 위치에는 렌더링하지 않는 `Tutorial East/West Boundary Collider`만 남겨 Physics·Layer 8 `VisionObstacle`·NavMesh 경계를 보존했다. `Melee Training Target`, `Pistol Training Target`의 기존 원통 GameObject·Collider·`TutorialTargetDummy` 직렬화 참조와 공격 종류는 유지하되 Renderer를 숨기고, 빈손 `SM_Gen_Chr_Business_Male_01` Synty 프리팹을 자식 시각으로 연결했다. 피격 허용/거절 색 피드백도 해당 캐릭터 Renderer로 이전했다. 환경 프리팹 검증 수는 측면 아트 제거에 맞춰 264개에서 142개로 갱신했다.
+- 영향을 받은 시스템: Tutorial 환경 렌더링·카메라 가시성, `TutorialTargetDummy` 피격 시각 피드백, Physics Collider, Layer 8 `VisionObstacle`, NavMesh, Tutorial 정적·PlayMode 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/Synty/PolygonGeneric/Prefabs/Characters/SM_Gen_Chr_Business_Male_01.prefab`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.29`로 갱신해 개방형 중앙 데크, 보이지 않는 양측 경계 Collider, 빈손 근접·Pistol 표적 시각, 142개 환경 프리팹 및 검증 상태를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `TutorialSceneBuilder.ApplyEnvironmentRedesignFromCommandLine`이 저장 Tutorial 씬에 변경을 적용하고 `TutorialNavigation.asset`을 재베이크했다. `TutorialSceneBuilder.ValidateFromCommandLine`은 142개 환경 프리팹, 제거된 측면 벽 아트, 보이지 않는 양측 경계 Collider, 빈손 Synty 표적 2개, 6개 게이트, Layer 8 정책 및 중앙 NavMesh 완전 경로를 검증하고 통과했다. 남/북 카메라 프리뷰를 캡처해 양옆이 열린 데크와 게이트·동선 표지를 확인했다. `TutorialPlayModeSmokeTest.RunFromCommandLine`은 월드 시간, 타입별 근접/총기 표적 판정, 무기 지급, 게이트, 투척·공중 회수, Vision, 애니메이션, `DEADLINE` 체크포인트 복구까지 통과했다. 로그: `ProjectDeltatime/TutorialOpenDeckAndTargets.log`, `ProjectDeltatime/TutorialOpenDeckPreview.log`, `ProjectDeltatime/TutorialOpenDeckFinalValidate.log`, `ProjectDeltatime/TutorialOpenDeckSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 Game View에서 사람이 근접·Pistol 표적에 타격해 캐릭터 메시의 허용/거절 색 피드백과 개방된 측면의 최종 조명 체감을 수동 확인할 필요가 있다. 입력 액션, HUD, 전투 밸런스, 튜토리얼 진행 순서는 변경하지 않았다.
+
+## 2026-08-10 - Tutorial 폐쇄형 지하 훈련 시설 환경 리디자인
+
+- 변경 유형: Tutorial 환경 아트 전면 개선, 공간 구성·길찾기 표식 정리, NavMesh 재베이크, 재생성·검증 경로 갱신
+- 변경 내용: **구현 완료**. 기존 `TutorialDirector`, 6개 `TutorialGate`, 2개 `TutorialTargetDummy`, 3개 `TutorialWeaponDispenser`, 트리거·적·플레이어·카메라·HUD·WorldTime·DEADLINE 직렬화 참조와 각 기능 오브젝트의 진행 위치는 유지했다. `Synty Tutorial Set`은 하나의 폐쇄형 나이트클럽·지하 훈련 시설로 다시 구성해 `PolygonNightclubs` 프리팹 264개를 배치했다. 어두운 벽 배킹과 연속 상부 트림, 게이트 기둥·빔, 벽 상태 화면, 튜브등·바닥등, 설비 배관·환기구, DJ 제어 부스, 장비 캐비닛, 벤치·상자·테이블·스피커·출구 설비를 양측 서비스 베이에 정렬했다. 중앙 이동 폭은 비워 둔 채 어두운 훈련 데크, 청록 경계·점선·진행 화살표, `01 TIME`~`06 DEADLINE`·`EXIT` 바닥 표지와 목표 패드를 연속 배치했다. 기존 불투명 단일 큐브 게이트는 같은 `TutorialGate`·BoxCollider를 사용하는 투시형 분절 셔터 자식 시각으로 바꾸고, 과도하게 큰 월드 타임 십자 시계는 같은 `TutorialTimeProbe`를 유지한 소형 계기판으로 정리했다. 외곽 소품 Collider는 Layer 8 `VisionObstacle` 정책을 유지하며 전용 `TutorialNavigation.asset`을 다시 베이크했다. 전체 Tutorial 빌더를 실행하지 않고 저장 씬의 환경 계층만 교체하는 `Apply Environment Redesign` 경로를 추가했으며, 향후 `Build Tutorial` 재생성도 동일한 환경 구성을 만든다. `MainScene`이 첫 활성 씬인 현재 Build Settings 순서도 검증 기대값에 반영했다.
+- 영향을 받은 시스템: Tutorial 환경 렌더링, 공간 동선·목표 가독성, 게이트 시각, 월드 타임 시각 오브젝트, 조명, Physics Collider, Layer 8 `VisionObstacle`, NavMesh, 카메라 프리뷰, Tutorial 정적·PlayMode 검증, Build Settings 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/Synty/PolygonNightclubs/Prefabs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.28`로 갱신해 264개 Synty 환경 모듈, 단일 훈련 시설 양식, 중앙 진행 표지, 분절 게이트, 월드 타임 계기판, VisionObstacle/NavMesh 정책, 최신 정적·PlayMode 검증과 `MainScene → Tutorial` 빌드 순서를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 환경 전용 갱신이 스크립트 컴파일, Tutorial 씬 저장, `TutorialNavigation.asset` 재베이크와 정적 검증을 통과했다. 정적 검증은 6개 게이트·3개 지급기·2개 타깃·3개 트리거·플레이어/WorldTime/DEADLINE/카메라·애니메이션 캐릭터 6명·Synty 랜드마크·분절 셔터 6개·Layer 8 장애물·7개 중앙 체크포인트의 NavMesh 완전 경로·현재 Build Settings 순서를 확인했다. 남쪽 시작/학습 구간과 북쪽 DEADLINE/출구 프리뷰를 캡처해 표지 방향, 시계 크기, 주요 동선과 외곽 가구 배치를 직접 확인했다. 최신 `TutorialPlayModeSmokeTest.RunFromCommandLine`은 WorldDeltaTime, 6개 게이트 위치/개방, 이동·조준·대시, 타깃·근접/Pistol 지급, 투척 기절·무장 해제·드롭·공중 회수, 무제한 Vision, 애니메이션 프로필, Q `DEADLINE` 2원인 실행·이동 해제와 체크포인트 복구를 통과했다. 로그: `ProjectDeltatime/TutorialEnvironmentRedesign3.log`, `ProjectDeltatime/TutorialEnvironmentPreview3.log`, `ProjectDeltatime/TutorialSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 대상 해상도의 Game View에서 사람이 키보드·마우스로 처음부터 Stage1 전환까지 플레이하며 표지 글자 크기, 게이트 상승 시 메시 관통, 카메라별 조명 대비와 가구 밀도를 최종 확인할 필요가 있다. 입력 액션·HUD·전투 밸런스·튜토리얼 순서는 이번 작업에서 변경하지 않았다.
+
 ## 2026-08-10 - MainScene Play TextMeshProUGUI 전환
 
 - 변경 유형: 메인 메뉴 레이블 렌더링 컴포넌트 교체

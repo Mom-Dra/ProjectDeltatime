@@ -27,6 +27,7 @@ namespace Deltatime.EditorTools
         private const string Root = "Assets/_Project";
         private const string Scenes = Root + "/Scenes";
         private const string TutorialScenePath = Scenes + "/Tutorial.unity";
+        private const string MainScenePath = Scenes + "/MainScene.unity";
         private const string Stage1ScenePath = Scenes + "/Stage1.unity";
         private const string NavigationDataPath =
             Scenes + "/TutorialNavigation.asset";
@@ -55,8 +56,18 @@ namespace Deltatime.EditorTools
             SyntyBuildingsRoot + "/SM_Bld_Wall_Feature_01.prefab";
         private const string SyntyWallFeatureAlternatePath =
             SyntyBuildingsRoot + "/SM_Bld_Wall_Feature_03.prefab";
+        private const string SyntyWallFeatureSolidPath =
+            SyntyBuildingsRoot + "/SM_Bld_Wall_Feature_02.prefab";
         private const string SyntyPillarPath =
             SyntyBuildingsRoot + "/SM_Bld_Pillar_01.prefab";
+        private const string SyntyLargePillarPath =
+            SyntyBuildingsRoot + "/SM_Bld_Pillar_Large_01.prefab";
+        private const string SyntyCeilingBeamPath =
+            SyntyBuildingsRoot + "/SM_Bld_Ceiling_Beam_01.prefab";
+        private const string SyntyWallTrimPath =
+            SyntyBuildingsRoot + "/SM_Bld_Wall_Trim_02.prefab";
+        private const string SyntyRoofEdgePath =
+            SyntyBuildingsRoot + "/SM_Bld_Roof_Edge_01.prefab";
         private const string SyntyBarPath =
             SyntyModularPropsRoot + "/SM_Prop_Bar_02.prefab";
         private const string SyntyBenchPath =
@@ -75,14 +86,33 @@ namespace Deltatime.EditorTools
             SyntyPropsRoot + "/SM_Prop_Drinks_Fridge_01.prefab";
         private const string SyntyDumpsterPath =
             SyntyPropsRoot + "/SM_Prop_Dumpster_01.prefab";
+        private const string SyntyScreenPath =
+            SyntyPropsRoot + "/SM_Prop_Screen_02.prefab";
+        private const string SyntySpeakerPath =
+            SyntyPropsRoot + "/SM_Prop_Speaker_Large_01.prefab";
+        private const string SyntyTubeLightPath =
+            SyntyPropsRoot + "/SM_Prop_Light_Tube_01.prefab";
+        private const string SyntySpotlightPath =
+            SyntyPropsRoot + "/SM_Prop_Light_Spotlight_02.prefab";
+        private const string SyntyTablePath =
+            SyntyPropsRoot + "/SM_Prop_Table_11.prefab";
+        private const string SyntyRubbishBinPath =
+            SyntyPropsRoot + "/SM_Prop_Rubbish_Bin_02.prefab";
+        private const string SyntyStanchionPath =
+            SyntyPropsRoot + "/SM_Prop_Stanchions_Tape_01.prefab";
+        private const string SyntyUnarmedTargetPath =
+            "Assets/Synty/PolygonGeneric/Prefabs/Characters/SM_Gen_Chr_Business_Male_01.prefab";
         private const string SyntyVisualRootName = "Synty Tutorial Set";
+        private const string GateVisualRootName = "Training Shutter Visuals";
+        private const string UnarmedTargetVisualName = "Unarmed Target Visual";
         private const int VisionObstacleLayer = 8;
         private const int ExpectedEnemyCount = 5;
         private const int ExpectedAnimatedActorCount = 6;
-        private const int MinimumSyntyPrefabCount = 120;
+        private const int ExpectedSyntyPrefabCount = 262;
 
         private static readonly string[] OrderedBuildScenes =
         {
+            MainScenePath,
             TutorialScenePath,
             Scenes + "/Stage1.unity",
             Scenes + "/Stage2.unity",
@@ -202,10 +232,27 @@ namespace Deltatime.EditorTools
                 "Gate 6 - Arena Exit",
                 new Vector3(0f, 1.4f, 57f),
                 accentMaterial);
+            TutorialGate[] styledGates =
+            {
+                timeGate,
+                dashGate,
+                meleeGate,
+                pistolGate,
+                arenaEntranceGate,
+                arenaExitGate
+            };
+            for (int i = 0; i < styledGates.Length; i++)
+            {
+                StyleTutorialGate(
+                    styledGates[i],
+                    coverMaterial,
+                    accentMaterial);
+            }
 
             TutorialTimeProbe timeProbe = CreateTimeProbe(
                 environment.transform,
                 worldTime,
+                coverMaterial,
                 accentMaterial);
             TutorialTargetDummy meleeTarget = CreateTargetDummy(
                 environment.transform,
@@ -335,6 +382,75 @@ namespace Deltatime.EditorTools
             BuildTutorial();
         }
 
+        [MenuItem("Tools/Tutorial/Apply Environment Redesign")]
+        public static void ApplyEnvironmentRedesign()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                TutorialScenePath,
+                OpenSceneMode.Single);
+            GameObject environment = FindSceneRoot(scene, "Tutorial Environment");
+            Require(environment != null,
+                "Tutorial Environment root is missing from the saved scene.");
+
+            Material floorMaterial = LoadAsset<Material>(FloorMaterialPath);
+            Material wallMaterial = LoadAsset<Material>(WallMaterialPath);
+            Material coverMaterial = LoadAsset<Material>(CoverMaterialPath);
+            Material accentMaterial = LoadAsset<Material>(AccentMaterialPath);
+
+            RemoveEnvironmentArt(environment.transform);
+            RestoreSideWallProxies(environment.transform);
+            ConfigureLighting(scene);
+            ConfigureProxyRenderers(environment);
+            CreateSyntyEnvironment(
+                environment.transform,
+                new[] { -30f, -19f, -7f, 6f, 23f, 47f, 59f },
+                floorMaterial,
+                wallMaterial,
+                coverMaterial,
+                accentMaterial);
+
+            TutorialGate[] gates = FindSceneComponents<TutorialGate>(scene);
+            for (int i = 0; i < gates.Length; i++)
+            {
+                StyleTutorialGate(gates[i], coverMaterial, accentMaterial);
+            }
+
+            TutorialTimeProbe timeProbe =
+                FindSceneComponent<TutorialTimeProbe>(scene);
+            Require(timeProbe != null,
+                "Tutorial WorldDeltaTime demonstration clock is missing.");
+            StyleTimeProbe(timeProbe, coverMaterial, accentMaterial);
+
+            TutorialTargetDummy[] targets = FindSceneComponents<TutorialTargetDummy>(scene);
+            for (int i = 0; i < targets.Length; i++)
+            {
+                StyleTutorialTarget(targets[i]);
+            }
+
+            NavMeshSurface navigation = FindSceneComponent<NavMeshSurface>(scene);
+            Require(navigation != null,
+                "Tutorial NavMeshSurface is missing from the saved scene.");
+            BuildTutorialNavigation(navigation, scene);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save redesigned {TutorialScenePath}.");
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            ValidateTutorialScene(scene);
+            Debug.Log(
+                "Tutorial environment redesign applied without rebuilding gameplay content.");
+        }
+
+        public static void ApplyEnvironmentRedesignFromCommandLine()
+        {
+            ApplyEnvironmentRedesign();
+        }
+
         [MenuItem("Tools/Prototype/Validate Tutorial")]
         public static void ValidateSavedTutorial()
         {
@@ -457,17 +573,17 @@ namespace Deltatime.EditorTools
         private static void ConfigureLighting(Scene scene)
         {
             RenderSettings.fog = false;
-            RenderSettings.ambientIntensity = 0.72f;
-            RenderSettings.ambientSkyColor = new Color(0.18f, 0.23f, 0.3f, 1f);
-            RenderSettings.ambientEquatorColor = new Color(0.1f, 0.13f, 0.18f, 1f);
-            RenderSettings.ambientGroundColor = new Color(0.04f, 0.05f, 0.07f, 1f);
+            RenderSettings.ambientIntensity = 0.58f;
+            RenderSettings.ambientSkyColor = new Color(0.11f, 0.17f, 0.24f, 1f);
+            RenderSettings.ambientEquatorColor = new Color(0.055f, 0.085f, 0.12f, 1f);
+            RenderSettings.ambientGroundColor = new Color(0.018f, 0.025f, 0.038f, 1f);
 
             Light key = FindSceneRoot(scene, "Directional Key Light")
                 ?.GetComponent<Light>();
             if (key != null)
             {
-                key.intensity = 0.75f;
-                key.color = new Color(0.8f, 0.9f, 1f, 1f);
+                key.intensity = 0.62f;
+                key.color = new Color(0.72f, 0.84f, 1f, 1f);
             }
 
             Camera camera = FindSceneComponent<Camera>(scene);
@@ -521,19 +637,6 @@ namespace Deltatime.EditorTools
                 wallMaterial);
 
             float[] zoneCenters = { -30f, -19f, -7f, 6f, 23f, 47f, 59f };
-            for (int i = 0; i < zoneCenters.Length; i++)
-            {
-                GameObject stripe = CreatePrimitive(
-                    root.transform,
-                    $"Zone Guide {i + 1}",
-                    PrimitiveType.Cube,
-                    new Vector3(0f, 0.015f, zoneCenters[i]),
-                    new Vector3(10f, 0.03f, 0.15f),
-                    accentMaterial,
-                    false,
-                    0);
-                stripe.transform.rotation = Quaternion.identity;
-            }
 
             CreatePrimitive(
                 root.transform,
@@ -554,13 +657,14 @@ namespace Deltatime.EditorTools
                 true,
                 VisionObstacleLayer);
 
-            CreatePointLight(root.transform, "Time Lesson Light", new Vector3(0f, 4f, -30f), new Color(0.1f, 0.65f, 1f, 1f));
-            CreatePointLight(root.transform, "Melee Lesson Light", new Vector3(0f, 4f, -7f), new Color(1f, 0.38f, 0.08f, 1f));
-            CreatePointLight(root.transform, "Pistol Lesson Light", new Vector3(0f, 4f, 7f), new Color(0.1f, 0.9f, 1f, 1f));
-            CreatePointLight(root.transform, "Throw Lesson Light", new Vector3(0f, 4f, 24f), new Color(1f, 0.72f, 0.08f, 1f));
-            CreatePointLight(root.transform, "Deadline Arena Light", new Vector3(0f, 5f, 47f), new Color(0.9f, 0.08f, 0.12f, 1f), 1.2f, 16f);
             ConfigureProxyRenderers(root);
-            CreateSyntyEnvironment(root.transform, zoneCenters);
+            CreateSyntyEnvironment(
+                root.transform,
+                zoneCenters,
+                floorMaterial,
+                wallMaterial,
+                coverMaterial,
+                accentMaterial);
             return root;
         }
 
@@ -575,8 +679,17 @@ namespace Deltatime.EditorTools
                 {
                     renderer.enabled = false;
                 }
-                else if (objectName.EndsWith("Tutorial Wall", StringComparison.Ordinal) ||
-                         objectName.StartsWith("Pistol Firing Rail", StringComparison.Ordinal))
+                else if (objectName.IndexOf("Boundary Collider", StringComparison.Ordinal) >= 0)
+                {
+                    renderer.enabled = false;
+                }
+                else if (objectName.EndsWith("Tutorial Wall", StringComparison.Ordinal))
+                {
+                    renderer.enabled = true;
+                    renderer.shadowCastingMode = ShadowCastingMode.On;
+                    renderer.receiveShadows = true;
+                }
+                else if (objectName.StartsWith("Pistol Firing Rail", StringComparison.Ordinal))
                 {
                     renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
                     renderer.receiveShadows = false;
@@ -584,13 +697,38 @@ namespace Deltatime.EditorTools
             }
         }
 
+        private static void RestoreSideWallProxies(Transform environment)
+        {
+            Transform westBoundary = environment.Find("Tutorial West Boundary Collider");
+            if (westBoundary != null)
+            {
+                westBoundary.name = "West Tutorial Wall";
+            }
+
+            Transform eastBoundary = environment.Find("Tutorial East Boundary Collider");
+            if (eastBoundary != null)
+            {
+                eastBoundary.name = "East Tutorial Wall";
+            }
+        }
+
         private static void CreateSyntyEnvironment(
             Transform environment,
-            float[] zoneCenters)
+            float[] zoneCenters,
+            Material floorMaterial,
+            Material wallMaterial,
+            Material coverMaterial,
+            Material accentMaterial)
         {
             RequireSyntyTutorialAssets();
             GameObject visualRoot = new GameObject(SyntyVisualRootName);
             visualRoot.transform.SetParent(environment, false);
+
+            CreateTrainingDeck(
+                visualRoot.transform,
+                floorMaterial,
+                coverMaterial,
+                accentMaterial);
 
             const int floorRows = 20;
             for (int row = 0; row < floorRows; row++)
@@ -607,9 +745,11 @@ namespace Deltatime.EditorTools
                         new Vector3(2f, 1f, 2f));
                 }
 
-                string wallPath = row % 2 == 0
-                    ? SyntyWallFeaturePath
-                    : SyntyWallFeatureAlternatePath;
+                string wallPath = row % 5 == 0
+                    ? SyntyWallFeatureSolidPath
+                    : row % 2 == 0
+                        ? SyntyWallFeaturePath
+                        : SyntyWallFeatureAlternatePath;
                 PlaceSyntyVisual(
                     visualRoot.transform,
                     wallPath,
@@ -624,6 +764,39 @@ namespace Deltatime.EditorTools
                     new Vector3(7f, 0f, z),
                     Quaternion.Euler(0f, 90f, 0f),
                     new Vector3(2f, 1f, 1f));
+
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyWallTrimPath,
+                    $"West Upper Rail {row + 1:00}",
+                    new Vector3(-6.78f, 2.38f, z),
+                    Quaternion.Euler(0f, -90f, 0f),
+                    new Vector3(2f, 1f, 1f));
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyWallTrimPath,
+                    $"East Upper Rail {row + 1:00}",
+                    new Vector3(6.78f, 2.38f, z),
+                    Quaternion.Euler(0f, 90f, 0f),
+                    new Vector3(2f, 1f, 1f));
+
+                if (row % 2 == 0)
+                {
+                    PlaceSyntyVisual(
+                        visualRoot.transform,
+                        SyntyRoofEdgePath,
+                        $"West Ceiling Edge {row + 1:00}",
+                        new Vector3(-6.55f, 2.88f, z),
+                        Quaternion.Euler(0f, -90f, 0f),
+                        new Vector3(2f, 1f, 1f));
+                    PlaceSyntyVisual(
+                        visualRoot.transform,
+                        SyntyRoofEdgePath,
+                        $"East Ceiling Edge {row + 1:00}",
+                        new Vector3(6.55f, 2.88f, z),
+                        Quaternion.Euler(0f, 90f, 0f),
+                        new Vector3(2f, 1f, 1f));
+                }
             }
 
             for (int column = -1; column <= 1; column++)
@@ -644,36 +817,75 @@ namespace Deltatime.EditorTools
                     new Vector3(2f, 1f, 1f));
             }
 
-            for (int i = 0; i < zoneCenters.Length; i++)
+            float[] gatePositions = { -25f, -13f, -1f, 13f, 34f, 57f };
+            for (int i = 0; i < gatePositions.Length; i++)
             {
-                float z = zoneCenters[i];
+                float z = gatePositions[i];
                 PlaceSyntyVisual(
                     visualRoot.transform,
-                    SyntyPillarPath,
-                    $"West Zone Pillar {i + 1}",
-                    new Vector3(-6.7f, 0f, z),
+                    SyntyLargePillarPath,
+                    $"Gate {i + 1:00} West Pillar",
+                    new Vector3(-6.2f, 0f, z),
                     Quaternion.identity,
                     Vector3.one);
                 PlaceSyntyVisual(
                     visualRoot.transform,
-                    SyntyPillarPath,
-                    $"East Zone Pillar {i + 1}",
-                    new Vector3(6.7f, 0f, z),
+                    SyntyLargePillarPath,
+                    $"Gate {i + 1:00} East Pillar",
+                    new Vector3(6.2f, 0f, z),
                     Quaternion.identity,
                     Vector3.one);
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyCeilingBeamPath,
+                    $"Gate {i + 1:00} Overhead Beam",
+                    new Vector3(0f, 2.72f, z),
+                    Quaternion.identity,
+                    new Vector3(3f, 1f, 1f));
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyScreenPath,
+                    $"Gate {i + 1:00} Status Display",
+                    new Vector3(-6.28f, 1.35f, z + 1.25f),
+                    Quaternion.Euler(0f, 90f, 0f),
+                    new Vector3(0.8f, 0.8f, 0.8f));
+            }
+
+            for (int i = 0; i < 16; i++)
+            {
+                float z = -33f + i * 6f;
                 PlaceSyntyVisual(
                     visualRoot.transform,
                     SyntyFloorLightPath,
-                    $"West Route Light {i + 1}",
-                    new Vector3(-4.8f, 0f, z),
+                    $"West Route Light {i + 1:00}",
+                    new Vector3(-2.82f, 0.015f, z),
                     Quaternion.identity,
-                    Vector3.one);
+                    new Vector3(0.72f, 0.72f, 0.72f));
                 PlaceSyntyVisual(
                     visualRoot.transform,
                     SyntyFloorLightPath,
-                    $"East Route Light {i + 1}",
-                    new Vector3(4.8f, 0f, z),
+                    $"East Route Light {i + 1:00}",
+                    new Vector3(2.82f, 0.015f, z),
                     Quaternion.Euler(0f, 180f, 0f),
+                    new Vector3(0.72f, 0.72f, 0.72f));
+            }
+
+            for (int i = 0; i < 10; i++)
+            {
+                float z = -31f + i * 10f;
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyTubeLightPath,
+                    $"West Wall Luminaire {i + 1:00}",
+                    new Vector3(-6.48f, 2.05f, z),
+                    Quaternion.Euler(0f, 90f, 90f),
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    visualRoot.transform,
+                    SyntyTubeLightPath,
+                    $"East Wall Luminaire {i + 1:00}",
+                    new Vector3(6.48f, 2.05f, z),
+                    Quaternion.Euler(0f, -90f, 90f),
                     Vector3.one);
             }
 
@@ -691,6 +903,20 @@ namespace Deltatime.EditorTools
                 new Vector3(5.35f, 0f, -29.5f),
                 Quaternion.Euler(0f, -90f, 0f),
                 Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntySpeakerPath,
+                "Start Bay West PA",
+                new Vector3(-5.65f, 0f, -26.8f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntySpeakerPath,
+                "Start Bay East PA",
+                new Vector3(5.65f, 0f, -26.8f),
+                Quaternion.Euler(0f, -90f, 0f),
+                Vector3.one);
             PlaceSyntyProp(
                 visualRoot.transform,
                 SyntyBenchPath,
@@ -704,6 +930,13 @@ namespace Deltatime.EditorTools
                 "Melee Equipment Stack",
                 new Vector3(5.35f, 0f, -7f),
                 Quaternion.Euler(0f, -20f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntySpotlightPath,
+                "Melee Target Spotlight",
+                new Vector3(0f, 2.7f, -5.2f),
+                Quaternion.Euler(90f, 0f, 0f),
                 Vector3.one);
 
             PlaceSyntyVisual(
@@ -737,6 +970,20 @@ namespace Deltatime.EditorTools
                 Vector3.one);
             PlaceSyntyProp(
                 visualRoot.transform,
+                SyntyRubbishBinPath,
+                "Throw Lane West Utility Bin",
+                new Vector3(-5.55f, 0f, 27.8f),
+                Quaternion.Euler(0f, 20f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntySpotlightPath,
+                "Throw Target Spotlight",
+                new Vector3(0f, 2.7f, 23f),
+                Quaternion.Euler(90f, 0f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
                 SyntyDumpsterPath,
                 "Deadline Arena West Cover",
                 new Vector3(-5.45f, 0f, 39.2f),
@@ -749,6 +996,34 @@ namespace Deltatime.EditorTools
                 new Vector3(5.5f, 0f, 54.5f),
                 Quaternion.Euler(0f, -90f, 0f),
                 Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyTablePath,
+                "Deadline West Equipment Table",
+                new Vector3(-5.35f, 0f, 50.8f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyProp(
+                visualRoot.transform,
+                SyntyBoxStackBPath,
+                "Deadline East Equipment Stack",
+                new Vector3(5.45f, 0f, 43.2f),
+                Quaternion.Euler(0f, -12f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntyStanchionPath,
+                "Exit Queue West",
+                new Vector3(-4.85f, 0f, 59.2f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                visualRoot.transform,
+                SyntyStanchionPath,
+                "Exit Queue East",
+                new Vector3(4.85f, 0f, 59.2f),
+                Quaternion.Euler(0f, -90f, 0f),
+                Vector3.one);
             PlaceSyntyVisual(
                 visualRoot.transform,
                 SyntyExitSignPath,
@@ -756,6 +1031,354 @@ namespace Deltatime.EditorTools
                 new Vector3(0f, 2.15f, 60.7f),
                 Quaternion.identity,
                 new Vector3(1.8f, 1.8f, 1.8f));
+
+            Color routeLight = new Color(0.08f, 0.56f, 0.95f, 1f);
+            for (int i = 0; i < zoneCenters.Length; i++)
+            {
+                CreatePointLight(
+                    visualRoot.transform,
+                    $"Training Bay Light {i + 1:00}",
+                    new Vector3(0f, 2.75f, zoneCenters[i]),
+                    routeLight,
+                    i == zoneCenters.Length - 2 ? 0.9f : 0.72f,
+                    i == zoneCenters.Length - 2 ? 14f : 11f);
+            }
+
+            Color utilityLight = new Color(1f, 0.48f, 0.16f, 1f);
+            CreatePointLight(
+                visualRoot.transform,
+                "South Utility Accent",
+                new Vector3(-5f, 2.25f, -31f),
+                utilityLight,
+                0.42f,
+                7f);
+            CreatePointLight(
+                visualRoot.transform,
+                "North Utility Accent",
+                new Vector3(5f, 2.25f, 51f),
+                utilityLight,
+                0.42f,
+                7f);
+        }
+
+        private static void CreateTrainingDeck(
+            Transform parent,
+            Material floorMaterial,
+            Material coverMaterial,
+            Material accentMaterial)
+        {
+            GameObject deck = new GameObject("Training Deck");
+            deck.transform.SetParent(parent, false);
+
+            for (int i = 0; i < 24; i++)
+            {
+                float z = -32f + i * 4f;
+                CreatePrimitive(
+                    deck.transform,
+                    $"Deck Panel {i + 1:00}",
+                    PrimitiveType.Cube,
+                    new Vector3(0f, 0.012f, z),
+                    new Vector3(5.2f, 0.024f, 3.78f),
+                    floorMaterial,
+                    false,
+                    0);
+            }
+
+            CreatePrimitive(
+                deck.transform,
+                "West Route Edge",
+                PrimitiveType.Cube,
+                new Vector3(-2.62f, 0.034f, 12.5f),
+                new Vector3(0.09f, 0.025f, 96f),
+                accentMaterial,
+                false,
+                0);
+            CreatePrimitive(
+                deck.transform,
+                "East Route Edge",
+                PrimitiveType.Cube,
+                new Vector3(2.62f, 0.034f, 12.5f),
+                new Vector3(0.09f, 0.025f, 96f),
+                accentMaterial,
+                false,
+                0);
+
+            for (int i = 0; i < 32; i++)
+            {
+                CreatePrimitive(
+                    deck.transform,
+                    $"Route Dash {i + 1:00}",
+                    PrimitiveType.Cube,
+                    new Vector3(0f, 0.036f, -34f + i * 3f),
+                    new Vector3(0.1f, 0.026f, 1.35f),
+                    accentMaterial,
+                    false,
+                    0);
+            }
+
+            float[] thresholds = { -25f, -13f, -1f, 13f, 34f, 57f };
+            for (int i = 0; i < thresholds.Length; i++)
+            {
+                CreatePrimitive(
+                    deck.transform,
+                    $"Gate {i + 1:00} Threshold",
+                    PrimitiveType.Cube,
+                    new Vector3(0f, 0.042f, thresholds[i]),
+                    new Vector3(5.2f, 0.03f, 0.24f),
+                    accentMaterial,
+                    false,
+                    0);
+            }
+
+            float[] arrows = { -33f, -27f, -15f, -3f, 11f, 32f, 55f };
+            for (int i = 0; i < arrows.Length; i++)
+            {
+                CreateRouteArrow(
+                    deck.transform,
+                    $"Route Arrow {i + 1:00}",
+                    arrows[i],
+                    accentMaterial);
+            }
+
+            float[] objectivePads = { -30f, -10f, -5.2f, 3f, 9f, 23f, 39.5f, 47f };
+            for (int i = 0; i < objectivePads.Length; i++)
+            {
+                CreateObjectivePad(
+                    deck.transform,
+                    $"Objective Pad {i + 1:00}",
+                    objectivePads[i],
+                    coverMaterial,
+                    accentMaterial);
+            }
+
+            string[] labels =
+            {
+                "01  TIME",
+                "02  DASH",
+                "03  MELEE",
+                "04  PISTOL",
+                "05  THROW",
+                "06  DEADLINE",
+                "EXIT"
+            };
+            float[] labelPositions = { -30f, -19f, -7f, 6f, 23f, 47f, 59f };
+            for (int i = 0; i < labels.Length; i++)
+            {
+                CreateFloorLabel(
+                    deck.transform,
+                    $"Bay Label {i + 1:00}",
+                    labels[i],
+                    new Vector3(-2.3f, 0.052f, labelPositions[i]),
+                    new Color(0.2f, 0.82f, 1f, 1f));
+            }
+        }
+
+        private static void CreateRouteArrow(
+            Transform parent,
+            string name,
+            float z,
+            Material material)
+        {
+            GameObject root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            GameObject west = CreatePrimitive(
+                root.transform,
+                "West Chevron",
+                PrimitiveType.Cube,
+                new Vector3(-0.3f, 0.046f, z),
+                new Vector3(0.14f, 0.028f, 1.15f),
+                material,
+                false,
+                0);
+            west.transform.rotation = Quaternion.Euler(0f, -34f, 0f);
+            GameObject east = CreatePrimitive(
+                root.transform,
+                "East Chevron",
+                PrimitiveType.Cube,
+                new Vector3(0.3f, 0.046f, z),
+                new Vector3(0.14f, 0.028f, 1.15f),
+                material,
+                false,
+                0);
+            east.transform.rotation = Quaternion.Euler(0f, 34f, 0f);
+        }
+
+        private static void CreateObjectivePad(
+            Transform parent,
+            string name,
+            float z,
+            Material baseMaterial,
+            Material accentMaterial)
+        {
+            GameObject root = new GameObject(name);
+            root.transform.SetParent(parent, false);
+            CreatePrimitive(
+                root.transform,
+                "Pad Surface",
+                PrimitiveType.Cube,
+                new Vector3(0f, 0.04f, z),
+                new Vector3(2.5f, 0.026f, 2.5f),
+                baseMaterial,
+                false,
+                0);
+
+            Vector3[] positions =
+            {
+                new Vector3(-1.18f, 0.058f, z - 1.18f),
+                new Vector3(1.18f, 0.058f, z - 1.18f),
+                new Vector3(-1.18f, 0.058f, z + 1.18f),
+                new Vector3(1.18f, 0.058f, z + 1.18f)
+            };
+            for (int i = 0; i < positions.Length; i++)
+            {
+                CreatePrimitive(
+                    root.transform,
+                    $"Corner {i + 1}",
+                    PrimitiveType.Cube,
+                    positions[i],
+                    new Vector3(0.32f, 0.03f, 0.32f),
+                    accentMaterial,
+                    false,
+                    0);
+            }
+        }
+
+        private static void CreateFloorLabel(
+            Transform parent,
+            string name,
+            string text,
+            Vector3 position,
+            Color color)
+        {
+            GameObject labelObject = new GameObject(name);
+            labelObject.transform.SetParent(parent);
+            labelObject.transform.SetPositionAndRotation(
+                position,
+                Quaternion.Euler(90f, 0f, 0f));
+            TextMesh label = labelObject.AddComponent<TextMesh>();
+            label.text = text;
+            label.anchor = TextAnchor.MiddleLeft;
+            label.alignment = TextAlignment.Left;
+            label.characterSize = 0.07f;
+            label.fontSize = 64;
+            label.fontStyle = FontStyle.Bold;
+            label.color = color;
+        }
+
+        private static void RemoveEnvironmentArt(Transform environment)
+        {
+            string[] obsoleteDirectChildren =
+            {
+                SyntyVisualRootName,
+                "Time Lesson Light",
+                "Melee Lesson Light",
+                "Pistol Lesson Light",
+                "Throw Lesson Light",
+                "Deadline Arena Light"
+            };
+
+            for (int i = environment.childCount - 1; i >= 0; i--)
+            {
+                Transform child = environment.GetChild(i);
+                bool remove = child.name.StartsWith(
+                    "Zone Guide ",
+                    StringComparison.Ordinal);
+                for (int j = 0; j < obsoleteDirectChildren.Length && !remove; j++)
+                {
+                    remove = child.name == obsoleteDirectChildren[j];
+                }
+
+                if (remove)
+                {
+                    UnityEngine.Object.DestroyImmediate(child.gameObject);
+                }
+            }
+        }
+
+        private static void StyleTutorialGate(
+            TutorialGate gate,
+            Material coverMaterial,
+            Material accentMaterial)
+        {
+            Require(gate != null, "Cannot style a missing TutorialGate.");
+            Transform gateTransform = gate.transform;
+            Transform previousVisuals = gateTransform.Find(GateVisualRootName);
+            if (previousVisuals != null)
+            {
+                UnityEngine.Object.DestroyImmediate(previousVisuals.gameObject);
+            }
+
+            BoxCollider blocker = gate.GetComponent<BoxCollider>();
+            Require(blocker != null,
+                $"{gate.name} requires its serialized BoxCollider blocker.");
+            gateTransform.localScale = Vector3.one;
+            blocker.center = Vector3.zero;
+            blocker.size = new Vector3(13f, 2.8f, 0.35f);
+
+            Renderer blockerRenderer = gate.GetComponent<Renderer>();
+            Require(blockerRenderer != null,
+                $"{gate.name} requires its serialized gate Renderer.");
+            blockerRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            blockerRenderer.receiveShadows = false;
+
+            GameObject visualRoot = new GameObject(GateVisualRootName);
+            visualRoot.transform.SetParent(gateTransform, false);
+            for (int i = 0; i < 7; i++)
+            {
+                float x = -5.1f + i * 1.7f;
+                GameObject slat = CreatePrimitive(
+                    visualRoot.transform,
+                    $"Shutter Slat {i + 1:00}",
+                    PrimitiveType.Cube,
+                    gateTransform.position + new Vector3(x, 0f, 0f),
+                    new Vector3(1.05f, 2.45f, 0.18f),
+                    coverMaterial,
+                    false,
+                    0);
+                slat.transform.localPosition = new Vector3(x, 0f, 0f);
+                slat.transform.localRotation = Quaternion.identity;
+
+                GameObject statusStrip = CreatePrimitive(
+                    visualRoot.transform,
+                    $"Status Strip {i + 1:00}",
+                    PrimitiveType.Cube,
+                    gateTransform.position + new Vector3(x, 0.78f, -0.12f),
+                    new Vector3(0.76f, 0.075f, 0.08f),
+                    accentMaterial,
+                    false,
+                    0);
+                statusStrip.transform.localPosition = new Vector3(x, 0.78f, -0.12f);
+                statusStrip.transform.localRotation = Quaternion.identity;
+            }
+
+            GameObject upperRail = CreatePrimitive(
+                visualRoot.transform,
+                "Upper Shutter Rail",
+                PrimitiveType.Cube,
+                gateTransform.position + new Vector3(0f, 1.18f, 0f),
+                new Vector3(12.4f, 0.16f, 0.24f),
+                accentMaterial,
+                false,
+                0);
+            upperRail.transform.localPosition = new Vector3(0f, 1.18f, 0f);
+            upperRail.transform.localRotation = Quaternion.identity;
+
+            GameObject lowerRail = CreatePrimitive(
+                visualRoot.transform,
+                "Lower Shutter Rail",
+                PrimitiveType.Cube,
+                gateTransform.position + new Vector3(0f, -1.18f, 0f),
+                new Vector3(12.4f, 0.16f, 0.24f),
+                coverMaterial,
+                false,
+                0);
+            lowerRail.transform.localPosition = new Vector3(0f, -1.18f, 0f);
+            lowerRail.transform.localRotation = Quaternion.identity;
+
+            gate.Configure(blocker, blockerRenderer);
+            EditorUtility.SetDirty(gate);
+            EditorUtility.SetDirty(blocker);
+            EditorUtility.SetDirty(blockerRenderer);
         }
 
         private static void RequireSyntyTutorialAssets()
@@ -765,7 +1388,12 @@ namespace Deltatime.EditorTools
                 SyntyFloorPath,
                 SyntyWallFeaturePath,
                 SyntyWallFeatureAlternatePath,
+                SyntyWallFeatureSolidPath,
                 SyntyPillarPath,
+                SyntyLargePillarPath,
+                SyntyCeilingBeamPath,
+                SyntyWallTrimPath,
+                SyntyRoofEdgePath,
                 SyntyBarPath,
                 SyntyBenchPath,
                 SyntyBoxStackAPath,
@@ -774,7 +1402,15 @@ namespace Deltatime.EditorTools
                 SyntyExitSignPath,
                 SyntyDjBoothPath,
                 SyntyFridgePath,
-                SyntyDumpsterPath
+                SyntyDumpsterPath,
+                SyntyScreenPath,
+                SyntySpeakerPath,
+                SyntyTubeLightPath,
+                SyntySpotlightPath,
+                SyntyTablePath,
+                SyntyRubbishBinPath,
+                SyntyStanchionPath,
+                SyntyUnarmedTargetPath
             };
             for (int i = 0; i < paths.Length; i++)
             {
@@ -883,6 +1519,7 @@ namespace Deltatime.EditorTools
         private static TutorialTimeProbe CreateTimeProbe(
             Transform parent,
             WorldTimeController worldTime,
+            Material coverMaterial,
             Material accentMaterial)
         {
             GameObject hub = new GameObject("World Time Demonstration Clock");
@@ -890,23 +1527,107 @@ namespace Deltatime.EditorTools
             hub.transform.position = new Vector3(0f, 0.18f, -29.5f);
             TutorialTimeProbe probe = hub.AddComponent<TutorialTimeProbe>();
             probe.Configure(worldTime, 210f);
+            StyleTimeProbe(probe, coverMaterial, accentMaterial);
+            return probe;
+        }
 
-            for (int i = 0; i < 4; i++)
+        private static void StyleTimeProbe(
+            TutorialTimeProbe probe,
+            Material coverMaterial,
+            Material accentMaterial)
+        {
+            Require(probe != null, "Cannot style a missing TutorialTimeProbe.");
+            Transform hub = probe.transform;
+            for (int i = hub.childCount - 1; i >= 0; i--)
             {
-                GameObject hand = CreatePrimitive(
-                    hub.transform,
-                    $"Clock Hand {i + 1}",
+                UnityEngine.Object.DestroyImmediate(hub.GetChild(i).gameObject);
+            }
+
+            GameObject dial = CreatePrimitive(
+                hub,
+                "World Time Dial",
+                PrimitiveType.Cylinder,
+                hub.position + new Vector3(0f, -0.11f, 0f),
+                new Vector3(1.42f, 0.075f, 1.42f),
+                coverMaterial,
+                false,
+                0);
+            dial.transform.localPosition = new Vector3(0f, -0.11f, 0f);
+            dial.transform.localRotation = Quaternion.identity;
+
+            for (int i = 0; i < 12; i++)
+            {
+                float angle = i * 30f;
+                float radians = angle * Mathf.Deg2Rad;
+                Vector3 localPosition = new Vector3(
+                    Mathf.Sin(radians) * 1.12f,
+                    0.015f,
+                    Mathf.Cos(radians) * 1.12f);
+                GameObject tick = CreatePrimitive(
+                    hub,
+                    $"Dial Tick {i + 1:00}",
                     PrimitiveType.Cube,
-                    hub.transform.position,
-                    new Vector3(0.16f, 0.12f, 3.8f),
+                    hub.position + localPosition,
+                    new Vector3(0.07f, 0.055f, 0.24f),
                     accentMaterial,
                     false,
                     0);
-                hand.transform.localPosition = Vector3.zero;
-                hand.transform.localRotation = Quaternion.Euler(0f, i * 45f, 0f);
+                tick.transform.localPosition = localPosition;
+                tick.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
             }
 
-            return probe;
+            CreateClockHand(
+                hub,
+                "World Time Hour Hand",
+                0f,
+                1.18f,
+                0.14f,
+                coverMaterial);
+            CreateClockHand(
+                hub,
+                "World Time Minute Hand",
+                118f,
+                1.72f,
+                0.1f,
+                accentMaterial);
+
+            GameObject pin = CreatePrimitive(
+                hub,
+                "World Time Dial Pin",
+                PrimitiveType.Cylinder,
+                hub.position + new Vector3(0f, 0.08f, 0f),
+                new Vector3(0.18f, 0.1f, 0.18f),
+                accentMaterial,
+                false,
+                0);
+            pin.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+            pin.transform.localRotation = Quaternion.identity;
+        }
+
+        private static void CreateClockHand(
+            Transform parent,
+            string name,
+            float angle,
+            float length,
+            float width,
+            Material material)
+        {
+            float radians = angle * Mathf.Deg2Rad;
+            Vector3 localPosition = new Vector3(
+                Mathf.Sin(radians) * length * 0.5f,
+                0.075f,
+                Mathf.Cos(radians) * length * 0.5f);
+            GameObject hand = CreatePrimitive(
+                parent,
+                name,
+                PrimitiveType.Cube,
+                parent.position + localPosition,
+                new Vector3(width, 0.07f, length),
+                material,
+                false,
+                0);
+            hand.transform.localPosition = localPosition;
+            hand.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
         }
 
         private static TutorialTargetDummy CreateTargetDummy(
@@ -927,7 +1648,38 @@ namespace Deltatime.EditorTools
                 0);
             TutorialTargetDummy dummy = target.AddComponent<TutorialTargetDummy>();
             dummy.Configure(acceptedAttack, target.GetComponent<Renderer>());
+            StyleTutorialTarget(dummy);
             return dummy;
+        }
+
+        private static void StyleTutorialTarget(TutorialTargetDummy target)
+        {
+            Require(target != null, "Cannot style a missing TutorialTargetDummy.");
+            Renderer hitProxyRenderer = target.GetComponent<Renderer>();
+            Require(hitProxyRenderer != null,
+                $"Tutorial target {target.name} is missing its hit proxy Renderer.");
+            hitProxyRenderer.enabled = false;
+
+            Transform priorVisual = target.transform.Find(UnarmedTargetVisualName);
+            if (priorVisual != null)
+            {
+                UnityEngine.Object.DestroyImmediate(priorVisual.gameObject);
+            }
+
+            Vector3 position = target.transform.position;
+            GameObject visual = PlaceSyntyVisual(
+                target.transform,
+                SyntyUnarmedTargetPath,
+                UnarmedTargetVisualName,
+                new Vector3(position.x, 0f, position.z),
+                Quaternion.Euler(0f, 180f, 0f),
+                Vector3.one);
+            Renderer feedbackRenderer = visual.GetComponentInChildren<Renderer>(true);
+            Require(feedbackRenderer != null,
+                $"Tutorial target {target.name} has no unarmed Synty Renderer.");
+            target.Configure(target.RequiredAttack, feedbackRenderer);
+            EditorUtility.SetDirty(target);
+            EditorUtility.SetDirty(hitProxyRenderer);
         }
 
         private static TutorialWeaponDispenser CreateDispenser(
@@ -1318,22 +2070,70 @@ namespace Deltatime.EditorTools
                 $"Tutorial is missing its {SyntyVisualRootName} root.");
 
             int prefabCount = 0;
-            for (int i = 0; i < visualRoot.childCount; i++)
+            Transform[] visualTransforms =
+                visualRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < visualTransforms.Length; i++)
             {
-                GameObject child = visualRoot.GetChild(i).gameObject;
-                if (PrefabUtility.GetCorrespondingObjectFromSource(child) != null)
+                if (PrefabUtility.IsAnyPrefabInstanceRoot(
+                        visualTransforms[i].gameObject))
                 {
                     prefabCount++;
                 }
             }
 
-            Require(prefabCount >= MinimumSyntyPrefabCount,
+            Require(prefabCount == ExpectedSyntyPrefabCount,
                 $"Tutorial contains {prefabCount} Synty prefab instances; " +
-                $"expected at least {MinimumSyntyPrefabCount}.");
+                $"expected {ExpectedSyntyPrefabCount}.");
             Require(visualRoot.Find("Pistol Range West Cover") != null &&
                     visualRoot.Find("Pistol Range East Cover") != null &&
-                    visualRoot.Find("Tutorial Exit Sign") != null,
+                    visualRoot.Find("Tutorial Exit Sign") != null &&
+                    visualRoot.Find("Training Deck") != null &&
+                    visualRoot.Find("Gate 01 Overhead Beam") != null,
                 "Tutorial Synty landmarks are incomplete.");
+            Require(visualRoot.Find("West Wall 01") != null &&
+                    visualRoot.Find("East Wall 01") != null &&
+                    visualRoot.Find("West Upper Rail 01") != null &&
+                    visualRoot.Find("East Upper Rail 01") != null &&
+                    visualRoot.Find("West Wall Luminaire 01") != null &&
+                    visualRoot.Find("East Wall Luminaire 01") != null,
+                "Tutorial training-facility side-wall modules are incomplete.");
+
+            Transform westWall = environment.transform.Find("West Tutorial Wall");
+            Transform eastWall = environment.transform.Find("East Tutorial Wall");
+            Require(westWall != null && eastWall != null &&
+                    westWall.GetComponent<Collider>() != null &&
+                    eastWall.GetComponent<Collider>() != null &&
+                    westWall.GetComponent<Renderer>() != null &&
+                    eastWall.GetComponent<Renderer>() != null &&
+                    westWall.GetComponent<Renderer>().enabled &&
+                    eastWall.GetComponent<Renderer>().enabled,
+                "Tutorial side walls must retain their visible VisionObstacle boundaries.");
+
+            TutorialTargetDummy[] targets = FindSceneComponents<TutorialTargetDummy>(scene);
+            for (int i = 0; i < targets.Length; i++)
+            {
+                Renderer hitProxyRenderer = targets[i].GetComponent<Renderer>();
+                Transform visual = targets[i].transform.Find(UnarmedTargetVisualName);
+                Require(hitProxyRenderer != null && !hitProxyRenderer.enabled &&
+                        visual != null &&
+                        PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(
+                            visual.gameObject) == SyntyUnarmedTargetPath &&
+                        visual.GetComponentInChildren<Renderer>(true) != null,
+                    $"Tutorial target {targets[i].name} must use an unarmed Synty visual and hidden hit proxy.");
+            }
+
+            TutorialGate[] gates = FindSceneComponents<TutorialGate>(scene);
+            int styledGateCount = 0;
+            for (int i = 0; i < gates.Length; i++)
+            {
+                if (gates[i].transform.Find(GateVisualRootName) != null)
+                {
+                    styledGateCount++;
+                }
+            }
+
+            Require(styledGateCount == 6,
+                $"Tutorial contains {styledGateCount} styled training shutters; expected six.");
 
             for (int i = 0; i < animationControllers.Length; i++)
             {
@@ -1412,15 +2212,15 @@ namespace Deltatime.EditorTools
                 }
             }
 
-            Require(obstacleCount >= 10,
-                $"Tutorial VisionObstacle geometry count is {obstacleCount}; expected at least 10.");
+            Require(obstacleCount >= 16,
+                $"Tutorial VisionObstacle geometry count is {obstacleCount}; expected at least 16.");
         }
 
         private static void ValidateBuildSettings()
         {
             EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
             Require(scenes.Length >= OrderedBuildScenes.Length,
-                "Build Settings do not contain Tutorial and Stage1 through Stage6.");
+                "Build Settings do not contain MainScene, Tutorial, and Stage1 through Stage6.");
             for (int i = 0; i < OrderedBuildScenes.Length; i++)
             {
                 Require(scenes[i].enabled &&
