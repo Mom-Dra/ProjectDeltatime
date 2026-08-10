@@ -251,44 +251,28 @@ namespace Deltatime.UI
 
         private void DrawDeadlineFeedback()
         {
-            if (deadline.IsActive)
-            {
-                string causes = deadline.RejectedActionFeedback
-                    ? "원인 가득 참"
-                    : $"원인 {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
-                string text =
-                    "DEADLINE\n" +
-                    $"{causes}\n" +
-                    "이동하여 실행";
-                Rect panel = CreateTopRightOverlay(330f, 142f);
-                GUI.DrawTexture(panel, panelTexture);
-                GUI.Label(
-                    new Rect(
-                        panel.x + 20f,
-                        panel.y + 8f,
-                        panel.width - 40f,
-                        panel.height - 16f),
-                    text,
-                    overlayMessageStyle);
-                return;
-            }
-
-            if (!deadline.IsReady ||
-                worldTime.IsHardFrozen ||
-                replay.IsReplaying ||
-                !playerHealth.IsAlive)
+            if (!deadline.IsActive)
             {
                 return;
             }
 
-            const string warning = "Q를 눌러 DEADLINE 발동";
-            Rect warningPanel = new Rect(
-                (Screen.width - 460f) * 0.5f,
-                28f,
-                460f,
-                54f);
-            GUI.DrawTexture(warningPanel, panelTexture);
-            GUI.Label(warningPanel, warning, statusStyle);
+            string causes = deadline.RejectedActionFeedback
+                ? "원인 가득 참"
+                : $"원인 {deadline.StagedActionCount}/{deadline.MaxStagedActions}";
+            string text =
+                "DEADLINE\n" +
+                $"{causes}\n" +
+                "이동하여 실행";
+            Rect panel = CreateTopRightOverlay(330f, 142f);
+            GUI.DrawTexture(panel, panelTexture);
+            GUI.Label(
+                new Rect(
+                    panel.x + 20f,
+                    panel.y + 8f,
+                    panel.width - 40f,
+                    panel.height - 16f),
+                text,
+                overlayMessageStyle);
         }
 
         private static Rect CreateTopRightOverlay(float preferredWidth, float height)

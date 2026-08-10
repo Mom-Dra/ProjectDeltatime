@@ -14,11 +14,14 @@ namespace Deltatime.EditorTools
     public static class SoundManagerPlayModeSmokeTest
     {
         private const string ScenePath = "Assets/_Project/Scenes/MainScene.unity";
+        private const string StageSceneName = "Stage1";
         private const string EndingSceneName = "EndingScene";
+        private const double BgmCrossfadeSettleDuration = 0.35d;
         private const string RunningKey = "Deltatime.SoundSmoke.Running";
         private const string FailedKey = "Deltatime.SoundSmoke.Failed";
         private const string FailureKey = "Deltatime.SoundSmoke.Failure";
         private static double playModeStartedAt;
+        private static double phaseStartedAt;
         private static int phase;
 
         static SoundManagerPlayModeSmokeTest()
@@ -62,6 +65,7 @@ namespace Deltatime.EditorTools
             if (state == PlayModeStateChange.EnteredPlayMode)
             {
                 playModeStartedAt = EditorApplication.timeSinceStartup;
+                phaseStartedAt = playModeStartedAt;
                 phase = 0;
             }
             else if (state == PlayModeStateChange.EnteredEditMode)
@@ -92,12 +96,33 @@ namespace Deltatime.EditorTools
                     Require(
                         manager.CurrentBgmClip == manager.Library.TutorialBgm,
                         "Tutorial did not select the tutorial BGM.");
-                    SceneManager.LoadScene(EndingSceneName);
+                    SceneManager.LoadScene(StageSceneName);
+                    phaseStartedAt = EditorApplication.timeSinceStartup;
                     phase = 2;
                     return;
                 }
 
                 if (phase == 2)
+                {
+                    if (EditorApplication.timeSinceStartup - phaseStartedAt < BgmCrossfadeSettleDuration)
+                    {
+                        return;
+                    }
+
+                    Require(
+                        SceneManager.GetActiveScene().name == StageSceneName,
+                        "Tutorial did not load Stage1.");
+                    Require(
+                        manager.CurrentBgmClip == manager.Library.StageBgm,
+                        "Stage1 did not select the stage BGM.");
+                    ValidateStageBgmVolume(manager);
+                    SceneManager.LoadScene(EndingSceneName);
+                    phaseStartedAt = EditorApplication.timeSinceStartup;
+                    phase = 3;
+                    return;
+                }
+
+                if (phase == 3)
                 {
                     Require(
                         SceneManager.GetActiveScene().name == EndingSceneName,
@@ -241,6 +266,25 @@ namespace Deltatime.EditorTools
 
                 UnityEngine.Object.Destroy(source);
             }
+        }
+
+        private static void ValidateStageBgmVolume(SoundManager manager)
+        {
+            AudioSource[] sources = manager.GetComponentsInChildren<AudioSource>(true);
+            for (int i = 0; i < sources.Length; i++)
+            {
+                AudioSource source = sources[i];
+                if (source.clip == manager.Library.StageBgm)
+                {
+                    float stageBgmVolume = source.volume;
+                    Require(
+                        Mathf.Approximately(stageBgmVolume, 0.5f),
+                        $"Stage BGM volume was not reduced to 0.50. Current: {stageBgmVolume:F3}.");
+                    return;
+                }
+            }
+
+            throw new InvalidOperationException("No AudioSource is playing the stage BGM.");
         }
 
         private sealed class SwingValidationTarget : MonoBehaviour, IDamageable

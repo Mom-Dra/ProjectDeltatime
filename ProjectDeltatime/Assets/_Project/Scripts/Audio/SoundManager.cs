@@ -14,6 +14,7 @@ namespace Deltatime.Audio
         private const string LibraryResourceName = "DeltatimeSoundLibrary";
         private const int SpatialSourceCount = 16;
         private const float BgmVolume = 0.55f;
+        private const float StageBgmVolume = 0.5f;
         private const float GlobalSfxVolume = 0.9f;
         private const float DeadlineDuckMultiplier = 0.4f;
         private const float BgmCrossfadeDuration = 0.25f;
@@ -324,13 +325,18 @@ namespace Deltatime.Audio
         {
             if (bgmSourceA != null)
             {
-                bgmSourceA.volume = BgmVolume * bgmWeightA * currentDuckMultiplier;
+                bgmSourceA.volume = GetBgmVolume(bgmSourceA.clip) * bgmWeightA * currentDuckMultiplier;
             }
 
             if (bgmSourceB != null)
             {
-                bgmSourceB.volume = BgmVolume * bgmWeightB * currentDuckMultiplier;
+                bgmSourceB.volume = GetBgmVolume(bgmSourceB.clip) * bgmWeightB * currentDuckMultiplier;
             }
+        }
+
+        private float GetBgmVolume(AudioClip clip)
+        {
+            return library != null && clip == library.StageBgm ? StageBgmVolume : BgmVolume;
         }
 
         private void BindDeadlineControllers()

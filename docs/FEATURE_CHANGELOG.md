@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-10 - 스테이지 BGM 볼륨 소폭 하향
+
+- 변경 유형: 스테이지 BGM 믹스 조정, 오디오 회귀 검사 및 기획 문서 갱신
+- 변경 내용: **구현 완료**. Stage1~Stage6가 공유하는 `StageBgm` 기본 출력을 `0.55`에서 `0.50`으로 낮췄다(약 9% 감소). MainScene·Tutorial·엔딩 BGM 기본 출력 `0.55`와 `DEADLINE` 덕킹 배율 `0.4`는 유지한다. 크로스페이드 중에는 각 BGM `AudioSource`가 실제 재생 중인 클립별 출력을 사용하므로, 스테이지 진입·이탈 전환에서도 스테이지 곡에만 낮아진 값이 적용된다. `SoundManagerPlayModeSmokeTest`는 MainScene→Tutorial→Stage1→EndingScene 흐름에서 Stage1의 BGM 선택 및 출력 `0.50`을 검사한다.
+- 영향을 받은 시스템: Stage1~Stage6 BGM 출력, 씬 간 BGM 크로스페이드, `DEADLINE` BGM 덕킹, 오디오 PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.60으로 갱신해 스테이지 전용 기본 출력 `0.50`, 비스테이지 BGM `0.55` 유지, 크로스페이드·덕킹 정책과 확인 상태를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 `SoundManagerPlayModeSmokeTest.RunFromCommandLine`은 MainScene→Tutorial→Stage1→EndingScene 흐름과 Stage1 `StageBgm`의 크로스페이드 완료 후 출력 `0.50`을 검사해 종료 코드 0으로 통과했다(`ProjectDeltatime/SoundManagerStageBgmSmoke.log`). `git diff --check`도 통과했다. `dotnet build ProjectDeltatime.sln`은 기존 누락 파일 `Assets/TutorialInfo/Scripts/Readme.cs` 및 Unity 패키지 참조 경고로 실패했으므로 이 변경의 .NET 빌드 결과는 **확인 불가**다.
+- 남은 작업: **확인 불가**. 실제 스테이지에서 일반·`DEADLINE` 상태의 BGM 체감 볼륨과 메뉴/튜토리얼/엔딩 전환 시 상대 음량을 수동 확인해야 한다.
+
+## 2026-08-10 - 스테이지 DEADLINE 발동 안내 제거
+
+- 변경 유형: GameHud 안내 문구 제거, 기획 문서 갱신
+- 변경 내용: **구현 완료**. 일반 스테이지에서 `DEADLINE`이 사용 가능한 경우 상단 중앙에 표시되던 `Q를 눌러 DEADLINE 발동` 안내를 제거했다. 활성 `DEADLINE`의 우상단 행동 수·이동 실행 안내는 유지하며, `Q` 바인딩·충전·재사용 대기·발동·전투 동작은 변경하지 않았다.
+- 영향을 받은 시스템: GameHud 일반 플레이 상단 안내, DEADLINE 활성 행동 패널, 게임플레이 화면 가독성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.59로 갱신해 제거된 상단 발동 안내와 유지되는 활성 안내를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 대조로 비활성 `DEADLINE`은 피드백을 그리지 않고, 활성 상태만 기존 우상단 패널을 그리는지 확인했다. `git diff --check`를 통과했다. Unity 컴파일·Play Mode와 실제 Game View 확인은 **미실행/확인 불가**다.
+- 남은 작업: **확인 불가**. 실제 스테이지에서 상단 중앙 안내가 사라지고 `DEADLINE` 활성 뒤 행동 안내가 유지되는지 수동 확인해야 한다.
+
 ## 2026-08-10 - Stage5 왼쪽 아래 단상 계단 NavMesh 복구
 
 - 변경 유형: Stage5 이동 경로 버그 수정, 현재 씬 NavMesh 재베이크 도구 추가, 기획 문서 갱신
