@@ -53,7 +53,8 @@ namespace Deltatime.Combat
             Vector3 direction,
             float range,
             float halfAngle,
-            int damage)
+            int damage,
+            MeleeImpactKind impactKind = MeleeImpactKind.Punch)
         {
             direction.y = 0f;
             if (source == null ||
@@ -70,7 +71,8 @@ namespace Deltatime.Combat
                 direction.normalized,
                 range,
                 halfAngle,
-                damage);
+                damage,
+                impactKind);
             if (hasCurrentAttack)
             {
                 queuedAttacks.Enqueue(request);
@@ -99,7 +101,8 @@ namespace Deltatime.Combat
                 resolvedAttack.Direction,
                 resolvedAttack.Range,
                 resolvedAttack.HalfAngle,
-                resolvedAttack.Damage);
+                resolvedAttack.Damage,
+                resolvedAttack.ImpactKind);
 
             if (queuedAttacks.Count > 0)
             {
@@ -150,7 +153,8 @@ namespace Deltatime.Combat
                 Vector3 direction,
                 float range,
                 float halfAngle,
-                int damage)
+                int damage,
+                MeleeImpactKind impactKind)
             {
                 Source = source;
                 Faction = faction;
@@ -158,6 +162,7 @@ namespace Deltatime.Combat
                 Range = range;
                 HalfAngle = halfAngle;
                 Damage = damage;
+                ImpactKind = impactKind;
             }
 
             public GameObject Source { get; }
@@ -166,6 +171,7 @@ namespace Deltatime.Combat
             public float Range { get; }
             public float HalfAngle { get; }
             public int Damage { get; }
+            public MeleeImpactKind ImpactKind { get; }
         }
     }
 }

@@ -30,6 +30,7 @@ namespace Deltatime.Player
         private int stagedActionCount;
         private const float ReleaseMovementThreshold = 0.05f;
 
+        public event Action Activated;
         public event Action Released;
 
         public bool IsActive { get; private set; }
@@ -160,6 +161,7 @@ namespace Deltatime.Player
             hardFreezeToken = worldTime.AcquireHardFreeze(
                 allowMinimumTimeScaleDuringAim: true);
             chargesRemaining = Mathf.Max(0, chargesRemaining - 1);
+            Activated?.Invoke();
         }
 
         private void ReleaseDeadline()

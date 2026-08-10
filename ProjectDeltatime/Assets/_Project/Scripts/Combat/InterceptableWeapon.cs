@@ -1,3 +1,4 @@
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.Utilities;
 using Deltatime.Visuals;
@@ -136,7 +137,11 @@ namespace Deltatime.Combat
                     $"{nameof(InterceptableWeapon)} was spawned without required data.",
                     this);
                 Destroy(gameObject);
+                return;
             }
+
+            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+                transform);
         }
 
         public bool TryCatch(WeaponController collector)

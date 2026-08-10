@@ -21,6 +21,66 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - Deadline 리플레이 카메라 떨림 제거
+
+- 변경 유형: 리플레이 카메라 보간 버그 수정, 자동 검증 보강
+- 변경 내용: **구현 완료**. 정규속도 리플레이가 20Hz 인접 샘플별 프레젠테이션 세그먼트를 생성한 뒤, Deadline 해제 후 카메라 복귀 배율을 각 세그먼트의 `PresentationStart`에서 다시 계산해 경계마다 카메라가 Deadline 진입 앵커 방향으로 되돌아가던 문제를 수정했다. Deadline 해제 시점의 단일 `CameraRecoveryStart`를 모든 `DeadlineAftermath` 세그먼트에 저장하고, 0.2초 복귀 배율을 이 공통 시각에서 계산한다. `CurrentCameraRecoveryBlend` 진단값은 Deadline에서 0, 후속 복귀에서 단조 증가, 일반 구간에서 1로 갱신된다. 시간축, 카메라 앵커, 기존 0.2초 복귀 길이와 일반 플레이 밸런스는 변경하지 않았다.
+- 영향을 받은 시스템: `StageReplayController` 프레젠테이션 세그먼트, Deadline 카메라 고정·해제 후 복귀, 리플레이 PlayMode 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.36`으로 갱신하고 전체 후속 구간이 공유하는 카메라 복귀 시작 시각, 진행도 진단값과 자동 검증 근거를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 최종 배치 컴파일이 종료 코드 0으로 완료됐다. `ReplayPlayModeSmokeTest.RunFromCommandLine`에서 정상/강한 감속 시간축, 공격·이동·피격 VFX·스킨 뼈 포즈·이벤트 순서 검증과 함께, 여러 20Hz 후속 세그먼트에서 `CurrentCameraRecoveryBlend`가 역행하지 않고 실제 증가하는지 확인해 통과했다. 로그: `ProjectDeltatime/ReplayCameraStabilityCompile.log`, `ProjectDeltatime/ReplayCameraStabilitySmoke2.log`.
+- 남은 작업: 실제 키보드/마우스 클리어 후 사람 눈으로 보는 전체 화면 안정성 평가는 **확인 불가**다. 리플레이 종료/스킵 및 장시간 녹화 성능은 기존 **계획 필요** 항목으로 유지한다.
+
+## 2026-08-10 - 리플레이 정상속도 시간축 및 스킨 애니메이션 재현
+
+- 변경 유형: 리플레이 시간축 버그 수정, 애니메이션 스냅샷 확장, 짧은 VFX 등록, HUD·자동 검증 갱신
+- 변경 내용: **구현 완료**. `ReplayRecordingClock`을 추가해 녹화 소스 순서용 비스케일 실시간과 정상속도 표시용 실제 `WorldDeltaTime` 누적 시간을 분리했다. `StageReplayController`는 전체 일반 구간의 평균 배율로 한 번에 선형 환산하던 구조와 Deadline 0.5배·최소/최대 길이 강제를 중단하고, 20Hz 인접 샘플마다 정규 표시 시간↔소스 시간을 매핑한다. 재생 진행은 계속 `Time.unscaledDeltaTime`을 사용하므로 비활성화 전의 `WorldTimeController.CurrentTimeScale`, 하드 프리즈, 전역 스케일의 영향을 받지 않는다. 기존 Deadline 직렬화 필드와 공개 단계/진단 API는 씬·에디터 호환을 위해 보존하지만 길이 값은 이제 정규화된 월드 진행량을 뜻한다. `SkinnedMeshRenderer` 프록시는 트랙 생성 순간 한 번 `BakeMesh`한 정적 메시에서 원본 공유 스킨 메시+독립 뼈 계층으로 교체하고, 각 샘플의 뼈 위치·회전·스케일을 값 형식 버퍼에 기록해 재생 프레임마다 보간한다. 따라서 Animator의 이동·Roll·공격 트리거와 전이가 만든 최종 포즈가 오브젝트 생성/비활성/제거 뒤에도 녹화된 가시 구간에서 재현된다. 기록 중 스킨 Animator는 `AlwaysAnimate`로 설정하고 종료 시 원래 culling 모드로 복원한다. `VisualSample`을 값 형식으로 바꾸고 동일 재질/라인 배열을 재사용해 애니메이션 샘플의 프레임별 관리 힙 할당을 피했다. 수명 0.12초의 `HitFlash`는 `ActiveRecorder`에 생성 시 즉시 등록하고, 런타임 투사체·투척·공중 무기는 재사용 목록 기반 `RegisterRendererHierarchy`로 자식 렌더러를 한 번에 등록한다. 이 경로는 20Hz/Stage6 fallback 탐색 간격 사이 누락을 막으며 프레임별 `Find`나 호출별 렌더러 배열 할당을 추가하지 않는다. HUD는 Deadline을 포함한 모든 리플레이 구간을 `NORMALIZED 1.00x`로 표시한다.
+- 영향을 받은 시스템: 리플레이 녹화 데이터와 표시 시간축, `WorldTimeController` 연동, Deadline 카메라 단계, 카메라·이동·투사체·투척/픽업·라인/VFX·조명 프록시의 공통 소스 타임스탬프, 캐릭터 Animator/SkinnedMeshRenderer, 전체 시야, HUD, 배치 테스트
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayRecordingClock.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/ThrownWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/InterceptableWeapon.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Utilities/HitFlash.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayTimeAxisEditModeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.35`로 갱신하고 세 시간축 정의, 정상속도 구간별 매핑, Deadline 기존 배속 정책 대체, 스킨 뼈 포즈·Animator culling·짧은 VFX 등록 정책, 실제 수치, 호환성, 성능 부채, 자동 검증 근거와 의사결정을 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 최신 배치 컴파일이 종료 코드 0으로 완료됐다. `ReplayTimeAxisEditModeTest.RunFromCommandLine`은 월드 진행 6초를 정상 플레이(소스 6초)와 강한 0.2배 플레이(소스 30초)로 기록해 두 표시 길이가 모두 6초인지, 이동→감속 공격→하드 프리즈→피격→이동 이벤트의 표시 시간이 역행하지 않는지, `Time.timeScale == 1`인지 검증해 통과했다. `ReplayPlayModeSmokeTest.RunFromCommandLine`은 Stage2의 정상 구간과 1.1초 Deadline 강한 감속 구간 양쪽에서 공격 `AttackA` 트리거, 플레이어 이동, `HitFlash`를 실제 녹화하고 정규화된 길이 단축, 뼈 포즈 변화/활성 스킨 프록시, 두 피격 VFX 트랙, 소스 이벤트 단조 증가, 전역 스케일 불변을 검증해 통과했다. 최신 로그: `ProjectDeltatime/ReplayFinalCompile3.log`, `ProjectDeltatime/ReplayTimeAxisEditMode2.log`, `ProjectDeltatime/ReplayPlayModeSmoke3.log`. 최신 `PrototypePlayModeSmokeTest` 회귀 실행은 리플레이 관련 어설션을 모두 통과했으나 현재 투척 거리 4m와 테스트의 과거 6m 기대값이 충돌한 기존 2건 때문에 전체 종료 코드는 실패했다. 로그: `ProjectDeltatime/ReplayPrototypeRegression2.log`.
+- 남은 작업: **부분 구현**. 현재 소스 에셋에 권총 사격, 피격, 사망, 투척/획득 전용 캐릭터 애니메이션이 없어 리플레이는 존재하는 이동·Roll·상체 공격과 피격 색/`HitFlash`만 재현한다. 블렌드 셰이프 전용 애니메이션은 별도 샘플이 없으며 현재 캐릭터에서 사용 여부를 **확인 불가**로 남긴다. 무제한 녹화 길이와 뼈 포즈 메모리, Stage1~Stage5의 20Hz 전체 렌더러 검색, Stage6 0.25초 fallback, 반복 리플레이 종료/복구 경로는 기존 **계획 필요** 성능·수명 과제다. 실제 키보드/마우스 클리어 후 전체 씬의 시각 품질은 **확인 불가**다.
+
+## 2026-08-10 - 전역 SoundManager 및 자동 BGM·전투·DEADLINE 효과음 연결
+
+- 변경 유형: 런타임 오디오 시스템 추가, BGM 자동 라우팅, 전투·DEADLINE 이벤트 연결, 효과음 에셋 추가
+- 변경 내용: **구현 완료**. `RuntimeInitializeOnLoadMethod`로 생성되고 씬 전환 뒤에도 유지되는 `SoundManager`와 `Resources/DeltatimeSoundLibrary`를 추가했다. `MainScene`·`Tutorial`·`Stage*`·엔딩 계열 씬에 BGM 4종을 자동 매핑하고 0.25초 크로스페이드·반복 정책을 적용했다. 권총·자동소총·샷건은 성공한 발사 1회마다 무기별 변형 한 개를 3D 재생하며, 주먹·야구방망이는 실제 피해 적중 시에만 전용 3D 효과음을 낸다. 무기 투척과 플레이어 획득·교환에도 전용 효과음을 연결했다. `DeadlineController.Activated`·`Released`에 진입 충격·반복 시간 왜곡·해제 변형을 연결하고 활성 중 BGM을 약 -8 dB로 덕킹한다. 오디오 전환은 비스케일 시간을 사용하며 전역 `Time.timeScale`은 변경하지 않는다.
+- 영향을 받은 시스템: 메인 메뉴·Tutorial·Stage1~Stage6·엔딩 BGM, 플레이어·적 총기 발사, 근접 피해 판정, 무기 투척·획득, DEADLINE 하드 프리즈 피드백, 씬 전환과 오디오 수명
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackResolver.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Audio/BGM`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Weapons`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.34`로 갱신해 BGM 자동 선택·크로스페이드, 전투 3D SFX, DEADLINE 2D 레이어·덕킹, 비스케일 시간 정책과 구현 근거를 반영했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드 `SoundLibraryBuilder.BuildAndValidateFromCommandLine`이 C# 컴파일과 모든 BGM·무기 정의·발사음·타격음·투척·획득·DEADLINE 참조 검증을 통과했다. `SoundManagerPlayModeSmokeTest.RunFromCommandLine`은 `MainScene` BGM 선택, 라이브러리 로드, 권총·주먹·야구방망이·투척·획득 재생 API와 DEADLINE 진입·해제 상태 전환을 실제 PlayMode에서 통과했다. 기존 `TutorialPlayModeSmokeTest`는 현재 사용자 편집 `Tutorial.unity`의 Synty 프리팹 수가 검증 기대 262개가 아닌 216개여서 PlayMode 진입 전에 중단됐으며, 해당 씬은 보존했다. 로그: `ProjectDeltatime/SoundLibraryBuild.log`, `ProjectDeltatime/SoundManagerSmoke.log`, `ProjectDeltatime/TutorialAudioSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 스피커·헤드폰에서 BGM 대비 총성·타격음·DEADLINE 레이어의 청감과 장시간 Stage 전환을 수동 확인해야 한다. 사용자 조절식 마스터·BGM·SFX 볼륨과 별도 `AudioMixer` 에셋은 **계획 필요**다. Tutorial 전체 회귀 스모크는 사용자 씬의 프리팹 수와 검증 기준이 다시 일치한 뒤 재실행해야 한다.
+
+## 2026-08-10 - MainScene PLAY 버튼 클릭음 연결
+
+- 변경 유형: UI 클릭 효과음 연결, SoundLibrary 참조 확장
+- 변경 내용: **구현 완료**. 기존 MainScene PLAY 버튼의 `MainMenuController.Play` 실행 직전에 `SoundManager.PlayUiClick`을 호출하도록 연결했다. `Assets/_Project/Audio/SFX/Click/click.ogg`를 `DeltatimeSoundLibrary`의 UI 클릭 클립으로 등록했으며, Build Settings 대상 씬이 유효할 때 클릭음이 재생된 뒤 Tutorial 씬 전환이 진행된다. MainScene의 투명 버튼·hover/press 시각 피드백과 기존 단일 persistent 리스너는 유지했다.
+- 영향을 받은 시스템: MainScene UI, 씬 전환, 전역 UI SFX, SoundLibrary 에셋
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Click/click.ogg`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`의 현재 구현 상태와 분석 기준에 MainScene PLAY 클릭음 매핑·재생 상태를 추가했다.
+- 테스트 결과: **구현 완료**. Unity `SoundLibraryBuilder.BuildAndValidateFromCommandLine`이 클릭음 참조를 포함한 라이브러리 저장·검증을 통과했고, `SoundManagerPlayModeSmokeTest.RunFromCommandLine`이 MainScene BGM·SoundManager 로드, `MainMenuController.Play`의 UI 클릭음 호출, Tutorial 씬 전환까지 통과했다. 씬 전환 뒤 Tutorial에 AudioListener가 없어 Unity 경고가 한 번 기록됐지만 클릭음 연결 검증은 통과했다. 로그: `ProjectDeltatime/SoundLibraryBuild.log`, `ProjectDeltatime/SoundManagerSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 스피커·헤드폰에서 클릭음의 볼륨과 MainScene BGM 대비 청감은 수동 확인이 필요하다. `click.ogg`의 원본 라이선스 메타데이터가 프로젝트 문서에 없으므로 배포 전 출처를 확인해야 한다.
+
+## 2026-08-10 - BGM 4종 Unity 배치
+
+- 변경 유형: BGM 에셋 정리·배치, Unity 스트리밍 임포트 설정, 씬별 사용 정책 문서화
+- 변경 내용: **구현 완료**. `sector_MainScene.mp3`, `pulse_tutorial.mp3`, `ruskerdax_-_savage_ambush_Stage.mp3`, `title_EndingScene.mp3`를 각각 `BGM_MainMenu.mp3`, `BGM_Tutorial.mp3`, `BGM_Stage_Action.mp3`, `BGM_Ending.mp3`로 이름을 정리해 `Assets/_Project/Audio/BGM`에 배치했다. 네 MP3가 Unity `AudioImporter`로 인식되는 것을 확인하고 `Load Type: Streaming`, `3D Sound: Off`, 스테레오 유지, 프리로드 해제 설정을 적용했다. 메뉴·Tutorial·Stage는 반복, 엔딩은 비반복으로 사용하는 기준을 README에 기록했다. 씬별 `AudioSource`·BGM `AudioMixer` 연결은 **미구현**이다.
+- 영향을 받은 시스템: 메인 메뉴·Tutorial·Stage1~Stage6·엔딩 음악 자산, 장시간 BGM 메모리 사용, 씬 전환 페이드·반복 정책 준비
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_MainMenu.mp3`, `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_Tutorial.mp3`, `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_Stage_Action.mp3`, `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_Ending.mp3`, `ProjectDeltatime/Assets/_Project/Audio/BGM/README.md`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.33`으로 갱신해 BGM 4개 매핑, 길이, 반복·스트리밍 정책, 런타임 연결 상태와 근거 파일을 반영했다.
+- 테스트 결과: **정적 검증 통과**. 원본 MP3 4개의 프레임을 분석해 약 56.9초·71.1초·121.9초·425.6초 길이를 확인했고, Unity 배치 임포트 후 네 `.meta`가 모두 `AudioImporter`를 포함하는 것을 확인했다. BGM의 실제 씬 재생·반복·페이드 청감은 **미실행**이다.
+- 남은 작업: **부분 구현**. MainScene·Tutorial·Stage1~Stage6·Ending의 `AudioSource` 연결, 씬 전환 페이드, BGM AudioMixer 그룹·DEADLINE 덕킹, 실제 재생·반복 체감 검증이 남아 있다.
+
+## 2026-08-10 - DEADLINE 진입·시간 왜곡·해제 효과음 배치
+
+- 변경 유형: DEADLINE 전용 음향 에셋 추가, 이벤트별 재생 기준·라이선스 문서화
+- 변경 내용: **구현 완료**. Pixabay Content License로 표기된 세 MP3를 DEADLINE 전용 Unity 에셋 폴더에 역할별 이름으로 복사했다. `SFX_Deadline_Enter_Impact`는 Q 입력에 따른 활성화 즉시의 저음 충격, `SFX_Deadline_Enter_TimeWarp`는 그 충격과 겹치는 시간 왜곡, `SFX_Deadline_Release`는 하드 프리즈 해제를 맡는다. README에 전역 2D 재생, 시간 왜곡 -8 dB 상대 볼륨, BGM -8 dB 덕킹, 현재 코드 연결 지점과 원본 페이지를 기록했다. 런타임 `AudioSource`/`AudioMixer` 연결은 **미구현**이다.
+- 영향을 받은 시스템: DEADLINE 활성·하드 프리즈 해제 피드백, 전역 SFX 믹싱, 향후 BGM 덕킹, 에셋 라이선스 추적
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_Impact.mp3`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_TimeWarp.mp3`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Release.mp3`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/README.md`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 `1.6.32`로 갱신해 세 DEADLINE 효과음의 역할·배치·재생 기준, 런타임 연결 상태 및 근거 파일을 반영했다.
+- 테스트 결과: **미실행**. 파일 복사 전 원본 존재를 확인했으나, Unity Editor 임포트·AudioSource 재생·Q 진입 및 이동 해제의 실제 Play Mode 청감은 아직 실행하지 않았다.
+- 남은 작업: **부분 구현**. `DeadlineController` 활성화 상승 에지 또는 신규 `Activated` 이벤트에 진입 충격·시간 왜곡을, 기존 `Released` 이벤트에 해제음을 연결한다. AudioMixer SFX/BGM 그룹·덕킹과 성공 전용 보상음, 실제 DEADLINE 플레이 중 볼륨·타이밍 체감 검증도 남아 있다.
+
 ## 2026-08-10 - Tutorial 외벽 복원 및 훈련 시설 정렬
 
 - 변경 유형: Tutorial 환경 아트 재구성, 측면 외벽·조명 복원, NavMesh 재베이크·검증 갱신

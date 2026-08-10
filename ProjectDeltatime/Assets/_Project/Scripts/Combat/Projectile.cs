@@ -1,4 +1,5 @@
 using Deltatime.Core;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.Utilities;
 using UnityEngine;
@@ -122,7 +123,11 @@ namespace Deltatime.Combat
             {
                 Debug.LogError($"{nameof(Projectile)} was spawned without world time.", this);
                 Destroy(gameObject);
+                return;
             }
+
+            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+                transform);
         }
 
         private bool TryFindImpact(

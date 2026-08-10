@@ -414,7 +414,8 @@ namespace Deltatime.Player
                     punchRange,
                     punchHalfAngle,
                     punchDamage,
-                    punchInterval);
+                    punchInterval,
+                    MeleeImpactKind.Punch);
             stagedMeleeAttackCount++;
             stagedUnarmedPunchCount++;
             return true;

@@ -1,3 +1,4 @@
+using Deltatime.Audio;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -26,6 +27,7 @@ namespace Deltatime.UI
                 return;
             }
 
+            SoundManager.Instance?.PlayUiClick();
             SceneManager.LoadScene(playSceneName);
         }
     }

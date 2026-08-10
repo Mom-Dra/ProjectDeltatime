@@ -1,8 +1,15 @@
+using Deltatime.Audio;
 using Deltatime.Core;
 using UnityEngine;
 
 namespace Deltatime.Combat
 {
+    public enum MeleeImpactKind
+    {
+        Punch,
+        Bat
+    }
+
     public static class MeleeAttackResolver
     {
         private static readonly Collider[] CandidateColliders =
@@ -16,7 +23,8 @@ namespace Deltatime.Combat
             Vector3 direction,
             float range,
             float halfAngleDegrees,
-            int damage)
+            int damage,
+            MeleeImpactKind impactKind = MeleeImpactKind.Punch)
         {
             if (source == null || range <= 0f || damage <= 0)
             {
@@ -101,6 +109,7 @@ namespace Deltatime.Combat
                 hitPoint,
                 hitDirection.normalized,
                 source));
+            SoundManager.Instance?.PlayMeleeImpact(impactKind, hitPoint);
             return true;
         }
 

@@ -1,3 +1,4 @@
+using Deltatime.Replay;
 using UnityEngine;
 
 namespace Deltatime.Utilities
@@ -49,6 +50,7 @@ namespace Deltatime.Utilities
 
             line.startColor = color;
             line.endColor = color;
+            StageReplayController.ActiveRecorder?.RegisterRenderer(line);
         }
 
         private void Update()

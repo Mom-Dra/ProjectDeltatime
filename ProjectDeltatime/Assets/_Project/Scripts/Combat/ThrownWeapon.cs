@@ -1,4 +1,5 @@
 using Deltatime.Core;
+using Deltatime.Replay;
 using Deltatime.TimeSystem;
 using Deltatime.Utilities;
 using Deltatime.Visuals;
@@ -141,7 +142,11 @@ namespace Deltatime.Combat
             {
                 Debug.LogError($"{nameof(ThrownWeapon)} was spawned without required data.", this);
                 Destroy(gameObject);
+                return;
             }
+
+            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+                transform);
         }
 
         public void ConfigurePrototype(

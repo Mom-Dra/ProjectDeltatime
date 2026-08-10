@@ -1,4 +1,5 @@
 using System;
+using Deltatime.Audio;
 using Deltatime.Core;
 using Deltatime.TimeSystem;
 using Deltatime.Visuals;
@@ -15,13 +16,15 @@ namespace Deltatime.Combat
                 float range,
                 float halfAngle,
                 int damage,
-                float interval)
+                float interval,
+                MeleeImpactKind impactKind = MeleeImpactKind.Bat)
             {
                 Direction = direction;
                 Range = range;
                 HalfAngle = halfAngle;
                 Damage = damage;
                 Interval = interval;
+                ImpactKind = impactKind;
             }
 
             public Vector3 Direction { get; }
@@ -29,6 +32,7 @@ namespace Deltatime.Combat
             public float HalfAngle { get; }
             public int Damage { get; }
             public float Interval { get; }
+            public MeleeImpactKind ImpactKind { get; }
         }
 
         [SerializeField] private WeaponDefinition startingDefinition;
@@ -123,6 +127,7 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
+            SoundManager.Instance?.PlayWeaponFire(Definition, Muzzle.position);
             UsePerformed?.Invoke();
             return true;
         }
@@ -150,7 +155,8 @@ namespace Deltatime.Combat
                         direction,
                         Definition.MeleeRange,
                         Definition.MeleeHalfAngle,
-                        Definition.Damage))
+                        Definition.Damage,
+                        MeleeImpactKind.Bat))
                 {
                     return false;
                 }
@@ -166,7 +172,8 @@ namespace Deltatime.Combat
                 direction,
                 Definition.MeleeRange,
                 Definition.MeleeHalfAngle,
-                Definition.Damage);
+                Definition.Damage,
+                MeleeImpactKind.Bat);
             UsePerformed?.Invoke();
             return true;
         }
@@ -193,6 +200,7 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
+            SoundManager.Instance?.PlayWeaponFire(Definition, Muzzle.position);
             UsePerformed?.Invoke();
             return true;
         }
@@ -243,7 +251,8 @@ namespace Deltatime.Combat
                         stagedAttack.Direction,
                         stagedAttack.Range,
                         stagedAttack.HalfAngle,
-                        stagedAttack.Damage))
+                        stagedAttack.Damage,
+                        stagedAttack.ImpactKind))
                 {
                     nextUseTime = Mathf.Max(
                         nextUseTime,
@@ -259,7 +268,8 @@ namespace Deltatime.Combat
                 stagedAttack.Direction,
                 stagedAttack.Range,
                 stagedAttack.HalfAngle,
-                stagedAttack.Damage);
+                stagedAttack.Damage,
+                stagedAttack.ImpactKind);
             UsePerformed?.Invoke();
             nextUseTime = Mathf.Max(
                 nextUseTime,
@@ -310,6 +320,7 @@ namespace Deltatime.Combat
                 faction,
                 gameObject,
                 direction);
+            SoundManager.Instance?.PlayWeaponThrow(muzzle.position);
             return true;
         }
 

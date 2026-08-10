@@ -97,6 +97,7 @@ namespace Deltatime.Enemies
         private float pendingAttackCancelRange;
         private float pendingAttackCooldown;
         private int pendingAttackDamage;
+        private MeleeImpactKind pendingAttackImpactKind;
         private EquipmentMode currentEquipmentMode;
         private bool equipmentModeInitialized;
         private WeaponPickup weaponTarget;
@@ -585,6 +586,9 @@ namespace Deltatime.Enemies
             pendingAttackDamage = punch
                 ? punchDamage
                 : weapon.Definition.Damage;
+            pendingAttackImpactKind = punch
+                ? MeleeImpactKind.Punch
+                : MeleeImpactKind.Bat;
             TransitionTo(
                 CombatState.AttackWindup,
                 punch ? punchWindupDuration : meleeWindupDuration);
@@ -641,7 +645,8 @@ namespace Deltatime.Enemies
                     transform.forward,
                     pendingAttackRange,
                     pendingAttackHalfAngle,
-                    pendingAttackDamage);
+                    pendingAttackDamage,
+                    pendingAttackImpactKind);
                 return;
             }
 
@@ -651,7 +656,8 @@ namespace Deltatime.Enemies
                 transform.forward,
                 pendingAttackRange,
                 pendingAttackHalfAngle,
-                pendingAttackDamage);
+                pendingAttackDamage,
+                pendingAttackImpactKind);
         }
 
         private void UpdateCooldown(

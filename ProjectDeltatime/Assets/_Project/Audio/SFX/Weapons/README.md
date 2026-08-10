@@ -1,6 +1,6 @@
 # 무기 발사음 에셋
 
-상태: **구현 완료** (에셋 추출 및 배치). 아직 런타임 `AudioSource`/`AudioMixer` 연결은 **미구현**이다.
+상태: **구현 완료**. `SoundManager`와 `DeltatimeSoundLibrary`를 통해 런타임 발사 경로에 연결되어 있다.
 
 ## 포함 파일
 
@@ -32,4 +32,6 @@
 - `Force To Mono`: 해제 (현재 원본 공간감 유지). 3D 공간화가 필요할 때만 재검토
 - `Normalize`: 해제 (에셋 간 공통 게인으로 맞춘 상태)
 
-런타임 연결 시에는 무기별 배열에서 무작위로 하나를 재생하고, 소총은 0.12초 간격의 단발 에셋만 사용한다. 원본의 버스트 녹음은 현재 발사 구조와 겹치므로 사용하지 않는다.
+런타임은 무기별 배열에서 무작위로 하나를 골라 성공한 발사 1회당 한 번 재생한다. 샷건도 펠릿마다 반복하지 않으며, 원본의 버스트 녹음은 현재 발사 구조와 겹치므로 사용하지 않는다. 재생 위치는 실제 `WeaponController.Muzzle`이고 3D 거리 감쇠와 작은 피치 변형을 사용한다.
+
+연결 근거: `Assets/_Project/Scripts/Combat/WeaponController.cs`, `Assets/_Project/Scripts/Audio/SoundManager.cs`, `Assets/_Project/Resources/DeltatimeSoundLibrary.asset`.

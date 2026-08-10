@@ -42,17 +42,12 @@ namespace Deltatime.EditorTools
         private static bool deadlineShortProbeStarted;
         private static bool deadlineShortProbeReleased;
         private static bool stageClearTriggered;
-        private static bool deadlineReplayLockCaptured;
-        private static bool deadlineReplayLockValidated;
-        private static bool deadlineReplayAftermathCaptured;
-        private static bool deadlineReplayAftermathValidated;
         private static bool deadlineReplayFinalValidationRan;
-        private static double deadlineReplayLockCapturedAt;
-        private static double deadlineReplayAftermathCapturedAt;
+        private static bool replayTimelineOrderValidated;
+        private static bool replayAnimatedProxyObserved;
+        private static float previousReplayElapsed;
+        private static float previousReplaySourceTimestamp;
         private static float deadlineLongWorldStart;
-        private static Vector3 deadlineLockedCameraPosition;
-        private static Quaternion deadlineLockedCameraRotation;
-        private static float deadlineLockedCameraFieldOfView;
         private static bool callbacksAttached;
         private static readonly System.Collections.Generic.Dictionary<int, Vector3>
             EnemyMovementStarts =
@@ -227,18 +222,18 @@ namespace Deltatime.EditorTools
 
                 if (replayChecksRan)
                 {
-                    ValidateDeadlineReplayPresentation();
+                    ValidateReplayPresentationOrder();
                 }
 
                 if (!deadlineReplayFinalValidationRan && elapsed >= 15.5d)
                 {
                     deadlineReplayFinalValidationRan = true;
                     Require(
-                        deadlineReplayLockValidated,
-                        "Deadline replay never held the camera lock for the cinematic segment.");
+                        replayTimelineOrderValidated,
+                        "Replay source events did not advance monotonically on the normalized timeline.");
                     Require(
-                        deadlineReplayAftermathValidated,
-                        "Deadline replay never completed the aftermath camera recovery.");
+                        replayAnimatedProxyObserved,
+                        "Replay never displayed an animated skinned-mesh proxy.");
                 }
 
                 if (elapsed >= 16d)
@@ -260,17 +255,12 @@ namespace Deltatime.EditorTools
             deadlineShortProbeStarted = false;
             deadlineShortProbeReleased = false;
             stageClearTriggered = false;
-            deadlineReplayLockCaptured = false;
-            deadlineReplayLockValidated = false;
-            deadlineReplayAftermathCaptured = false;
-            deadlineReplayAftermathValidated = false;
             deadlineReplayFinalValidationRan = false;
-            deadlineReplayLockCapturedAt = 0d;
-            deadlineReplayAftermathCapturedAt = 0d;
+            replayTimelineOrderValidated = false;
+            replayAnimatedProxyObserved = false;
+            previousReplayElapsed = -1f;
+            previousReplaySourceTimestamp = -1f;
             deadlineLongWorldStart = 0f;
-            deadlineLockedCameraPosition = Vector3.zero;
-            deadlineLockedCameraRotation = Quaternion.identity;
-            deadlineLockedCameraFieldOfView = 0f;
         }
 
         private static void BeginDeadlineReplayProbe(bool shortProbe)
@@ -430,79 +420,41 @@ namespace Deltatime.EditorTools
             }
         }
 
-        private static void ValidateDeadlineReplayPresentation()
+        private static void ValidateReplayPresentationOrder()
         {
             StageReplayController replay =
                 UnityEngine.Object.FindObjectOfType<StageReplayController>();
-            Camera camera = Camera.main;
-            if (replay == null || camera == null || !replay.IsReplaying)
+            if (replay == null || !replay.IsReplaying)
             {
                 return;
             }
 
-            double now = EditorApplication.timeSinceStartup;
-            if (replay.CurrentPlaybackPhase ==
-                StageReplayController.ReplayPlaybackPhase.Deadline)
+            replayAnimatedProxyObserved |=
+                replay.ActiveAnimatedReplayVisualCount > 0;
+
+            float elapsed = replay.PlaybackElapsed;
+            float sourceTimestamp = replay.CurrentSourceTimestamp;
+            bool loopRestarted =
+                previousReplayElapsed >= 0f &&
+                elapsed + 0.001f < previousReplayElapsed;
+            if (loopRestarted)
             {
-                if (!deadlineReplayLockCaptured)
-                {
-                    deadlineReplayLockCaptured = true;
-                    deadlineReplayLockCapturedAt = now;
-                    deadlineLockedCameraPosition = camera.transform.position;
-                    deadlineLockedCameraRotation = camera.transform.rotation;
-                    deadlineLockedCameraFieldOfView = camera.fieldOfView;
-                    Require(
-                        replay.IsReplayCameraLocked,
-                        "Deadline replay did not lock the camera at the cinematic entry.");
-                }
-                else if (!deadlineReplayLockValidated &&
-                         now - deadlineReplayLockCapturedAt >= 0.25d)
-                {
-                    deadlineReplayLockValidated = true;
-                    Require(
-                        replay.IsReplayCameraLocked &&
-                        (camera.transform.position -
-                         deadlineLockedCameraPosition).sqrMagnitude <=
-                        0.000001f &&
-                        Quaternion.Dot(
-                            camera.transform.rotation,
-                            deadlineLockedCameraRotation) >= 0.999999f &&
-                        Mathf.Abs(
-                            camera.fieldOfView -
-                            deadlineLockedCameraFieldOfView) <= 0.0001f,
-                        "Deadline replay camera moved while the cinematic lock was active.");
-                }
+                previousReplaySourceTimestamp = -1f;
             }
-            else if (replay.CurrentPlaybackPhase ==
-                     StageReplayController.ReplayPlaybackPhase.DeadlineAftermath)
+
+            if (previousReplaySourceTimestamp >= 0f)
             {
-                if (!deadlineReplayAftermathCaptured)
-                {
-                    deadlineReplayAftermathCaptured = true;
-                    deadlineReplayAftermathCapturedAt = now;
-                    Require(
-                        !replay.IsReplayCameraLocked,
-                        "Deadline aftermath kept the camera in its hard-locked state.");
-                }
-                else if (!deadlineReplayAftermathValidated &&
-                         now - deadlineReplayAftermathCapturedAt >= 0.25d)
-                {
-                    deadlineReplayAftermathValidated = true;
-                    bool cameraRecovered =
-                        (camera.transform.position -
-                         deadlineLockedCameraPosition).sqrMagnitude >
-                        0.0001f ||
-                        Quaternion.Dot(
-                            camera.transform.rotation,
-                            deadlineLockedCameraRotation) < 0.9999f ||
-                        Mathf.Abs(
-                            camera.fieldOfView -
-                            deadlineLockedCameraFieldOfView) > 0.01f;
-                    Require(
-                        !replay.IsReplayCameraLocked && cameraRecovered,
-                        "Deadline aftermath did not recover from the locked camera pose.");
-                }
+                Require(
+                    sourceTimestamp + 0.001f >=
+                    previousReplaySourceTimestamp,
+                    "Replay source event order moved backwards inside a loop.");
+                replayTimelineOrderValidated |=
+                    sourceTimestamp >
+                    previousReplaySourceTimestamp + 0.001f;
             }
+
+            previousReplayElapsed = elapsed;
+            previousReplaySourceTimestamp = sourceTimestamp;
         }
 
         private static void BeginMovementValidation()
@@ -877,23 +829,38 @@ namespace Deltatime.EditorTools
                 replay != null && replay.RecordedDuration > 0f,
                 "The replay did not retain a playable recording.");
             Require(
+                replay != null &&
+                replay.SourceRecordedDuration - replay.RecordedDuration >=
+                0.8f,
+                "Strong world-time slow motion was not removed from the replay duration.");
+            Require(
                 replay != null && replay.DeadlineCinematicSegmentCount == 2,
-                "Replay did not retain both Deadline cinematic segments.");
+                "Replay did not retain both Deadline event windows.");
             Require(
                 replay != null &&
-                replay.ShortestDeadlineCinematicDuration >= 0.79f &&
-                replay.ShortestDeadlineCinematicDuration <= 0.81f,
-                $"Short Deadline cinematic duration was {replay?.ShortestDeadlineCinematicDuration:0.000}s instead of 0.8s.");
+                replay.ShortestDeadlineCinematicDuration >= 0f &&
+                replay.ShortestDeadlineCinematicDuration <= 0.03f,
+                $"Short Deadline normalized duration was {replay?.ShortestDeadlineCinematicDuration:0.000}s instead of at most 0.03s.");
             Require(
                 replay != null &&
-                replay.LongestDeadlineCinematicDuration >= 1.95f &&
-                replay.LongestDeadlineCinematicDuration <= 2.01f,
-                $"Long Deadline cinematic duration was {replay?.LongestDeadlineCinematicDuration:0.000}s instead of 2.0s.");
+                replay.LongestDeadlineCinematicDuration >= 0.01f &&
+                replay.LongestDeadlineCinematicDuration <= 0.08f,
+                $"Long Deadline normalized duration was {replay?.LongestDeadlineCinematicDuration:0.000}s instead of about 0.02s.");
             Require(
                 replay != null &&
-                replay.LongestDeadlineAftermathDuration >= 1.45f &&
-                replay.LongestDeadlineAftermathDuration <= 1.6f,
-                $"Deadline aftermath duration was {replay?.LongestDeadlineAftermathDuration:0.000}s instead of 1.5s.");
+                replay.LongestDeadlineAftermathDuration >= 0.70f &&
+                replay.LongestDeadlineAftermathDuration <= 0.76f,
+                $"Deadline aftermath duration was {replay?.LongestDeadlineAftermathDuration:0.000}s instead of 0.75 normal-speed seconds.");
+            Require(
+                replay != null &&
+                replay.TrackedAnimatedVisualCount >= 1 &&
+                replay.RecordedAnimatedPoseCount >
+                replay.TrackedAnimatedVisualCount &&
+                replay.HasRecordedAnimatedMotion,
+                $"Replay did not record changing character bone poses: " +
+                $"tracked={replay?.TrackedAnimatedVisualCount}, " +
+                $"poses={replay?.RecordedAnimatedPoseCount}, " +
+                $"motion={replay?.HasRecordedAnimatedMotion}.");
             Require(
                 cameraRig != null && !cameraRig.enabled,
                 "Live camera simulation remained enabled during replay.");
@@ -918,8 +885,14 @@ namespace Deltatime.EditorTools
                     replay.IsOmniscientViewEnabled &&
                     replay.ActiveReplayLightCount == 0 &&
                     !replay.IsReplayVisionConeVisible &&
-                    replay.IsOmniscientFillLightActive,
-                    "Omniscient replay did not replace dark vision with full-map lighting.");
+                    replay.IsOmniscientFillLightActive &&
+                    replay.ActiveAnimatedReplayVisualCount >= 1,
+                    $"Omniscient replay state was incomplete: " +
+                    $"enabled={replay.IsOmniscientViewEnabled}, " +
+                    $"lights={replay.ActiveReplayLightCount}, " +
+                    $"cone={replay.IsReplayVisionConeVisible}, " +
+                    $"fill={replay.IsOmniscientFillLightActive}, " +
+                    $"animated={replay.ActiveAnimatedReplayVisualCount}.");
                 Require(
                     replay.ActiveOmniscientEnemyVisualCount >= 3,
                     "Omniscient replay did not reveal every enemy body.");
