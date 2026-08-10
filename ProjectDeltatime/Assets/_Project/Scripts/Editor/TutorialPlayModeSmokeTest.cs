@@ -22,6 +22,12 @@ namespace Deltatime.EditorTools
         private const string RunningKey = "Deltatime.TutorialSmoke.Running";
         private const string FailedKey = "Deltatime.TutorialSmoke.Failed";
         private const string FailureKey = "Deltatime.TutorialSmoke.Failure";
+        private const string GateVisualRootName = "Training Shutter Visuals";
+        private const string GateBarNamePrefix = "Gate Bar ";
+        private const int GateBarCount = 17;
+        private const float GateBarWidth = 0.24f;
+        private const float GateBarHeight = 2.45f;
+        private const float GateBarDepth = 0.18f;
 
         private static double phaseStartedAt;
         private static int phase;
@@ -520,6 +526,7 @@ namespace Deltatime.EditorTools
             ValidateGatePosition("Gate 4 - Pistol", 13f);
             ValidateGatePosition("Gate 5 - Arena Entrance", 34f);
             ValidateGatePosition("Gate 6 - Arena Exit", 57f);
+            ValidateRuntimeGateVisuals();
             TutorialGate exitGate = GameObject.Find("Gate 6 - Arena Exit")
                 ?.GetComponent<TutorialGate>();
             Require(exitGate != null,
@@ -541,6 +548,46 @@ namespace Deltatime.EditorTools
             Require(gate != null &&
                     Mathf.Abs(gateObject.transform.position.z - expectedZ) <= 0.01f,
                 $"Tutorial gate {name} moved from z={expectedZ:0.##} during initialization.");
+        }
+
+        private static void ValidateRuntimeGateVisuals()
+        {
+            string[] gateNames =
+            {
+                "Gate 1 - Time",
+                "Gate 2 - Dash",
+                "Gate 3 - Melee",
+                "Gate 4 - Pistol",
+                "Gate 5 - Arena Entrance",
+                "Gate 6 - Arena Exit"
+            };
+
+            for (int gateIndex = 0; gateIndex < gateNames.Length; gateIndex++)
+            {
+                GameObject gateObject = GameObject.Find(gateNames[gateIndex]);
+                Transform visualRoot = gateObject == null
+                    ? null
+                    : gateObject.transform.Find(GateVisualRootName);
+                Require(visualRoot != null &&
+                        visualRoot.childCount == GateBarCount + 2 &&
+                        visualRoot.Find("Upper Shutter Rail") != null &&
+                        visualRoot.Find("Lower Shutter Rail") != null &&
+                        visualRoot.Find("Shutter Slat 01") == null &&
+                        visualRoot.Find("Status Strip 01") == null,
+                    $"Tutorial gate {gateNames[gateIndex]} does not use the expected bar visual layout.");
+
+                for (int barIndex = 0; barIndex < GateBarCount; barIndex++)
+                {
+                    Transform bar = visualRoot.Find(
+                        $"{GateBarNamePrefix}{barIndex + 1:00}");
+                    Require(bar != null && bar.GetComponent<Renderer>() != null &&
+                            bar.GetComponent<Collider>() == null &&
+                            Mathf.Abs(bar.localScale.x - GateBarWidth) <= 0.001f &&
+                            Mathf.Abs(bar.localScale.y - GateBarHeight) <= 0.001f &&
+                            Mathf.Abs(bar.localScale.z - GateBarDepth) <= 0.001f,
+                        $"Tutorial gate {gateNames[gateIndex]} has an invalid bar {barIndex + 1:00}.");
+                }
+            }
         }
 
         private static void QueueKeyPress(Key key)

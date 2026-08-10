@@ -115,6 +115,14 @@ namespace Deltatime.EditorTools
             "Assets/Synty/PolygonGeneric/Prefabs/Characters/SM_Gen_Chr_Business_Male_01.prefab";
         private const string SyntyVisualRootName = "Synty Tutorial Set";
         private const string GateVisualRootName = "Training Shutter Visuals";
+        private const string GateBarNamePrefix = "Gate Bar ";
+        private const string LegacyGateSlatNamePrefix = "Shutter Slat ";
+        private const string LegacyGateStatusStripNamePrefix = "Status Strip ";
+        private const int GateBarCount = 17;
+        private const float GateBarWidth = 0.24f;
+        private const float GateBarHeight = 2.45f;
+        private const float GateBarDepth = 0.18f;
+        private const float GateBarSpacing = 0.74f;
         private const string UnarmedTargetVisualName = "Unarmed Target Visual";
         private const int VisionObstacleLayer = 8;
         private const int ExpectedEnemyCount = 5;
@@ -448,6 +456,39 @@ namespace Deltatime.EditorTools
         public static void ApplyEnvironmentRedesignFromCommandLine()
         {
             ApplyEnvironmentRedesign();
+        }
+
+        [MenuItem("Tools/Tutorial/Apply Bar Gate Visuals")]
+        public static void ApplyBarGateVisuals()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                TutorialScenePath,
+                OpenSceneMode.Single);
+            Material coverMaterial = LoadAsset<Material>(CoverMaterialPath);
+            Material accentMaterial = LoadAsset<Material>(AccentMaterialPath);
+            TutorialGate[] gates = FindSceneComponents<TutorialGate>(scene);
+            Require(gates.Length == 6,
+                $"Tutorial requires six progression gates, found {gates.Length}.");
+
+            for (int i = 0; i < gates.Length; i++)
+            {
+                StyleTutorialGate(gates[i], coverMaterial, accentMaterial);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save Tutorial bar gate visuals to {TutorialScenePath}.");
+            }
+
+            Debug.Log(
+                "Tutorial bar gate visuals applied without rebuilding environment or NavMesh.");
+        }
+
+        public static void ApplyBarGateVisualsFromCommandLine()
+        {
+            ApplyBarGateVisuals();
         }
 
         [MenuItem("Tools/Prototype/Validate Tutorial")]
@@ -1321,32 +1362,20 @@ namespace Deltatime.EditorTools
 
             GameObject visualRoot = new GameObject(GateVisualRootName);
             visualRoot.transform.SetParent(gateTransform, false);
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < GateBarCount; i++)
             {
-                float x = -5.1f + i * 1.7f;
-                GameObject slat = CreatePrimitive(
+                float x = (i - (GateBarCount - 1) * 0.5f) * GateBarSpacing;
+                GameObject bar = CreatePrimitive(
                     visualRoot.transform,
-                    $"Shutter Slat {i + 1:00}",
+                    $"{GateBarNamePrefix}{i + 1:00}",
                     PrimitiveType.Cube,
                     gateTransform.position + new Vector3(x, 0f, 0f),
-                    new Vector3(1.05f, 2.45f, 0.18f),
+                    new Vector3(GateBarWidth, GateBarHeight, GateBarDepth),
                     coverMaterial,
                     false,
                     0);
-                slat.transform.localPosition = new Vector3(x, 0f, 0f);
-                slat.transform.localRotation = Quaternion.identity;
-
-                GameObject statusStrip = CreatePrimitive(
-                    visualRoot.transform,
-                    $"Status Strip {i + 1:00}",
-                    PrimitiveType.Cube,
-                    gateTransform.position + new Vector3(x, 0.78f, -0.12f),
-                    new Vector3(0.76f, 0.075f, 0.08f),
-                    accentMaterial,
-                    false,
-                    0);
-                statusStrip.transform.localPosition = new Vector3(x, 0.78f, -0.12f);
-                statusStrip.transform.localRotation = Quaternion.identity;
+                bar.transform.localPosition = new Vector3(x, 0f, 0f);
+                bar.transform.localRotation = Quaternion.identity;
             }
 
             GameObject upperRail = CreatePrimitive(
@@ -2094,11 +2123,12 @@ namespace Deltatime.EditorTools
                 if (gates[i].transform.Find(GateVisualRootName) != null)
                 {
                     styledGateCount++;
+                    ValidateTutorialGateVisual(gates[i]);
                 }
             }
 
             Require(styledGateCount == 6,
-                $"Tutorial contains {styledGateCount} styled training shutters; expected six.");
+                $"Tutorial contains {styledGateCount} styled bar gates; expected six.");
 
             for (int i = 0; i < animationControllers.Length; i++)
             {
@@ -2117,6 +2147,53 @@ namespace Deltatime.EditorTools
                             SkinnedMeshRenderer>(true).Length > 0,
                     $"Tutorial actor {controller.name} has no rendered Synty model.");
             }
+        }
+
+        private static void ValidateTutorialGateVisual(TutorialGate gate)
+        {
+            Transform visualRoot = gate.transform.Find(GateVisualRootName);
+            Require(visualRoot != null,
+                $"Tutorial gate {gate.name} is missing its bar visual root.");
+            Require(visualRoot.childCount == GateBarCount + 2,
+                $"Tutorial gate {gate.name} contains {visualRoot.childCount} visual children; " +
+                $"expected {GateBarCount} bars and two rails.");
+
+            for (int i = 0; i < GateBarCount; i++)
+            {
+                Transform bar = visualRoot.Find($"{GateBarNamePrefix}{i + 1:00}");
+                float expectedX =
+                    (i - (GateBarCount - 1) * 0.5f) * GateBarSpacing;
+                Require(bar != null && bar.GetComponent<Renderer>() != null &&
+                        bar.GetComponent<Collider>() == null &&
+                        Mathf.Abs(bar.localPosition.x - expectedX) <= 0.001f &&
+                        Mathf.Abs(bar.localPosition.y) <= 0.001f &&
+                        Mathf.Abs(bar.localPosition.z) <= 0.001f &&
+                        Mathf.Abs(bar.localScale.x - GateBarWidth) <= 0.001f &&
+                        Mathf.Abs(bar.localScale.y - GateBarHeight) <= 0.001f &&
+                        Mathf.Abs(bar.localScale.z - GateBarDepth) <= 0.001f,
+                    $"Tutorial gate {gate.name} has an invalid bar {i + 1:00}.");
+            }
+
+            Transform upperRail = visualRoot.Find("Upper Shutter Rail");
+            Transform lowerRail = visualRoot.Find("Lower Shutter Rail");
+            Require(upperRail != null && lowerRail != null &&
+                    upperRail.GetComponent<Collider>() == null &&
+                    lowerRail.GetComponent<Collider>() == null,
+                $"Tutorial gate {gate.name} is missing collider-free retaining rails.");
+
+            int legacyPartCount = 0;
+            for (int i = 0; i < visualRoot.childCount; i++)
+            {
+                string childName = visualRoot.GetChild(i).name;
+                if (childName.StartsWith(LegacyGateSlatNamePrefix) ||
+                    childName.StartsWith(LegacyGateStatusStripNamePrefix))
+                {
+                    legacyPartCount++;
+                }
+            }
+
+            Require(legacyPartCount == 0,
+                $"Tutorial gate {gate.name} still contains {legacyPartCount} legacy shutter parts.");
         }
 
         private static void ValidateTutorialNavigationRoute(

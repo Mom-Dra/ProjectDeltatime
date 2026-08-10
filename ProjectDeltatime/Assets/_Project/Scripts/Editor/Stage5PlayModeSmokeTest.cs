@@ -341,12 +341,6 @@ namespace Deltatime.EditorTools
                 Require(ringRenderer.enabled == expectedVisible,
                     $"Stage5 identity ring visibility diverged for {enemies[i].name}: " +
                     $"expected={expectedVisible}, actual={ringRenderer.enabled}.");
-                Require(combatant.TryGetReplayVisibility(
-                            ringRenderer,
-                            out bool omniscientVisible) &&
-                        omniscientVisible == !combatant.IsDead,
-                    $"Stage5 identity ring is not registered for omniscient replay: " +
-                    enemies[i].name);
 
                 if (!expectedVisible)
                 {

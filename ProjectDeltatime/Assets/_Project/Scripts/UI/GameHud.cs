@@ -70,9 +70,6 @@ namespace Deltatime.UI
             bool isDeathReplay = replay.IsReplaying &&
                                  stage.CurrentState ==
                                  StageController.StageState.PlayerDead;
-            string replayView = replay.IsOmniscientViewEnabled
-                ? "전체"
-                : "암흑";
             string replaySpeedLabel = "리플레이 정규화 1.00x";
             if (replay.CurrentPlaybackPhase ==
                 StageReplayController.ReplayPlaybackPhase.Deadline)
@@ -85,11 +82,11 @@ namespace Deltatime.UI
                 replaySpeedLabel = "DEADLINE 이후 · 정규화 1.00x";
             }
             string timeStatus = replay.IsReplaying
-                ? $"스테이지 클리어  ·  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\n시야  {replayView}"
+                ? $"스테이지 클리어  ·  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s"
                 : $"실시간  {stage.RealPlayTime:0.0}s\n월드  {worldTime.CurrentTimeScale:0.00}x";
             if (isDeathReplay)
             {
-                timeStatus = $"사망  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s\n시야  {replayView}";
+                timeStatus = $"사망  {replaySpeedLabel}\n리플레이 시간  {replay.PlaybackElapsed:0.0}/{replay.RecordedDuration:0.0}s";
             }
 
             string status =
@@ -160,8 +157,8 @@ namespace Deltatime.UI
             if (replay.IsReplaying)
             {
                 controls = stage.CanAdvanceToNextStage
-                    ? "V: 전체 시야 전환  |  N: 다음 스테이지  |  R: 다시 시작"
-                    : "V: 전체 시야 전환  |  R: 다시 시작";
+                    ? "N: 다음 스테이지  |  R: 다시 시작"
+                    : "R: 다시 시작";
             }
             else if (stage.CanAdvanceToNextStage)
             {

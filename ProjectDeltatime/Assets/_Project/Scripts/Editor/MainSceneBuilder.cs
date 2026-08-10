@@ -19,11 +19,14 @@ namespace Deltatime.EditorTools
         private const string MainScenePath = "Assets/_Project/Scenes/MainScene.unity";
         private const string PlaySceneName = "Tutorial";
         private const string PlayButtonText = "게임 시작";
+        private const string TutorialKeyHintText = "N 키를 눌러 튜토리얼 시작";
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private static readonly Vector2 TitleSize = new Vector2(600f, 400f);
         private static readonly Vector2 TitlePosition = new Vector2(72f, -56f);
         private static readonly Vector2 PlayButtonSize = new Vector2(256f, 72f);
         private static readonly Vector2 PlayButtonPosition = new Vector2(108f, -458f);
+        private static readonly Vector2 TutorialKeyHintSize = new Vector2(420f, 40f);
+        private static readonly Vector2 TutorialKeyHintPosition = new Vector2(108f, -536f);
         private const float PlayHoverScale = 1.08f;
         private static readonly Color PlayPressedColor = new Color(224f / 255f, 28f / 255f, 28f / 255f, 1f);
 
@@ -38,6 +41,7 @@ namespace Deltatime.EditorTools
             ConfigureBackground(canvasTransform);
             ConfigureTitle(canvasTransform);
             ConfigurePlayButton(canvasTransform);
+            ConfigureTutorialKeyHint(canvasTransform);
             ConfigureEventSystem(scene);
             GameBuildSceneCatalog.Apply();
 
@@ -86,6 +90,7 @@ namespace Deltatime.EditorTools
             Button playButton = FindRequiredComponent<Button>(scene, "PlayButton");
             Image playBackground = RequireComponent<Image>(playButton.gameObject, "PlayButton");
             TextMeshProUGUI playLabel = FindRequiredComponent<TextMeshProUGUI>(scene, "PlayLabel");
+            TextMeshProUGUI tutorialKeyHint = FindRequiredComponent<TextMeshProUGUI>(scene, "TutorialKeyHint");
             MainMenuButtonFeedback playFeedback = RequireComponent<MainMenuButtonFeedback>(playButton.gameObject, "PlayButton");
             MainMenuController menuController = RequireComponent<MainMenuController>(canvas.gameObject, "Canvas");
             RectTransform buttonTransform = playButton.GetComponent<RectTransform>();
@@ -115,6 +120,16 @@ namespace Deltatime.EditorTools
             Require(playButton.onClick.GetPersistentTarget(0) == menuController &&
                     playButton.onClick.GetPersistentMethodName(0) == nameof(MainMenuController.Play),
                 "PlayButton must invoke MainMenuController.Play.");
+            Require(tutorialKeyHint.rectTransform.parent == canvas.transform &&
+                    tutorialKeyHint.rectTransform.anchorMin == Vector2.up &&
+                    tutorialKeyHint.rectTransform.anchorMax == Vector2.up &&
+                    tutorialKeyHint.rectTransform.sizeDelta == TutorialKeyHintSize &&
+                    tutorialKeyHint.rectTransform.anchoredPosition == TutorialKeyHintPosition &&
+                    tutorialKeyHint.text == TutorialKeyHintText &&
+                    tutorialKeyHint.font == fontSettings.TextMeshProFont &&
+                    tutorialKeyHint.color == Color.white &&
+                    !tutorialKeyHint.raycastTarget,
+                "TutorialKeyHint must display the N-key Tutorial start instruction.");
 
             Require(EditorBuildSettings.scenes.Length > 0 &&
                     EditorBuildSettings.scenes[0].path == MainScenePath &&
@@ -235,6 +250,43 @@ namespace Deltatime.EditorTools
             buttonTransform.SetAsLastSibling();
         }
 
+        private static void ConfigureTutorialKeyHint(RectTransform canvasTransform)
+        {
+            Transform existing = canvasTransform.Find("TutorialKeyHint");
+            GameObject hintObject = existing != null
+                ? existing.gameObject
+                : new GameObject("TutorialKeyHint", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            Text legacyText = hintObject.GetComponent<Text>();
+            if (legacyText != null)
+            {
+                Object.DestroyImmediate(legacyText);
+            }
+
+            RectTransform hintTransform = hintObject.GetComponent<RectTransform>();
+            hintTransform.SetParent(canvasTransform, false);
+            hintTransform.anchorMin = Vector2.up;
+            hintTransform.anchorMax = Vector2.up;
+            hintTransform.pivot = new Vector2(0f, 1f);
+            hintTransform.anchoredPosition = TutorialKeyHintPosition;
+            hintTransform.sizeDelta = TutorialKeyHintSize;
+            hintTransform.localScale = Vector3.one;
+
+            KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
+            Require(fontSettings != null && fontSettings.TextMeshProFont != null,
+                "Main menu requires KoreanUiFontSettings with a TMP font asset.");
+            TextMeshProUGUI hint = GetOrAddComponent<TextMeshProUGUI>(hintObject);
+            hint.font = fontSettings.TextMeshProFont;
+            hint.text = TutorialKeyHintText;
+            hint.fontStyle = FontStyles.Normal;
+            hint.fontSize = 18;
+            hint.alignment = TextAlignmentOptions.Left;
+            hint.color = Color.white;
+            hint.raycastTarget = false;
+            hint.enableWordWrapping = false;
+            hint.overflowMode = TextOverflowModes.Overflow;
+            hintTransform.SetAsLastSibling();
+        }
+
         private static TextMeshProUGUI GetOrCreatePlayLabel(RectTransform buttonTransform)
         {
             Transform existing = buttonTransform.Find("PlayLabel");
@@ -287,6 +339,10 @@ namespace Deltatime.EditorTools
                 Require(PlayButtonPosition.x >= 0f && -PlayButtonPosition.y + PlayButtonSize.y <= canvasSize.y &&
                         PlayButtonPosition.x + PlayButtonSize.x <= canvasSize.x,
                     $"Play button does not fit the {displaySize.x}x{displaySize.y} display layout.");
+                Require(TutorialKeyHintPosition.x >= 0f &&
+                        -TutorialKeyHintPosition.y + TutorialKeyHintSize.y <= canvasSize.y &&
+                        TutorialKeyHintPosition.x + TutorialKeyHintSize.x <= canvasSize.x,
+                    $"Tutorial key hint does not fit the {displaySize.x}x{displaySize.y} display layout.");
             }
         }
 

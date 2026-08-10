@@ -230,6 +230,7 @@ namespace Deltatime.Enemies
         private void LateUpdate()
         {
             UpdateVisionVisibility();
+            RefreshWarningLine();
         }
 
         public void Configure(
@@ -259,39 +260,6 @@ namespace Deltatime.Enemies
         public void ConfigureVisual(CharacterVisualController visualController)
         {
             characterVisual = visualController;
-        }
-
-        public bool TryGetReplayVisibility(
-            Renderer targetRenderer,
-            out bool visible)
-        {
-            if (targetRenderer == bodyRenderer)
-            {
-                visible = !IsDead;
-                return true;
-            }
-
-            if (targetRenderer == weaponRenderer)
-            {
-                visible = !IsDead && weapon != null && weapon.HasWeapon;
-                return true;
-            }
-
-            if (targetRenderer == combatIdentityRingRenderer)
-            {
-                visible = !IsDead;
-                return true;
-            }
-
-            if (characterVisual != null &&
-                characterVisual.ContainsRenderer(targetRenderer))
-            {
-                visible = !IsDead;
-                return true;
-            }
-
-            visible = false;
-            return false;
         }
 
         protected override void OnStunned()
@@ -958,6 +926,33 @@ namespace Deltatime.Enemies
             warningLine.positionCount = 2;
             warningLine.SetPosition(0, origin);
             warningLine.SetPosition(1, perception.Target.position);
+        }
+
+        private void RefreshWarningLine()
+        {
+            if (warningLine == null || !warningLine.enabled)
+            {
+                return;
+            }
+
+            if (weapon != null &&
+                weapon.Definition != null &&
+                weapon.Definition.IsFirearm)
+            {
+                Transform muzzle = weapon.Muzzle;
+                if (muzzle == null)
+                {
+                    SetWarningVisible(false);
+                    return;
+                }
+
+                UpdateWarningLine(muzzle.position);
+                return;
+            }
+
+            UpdateWarningLine(
+                transform.position +
+                (Vector3.up * 0.45f));
         }
 
         private void SetWarningVisible(bool visible)

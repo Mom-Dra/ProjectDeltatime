@@ -1,4 +1,5 @@
 using Deltatime.Audio;
+using Deltatime.InputSystem;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -11,10 +12,49 @@ namespace Deltatime.UI
     {
         [SerializeField] private string playSceneName = "Tutorial";
 
+        private PlayerControls controls;
+        private bool isLoadingPlayScene;
+
         public string PlaySceneName => playSceneName;
+
+        private void Awake()
+        {
+            controls = new PlayerControls();
+        }
+
+        private void OnEnable()
+        {
+            controls?.Gameplay.Enable();
+        }
+
+        private void Update()
+        {
+            if (!isLoadingPlayScene &&
+                controls != null &&
+                controls.Gameplay.NextStage.WasPressedThisFrame())
+            {
+                Play();
+            }
+        }
+
+        private void OnDisable()
+        {
+            controls?.Gameplay.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            controls?.Dispose();
+            controls = null;
+        }
 
         public void Play()
         {
+            if (isLoadingPlayScene)
+            {
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(playSceneName))
             {
                 Debug.LogError("Main menu Play scene is not configured.", this);
@@ -27,6 +67,7 @@ namespace Deltatime.UI
                 return;
             }
 
+            isLoadingPlayScene = true;
             SoundManager.Instance?.PlayUiClick();
             SceneManager.LoadScene(playSceneName);
         }

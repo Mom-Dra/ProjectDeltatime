@@ -45,6 +45,8 @@ namespace Deltatime.EditorTools
         private static bool deadlineReplayFinalValidationRan;
         private static bool replayTimelineOrderValidated;
         private static bool replayAnimatedProxyObserved;
+        private static bool replayVisionObservedDuringDeadline;
+        private static bool replayVisionObservedAfterLoop;
         private static float previousReplayElapsed;
         private static float previousReplaySourceTimestamp;
         private static float deadlineLongWorldStart;
@@ -117,6 +119,8 @@ namespace Deltatime.EditorTools
                 stunChecksRan = false;
                 replayChecksRan = false;
                 ResetDeadlineReplayProbe();
+                replayVisionObservedDuringDeadline = false;
+                replayVisionObservedAfterLoop = false;
                 SessionState.SetString(PhaseKey, "playing");
             }
             else if (state == PlayModeStateChange.ExitingPlayMode)
@@ -149,6 +153,8 @@ namespace Deltatime.EditorTools
                     stunChecksRan = false;
                     replayChecksRan = false;
                     ResetDeadlineReplayProbe();
+                    replayVisionObservedDuringDeadline = false;
+                    replayVisionObservedAfterLoop = false;
                     SessionState.SetString(PhaseKey, "playing");
                 }
 
@@ -162,6 +168,7 @@ namespace Deltatime.EditorTools
                 {
                     checksRan = true;
                     ValidateRuntimeState();
+                    ValidateWarningLineTracking();
                     BeginMovementValidation();
                 }
 
@@ -234,6 +241,12 @@ namespace Deltatime.EditorTools
                     Require(
                         replayAnimatedProxyObserved,
                         "Replay never displayed an animated skinned-mesh proxy.");
+                    Require(
+                        replayVisionObservedDuringDeadline,
+                        "Replay did not preserve dark vision during a Deadline segment.");
+                    Require(
+                        replayVisionObservedAfterLoop,
+                        "Replay did not preserve dark vision after looping.");
                 }
 
                 if (elapsed >= 16d)
@@ -431,6 +444,16 @@ namespace Deltatime.EditorTools
 
             replayAnimatedProxyObserved |=
                 replay.ActiveAnimatedReplayVisualCount > 0;
+            Require(
+                replay.ActiveReplayLightCount == 2 &&
+                replay.IsReplayVisionConeVisible,
+                $"Replay dark vision was interrupted during " +
+                $"{replay.CurrentPlaybackPhase}: " +
+                $"lights={replay.ActiveReplayLightCount}, " +
+                $"cone={replay.IsReplayVisionConeVisible}.");
+            replayVisionObservedDuringDeadline |=
+                replay.CurrentPlaybackPhase !=
+                StageReplayController.ReplayPlaybackPhase.Normal;
 
             float elapsed = replay.PlaybackElapsed;
             float sourceTimestamp = replay.CurrentSourceTimestamp;
@@ -440,6 +463,9 @@ namespace Deltatime.EditorTools
             if (loopRestarted)
             {
                 previousReplaySourceTimestamp = -1f;
+                replayVisionObservedAfterLoop |=
+                    replay.ActiveReplayLightCount == 2 &&
+                    replay.IsReplayVisionConeVisible;
             }
 
             if (previousReplaySourceTimestamp >= 0f)
@@ -554,6 +580,89 @@ namespace Deltatime.EditorTools
                     motors,
                     motor => motor.HasNavigationPath),
                 "No enemy acquired a NavMesh path while moving.");
+        }
+
+        private static void ValidateWarningLineTracking()
+        {
+            EnemyShooter[] shooters =
+                UnityEngine.Object.FindObjectsOfType<EnemyShooter>();
+            EnemyShooter shooter = System.Array.Find(
+                shooters,
+                candidate =>
+                {
+                    WeaponController weapon = candidate == null
+                        ? null
+                        : candidate.GetComponent<WeaponController>();
+                    return weapon != null &&
+                           weapon.Muzzle != null &&
+                           candidate.GetComponent<LineRenderer>() != null &&
+                           candidate.GetComponent<EnemyPerception>() != null;
+                });
+            Require(
+                shooter != null,
+                "Warning-line validation could not find a configured ranged enemy.");
+            if (shooter == null)
+            {
+                return;
+            }
+
+            WeaponController weapon = shooter.GetComponent<WeaponController>();
+            EnemyPerception perception =
+                shooter.GetComponent<EnemyPerception>();
+            LineRenderer warningLine = shooter.GetComponent<LineRenderer>();
+            System.Reflection.MethodInfo refreshMethod =
+                typeof(EnemyCombatant).GetMethod(
+                    "RefreshWarningLine",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+            Require(
+                refreshMethod != null &&
+                weapon != null &&
+                weapon.Muzzle != null &&
+                perception != null &&
+                perception.Target != null &&
+                warningLine != null,
+                "Warning-line tracking dependencies are missing.");
+            if (refreshMethod == null ||
+                weapon == null ||
+                weapon.Muzzle == null ||
+                perception == null ||
+                perception.Target == null ||
+                warningLine == null)
+            {
+                return;
+            }
+
+            Vector3 originalPosition = shooter.transform.position;
+            bool wasVisible = warningLine.enabled;
+            try
+            {
+                shooter.transform.position = originalPosition +
+                                             new Vector3(0.75f, 0f, 0.5f);
+                warningLine.enabled = true;
+                refreshMethod.Invoke(shooter, null);
+
+                Require(
+                    warningLine.positionCount == 2,
+                    "Warning line did not retain two endpoints after refresh.");
+                Require(
+                    (warningLine.GetPosition(0) - weapon.Muzzle.position)
+                    .sqrMagnitude <= 0.000001f,
+                    "Warning-line origin did not follow the moved enemy muzzle.");
+                Require(
+                    (warningLine.GetPosition(1) - perception.Target.position)
+                    .sqrMagnitude <= 0.000001f,
+                    "Warning-line endpoint did not follow the current target position.");
+            }
+            finally
+            {
+                shooter.transform.position = originalPosition;
+                warningLine.enabled = wasVisible;
+                if (wasVisible)
+                {
+                    refreshMethod.Invoke(shooter, null);
+                }
+            }
         }
 
         private static void BeginStunValidation()
@@ -868,48 +977,14 @@ namespace Deltatime.EditorTools
                 replay != null && replay.AreTrackedSourceLightsDisabled,
                 "Original dark-vision lights remained enabled during replay.");
             Require(
-                replay != null && replay.ActiveReplayLightCount == 2,
-                "Replay did not activate both dark-vision proxy lights.");
-            Require(
                 replay != null &&
-                !replay.IsOmniscientViewEnabled &&
-                replay.IsReplayVisionConeVisible,
-                "Replay did not start in dark-vision mode with its view cone visible.");
-
-            if (replay != null)
-            {
-                Require(
-                    replay.SetOmniscientView(true),
-                    "Replay rejected the omniscient-view toggle.");
-                Require(
-                    replay.IsOmniscientViewEnabled &&
-                    replay.ActiveReplayLightCount == 0 &&
-                    !replay.IsReplayVisionConeVisible &&
-                    replay.IsOmniscientFillLightActive &&
-                    replay.ActiveAnimatedReplayVisualCount >= 1,
-                    $"Omniscient replay state was incomplete: " +
-                    $"enabled={replay.IsOmniscientViewEnabled}, " +
-                    $"lights={replay.ActiveReplayLightCount}, " +
-                    $"cone={replay.IsReplayVisionConeVisible}, " +
-                    $"fill={replay.IsOmniscientFillLightActive}, " +
-                    $"animated={replay.ActiveAnimatedReplayVisualCount}.");
-                Require(
-                    replay.ActiveOmniscientEnemyVisualCount >= 3,
-                    "Omniscient replay did not reveal every enemy body.");
-                Require(
-                    !RenderSettings.fog,
-                    "Omniscient replay left scene fog enabled.");
-
-                Require(
-                    replay.SetOmniscientView(false),
-                    "Replay rejected the dark-vision restore toggle.");
-                Require(
-                    !replay.IsOmniscientViewEnabled &&
-                    replay.ActiveReplayLightCount == 2 &&
-                    replay.IsReplayVisionConeVisible &&
-                    !replay.IsOmniscientFillLightActive,
-                    "Replay did not restore its recorded dark-vision state.");
-            }
+                replay.ActiveReplayLightCount == 2 &&
+                replay.IsReplayVisionConeVisible &&
+                replay.ActiveAnimatedReplayVisualCount >= 1,
+                $"Replay did not start with persistent dark vision: " +
+                $"lights={replay?.ActiveReplayLightCount}, " +
+                $"cone={replay?.IsReplayVisionConeVisible}, " +
+                $"animated={replay?.ActiveAnimatedReplayVisualCount}.");
             Require(
                 IsSceneLightEnabled("Directional Key Light") &&
                 IsSceneLightEnabled("Blue Bay Light") &&

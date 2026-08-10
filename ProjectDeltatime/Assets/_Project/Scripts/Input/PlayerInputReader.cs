@@ -20,7 +20,6 @@ namespace Deltatime.InputSystem
         public bool InteractPressed { get; private set; }
         public bool RestartPressed { get; private set; }
         public bool NextStagePressed { get; private set; }
-        public bool ReplayVisionTogglePressed { get; private set; }
 
         private void Awake()
         {
@@ -52,8 +51,6 @@ namespace Deltatime.InputSystem
             InteractPressed = gameplay.Interact.WasPressedThisFrame();
             RestartPressed = gameplay.Restart.WasPressedThisFrame();
             NextStagePressed = gameplay.NextStage.WasPressedThisFrame();
-            ReplayVisionTogglePressed =
-                gameplay.ReplayVisionToggle.WasPressedThisFrame();
 
             worldTimeActivity.SetMovement(Move.magnitude);
         }
@@ -98,7 +95,6 @@ namespace Deltatime.InputSystem
             InteractPressed = false;
             RestartPressed = false;
             NextStagePressed = false;
-            ReplayVisionTogglePressed = false;
 
             if (worldTimeActivity != null)
             {

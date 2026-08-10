@@ -195,7 +195,6 @@ namespace Deltatime.EditorTools
             Camera gameplayCamera = CreateCamera(worldTime, keyLight);
             StageReplayController replay =
                 systems.AddComponent<StageReplayController>();
-            ConfigureReplayOmniscientView(replay);
 
             CreateFloorAndWalls(
                 floorMaterial,
@@ -743,30 +742,6 @@ namespace Deltatime.EditorTools
                 4f);
 
             return keyLight;
-        }
-
-        private static void ConfigureReplayOmniscientView(
-            StageReplayController replay)
-        {
-            SerializedObject settings = new SerializedObject(replay);
-            settings.FindProperty("omniscientAmbientSkyColor").colorValue =
-                new Color(0.30f, 0.34f, 0.40f, 1f);
-            settings.FindProperty("omniscientAmbientEquatorColor").colorValue =
-                new Color(0.22f, 0.25f, 0.30f, 1f);
-            settings.FindProperty("omniscientAmbientGroundColor").colorValue =
-                new Color(0.12f, 0.14f, 0.17f, 1f);
-            settings.FindProperty("omniscientAmbientIntensity").floatValue = 1f;
-            settings.FindProperty("omniscientReflectionIntensity").floatValue =
-                0.35f;
-            settings.FindProperty("omniscientBackgroundColor").colorValue =
-                new Color(0.025f, 0.04f, 0.065f, 1f);
-            settings.FindProperty("omniscientFillLightColor").colorValue =
-                new Color(0.78f, 0.86f, 1f, 1f);
-            settings.FindProperty("omniscientFillLightIntensity").floatValue =
-                0.65f;
-            settings.FindProperty("omniscientFillLightRotation").vector3Value =
-                new Vector3(50f, -30f, 0f);
-            settings.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void ApplyStageLightingProfile(

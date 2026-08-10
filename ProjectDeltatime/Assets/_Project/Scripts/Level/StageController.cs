@@ -64,14 +64,6 @@ namespace Deltatime.Level
                 TryAdvanceToNextStage();
             }
 
-            if (replay != null &&
-                replay.IsReplaying &&
-                input != null &&
-                input.ReplayVisionTogglePressed)
-            {
-                replay.SetOmniscientView(
-                    !replay.IsOmniscientViewEnabled);
-            }
         }
 
         public void RegisterEnemy(EnemyHealth enemy)

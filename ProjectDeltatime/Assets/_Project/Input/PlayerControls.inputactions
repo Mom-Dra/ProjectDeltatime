@@ -85,15 +85,6 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
-                },
-                {
-                    "name": "ReplayVisionToggle",
-                    "type": "Button",
-                    "id": "5ad0f7cc-91df-426a-ae08-58d78e14f27f",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -237,17 +228,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "NextStage",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "59f544d3-8119-43cd-bef2-c4205c38a7bf",
-                    "path": "<Keyboard>/v",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "ReplayVisionToggle",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

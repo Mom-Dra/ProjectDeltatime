@@ -174,15 +174,6 @@ namespace Deltatime.InputSystem
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""ReplayVisionToggle"",
-                    ""type"": ""Button"",
-                    ""id"": ""5ad0f7cc-91df-426a-ae08-58d78e14f27f"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -328,17 +319,6 @@ namespace Deltatime.InputSystem
                     ""action"": ""NextStage"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
-                    ""id"": ""59f544d3-8119-43cd-bef2-c4205c38a7bf"",
-                    ""path"": ""<Keyboard>/v"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""ReplayVisionToggle"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -373,7 +353,6 @@ namespace Deltatime.InputSystem
             m_Gameplay_Interact = m_Gameplay.FindAction("Interact", throwIfNotFound: true);
             m_Gameplay_Restart = m_Gameplay.FindAction("Restart", throwIfNotFound: true);
             m_Gameplay_NextStage = m_Gameplay.FindAction("NextStage", throwIfNotFound: true);
-            m_Gameplay_ReplayVisionToggle = m_Gameplay.FindAction("ReplayVisionToggle", throwIfNotFound: true);
         }
 
         ~@PlayerControls()
@@ -463,7 +442,6 @@ namespace Deltatime.InputSystem
         private readonly InputAction m_Gameplay_Interact;
         private readonly InputAction m_Gameplay_Restart;
         private readonly InputAction m_Gameplay_NextStage;
-        private readonly InputAction m_Gameplay_ReplayVisionToggle;
         /// <summary>
         /// Provides access to input actions defined in input action map "Gameplay".
         /// </summary>
@@ -511,10 +489,6 @@ namespace Deltatime.InputSystem
             /// Provides access to the underlying input action "Gameplay/NextStage".
             /// </summary>
             public InputAction @NextStage => m_Wrapper.m_Gameplay_NextStage;
-            /// <summary>
-            /// Provides access to the underlying input action "Gameplay/ReplayVisionToggle".
-            /// </summary>
-            public InputAction @ReplayVisionToggle => m_Wrapper.m_Gameplay_ReplayVisionToggle;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -568,9 +542,6 @@ namespace Deltatime.InputSystem
                 @NextStage.started += instance.OnNextStage;
                 @NextStage.performed += instance.OnNextStage;
                 @NextStage.canceled += instance.OnNextStage;
-                @ReplayVisionToggle.started += instance.OnReplayVisionToggle;
-                @ReplayVisionToggle.performed += instance.OnReplayVisionToggle;
-                @ReplayVisionToggle.canceled += instance.OnReplayVisionToggle;
             }
 
             /// <summary>
@@ -609,9 +580,6 @@ namespace Deltatime.InputSystem
                 @NextStage.started -= instance.OnNextStage;
                 @NextStage.performed -= instance.OnNextStage;
                 @NextStage.canceled -= instance.OnNextStage;
-                @ReplayVisionToggle.started -= instance.OnReplayVisionToggle;
-                @ReplayVisionToggle.performed -= instance.OnReplayVisionToggle;
-                @ReplayVisionToggle.canceled -= instance.OnReplayVisionToggle;
             }
 
             /// <summary>
@@ -728,13 +696,6 @@ namespace Deltatime.InputSystem
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnNextStage(InputAction.CallbackContext context);
-            /// <summary>
-            /// Method invoked when associated input action "ReplayVisionToggle" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-            /// </summary>
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-            void OnReplayVisionToggle(InputAction.CallbackContext context);
         }
     }
 }

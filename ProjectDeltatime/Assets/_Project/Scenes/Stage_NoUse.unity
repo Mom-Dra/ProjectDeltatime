@@ -2664,15 +2664,6 @@ MonoBehaviour:
   deadlineAftermathWorldDuration: 0.75
   deadlineAftermathPlaybackRate: 0.5
   deadlineCameraRecoveryDuration: 0.2
-  omniscientAmbientSkyColor: {r: 0.3, g: 0.34, b: 0.4, a: 1}
-  omniscientAmbientEquatorColor: {r: 0.22, g: 0.25, b: 0.3, a: 1}
-  omniscientAmbientGroundColor: {r: 0.12, g: 0.14, b: 0.17, a: 1}
-  omniscientAmbientIntensity: 1
-  omniscientReflectionIntensity: 0.35
-  omniscientBackgroundColor: {r: 0.025, g: 0.04, b: 0.065, a: 1}
-  omniscientFillLightColor: {r: 0.78, g: 0.86, b: 1, a: 1}
-  omniscientFillLightIntensity: 0.65
-  omniscientFillLightRotation: {x: 50, y: -30, z: 0}
 --- !u!114 &593267851
 MonoBehaviour:
   m_ObjectHideFlags: 0

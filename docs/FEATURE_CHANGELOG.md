@@ -21,6 +21,76 @@
 - 테스트 결과:
 - 남은 작업:
 
+## 2026-08-10 - EndingScene BGM_Ending 선택 검증
+
+- 변경 유형: 씬 전환 BGM 회귀 검사 추가, 오디오 구현 상태 문서 갱신
+- 변경 내용: **구현 완료**. 기존 `SoundManager`는 `EndingScene` 진입 시 `SoundLibrary.EndingBgm`을 선택하고 비반복 재생한다. `SoundManagerPlayModeSmokeTest`는 MainScene에서 Tutorial을 거쳐 EndingScene을 로드한 뒤 현재 BGM이 `EndingBgm`인지 검증하도록 확장했다. `DeltatimeSoundLibrary.asset`의 `endingBgm` 참조 GUID는 `BGM_Ending.mp3`와 일치하며, EndingScene에는 활성 `AudioListener`가 있다.
+- 영향을 받은 시스템: 씬별 BGM 선택, MainScene·Tutorial·EndingScene 전환, 오디오 PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_Ending.mp3`, `ProjectDeltatime/Assets/_Project/Scenes/EndingScene.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.51로 갱신해 EndingScene의 `BGM_Ending` 선택 경로, 정적 참조 확인 및 새 PlayMode 검증 범위를 기록했다.
+- 테스트 결과: 소스의 `EndingScene → EndingBgm` 분기, SoundLibrary GUID와 `BGM_Ending.mp3.meta` GUID, EndingScene의 활성 `AudioListener`를 정적으로 대조했고 관련 파일 대상 `git diff --check`는 **통과**했다. 새 `SoundManagerPlayModeSmokeTest`는 다른 Unity 인스턴스가 프로젝트를 열고 있어 **미실행**이다.
+- 남은 작업: **확인 불가**. 열린 Unity에서 `SoundManagerPlayModeSmokeTest.RunFromCommandLine`을 실행하고, Game View에서 EndingScene 진입 직후 `BGM_Ending`의 실제 재생·볼륨을 수동 확인해야 한다.
+
+## 2026-08-10 - MainScene N 키 Tutorial 시작 및 안내 텍스트
+
+- 변경 유형: MainScene 키보드 시작 입력·TMP 안내 텍스트 추가, 씬 빌더·기획 문서 갱신
+- 변경 내용: **구현 완료**. `MainMenuController`가 `PlayerControls.Gameplay.NextStage`의 `N` 키 입력을 감지해 기존 버튼과 같은 `Play()`를 호출한다. 유효한 Build Settings 대상 확인 뒤에만 UI 클릭음을 재생하고 Tutorial을 로드하며, 연속 버튼/키 입력에도 전환 요청은 한 번만 실행된다. MainScene Canvas에는 Noto Sans KR TMP `TutorialKeyHint`를 추가해 `N 키를 눌러 튜토리얼 시작`을 표시한다. `MainSceneBuilder`는 이 텍스트의 폰트·문구·좌상단 앵커·비입력 속성·다중 화면비 안전 영역을 구성·검증한다.
+- 영향을 받은 시스템: MainScene 시작 입력, Tutorial 씬 전환, UI 클릭음, Canvas TMP 안내 텍스트, MainScene 씬 생성·검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.50으로 갱신해 MainScene의 `N` 키 Tutorial 시작, 동일한 클릭음·대상 검증 경로, `TutorialKeyHint` 문구와 현재 검증 상태를 반영했다.
+- 테스트 결과: 소스와 `MainScene.unity`의 `NextStage` N 바인딩·`Play()` 경로, `TutorialKeyHint` TMP 문구·폰트 GUID·앵커·크기, YAML 오브젝트 참조를 정적으로 대조해 **통과**했다. Unity 6000.1.13f1 배치 `MainSceneBuilder.BuildAndValidateFromCommandLine`은 다른 Unity 인스턴스가 프로젝트를 열고 있어 `HandleProjectAlreadyOpenInAnotherInstance` 단계에서 실행되지 않아 **미실행**이다.
+- 남은 작업: **확인 불가**. 열린 Unity에서 컴파일 완료 후 MainScene Game View에서 `N` 키로 Tutorial 전환, 클릭음 1회 재생, 안내 문구의 한글 글리프·줄바꿈·해상도별 가시성을 수동 확인해야 한다.
+
+## 2026-08-10 - 리플레이 전체 시야 전환 제거
+
+- 변경 유형: 리플레이 시야 정책 단순화, 입력·HUD·직렬화·자동 검증·기획 문서 갱신
+- 변경 내용: **구현 완료**. 리플레이는 기록된 암흑 시야로 고정된다. 전체 시야 토글과 `V` 바인딩, 환경광·안개·Fill Light 변경, 적 강제 표시 데이터와 전용 API를 제거했다. ViewCone 재계산과 두 동적 시야 조명 프록시는 리플레이 시작·Deadline·반복 구간에 계속 적용한다. 일반 플레이의 제한 시야와 Tutorial의 무제한 시야는 유지한다.
+- 영향을 받은 시스템: StageReplayController, VisionCone, EnemyCombatant, PlayerControls 입력, StageController, GameHud, Prototype·Stage5·Stage6 씬 직렬화와 PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage6.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `PROJECT_DESIGN_DOCUMENT.md`를 1.6.49로 갱신해 리플레이 암흑 시야 고정, 제거된 `V` 조작과 전체 시야 조명 정책을 반영했다.
+- 테스트 결과: Unity 6000.1.13f1 배치 컴파일은 **통과**했고 Stage6 PlayMode 스모크는 **통과**했다. Prototype 스모크의 새 암흑 시야 검증은 실패하지 않았으나, 기존 투척 무기 속도·정착 거리와 본 포즈 진단 불일치로 전체 결과는 **실패**했다. Stage5 스모크는 리플레이 검증 전에 기존 남쪽 컷어웨이 비활성 렌더러 오류로 **실패**했다.
+- 남은 작업: **확인 불가**. 실제 Game View에서 클리어·사망 리플레이의 ViewCone 경계와 조명 가독성을 수동 확인하고, 투척 무기·본 포즈·Stage5 컷어웨이 기존 스모크 실패를 별도 해결한 뒤 전체 회귀를 재실행해야 한다.
+
+## 2026-08-10 - 적 공격 경고선 이동 추적
+
+- 변경 유형: 적 공격 경고선 런타임 갱신 보강, PlayMode 회귀 검사 및 기획 문서 갱신
+- 변경 내용: **구현 완료**. `EnemyCombatant.LateUpdate`가 가시성 갱신 뒤 현재 표시 중인 경고선을 다시 설정한다. 총기 적의 선은 현재 `WeaponController.Muzzle`에서 현재 대상 위치까지, 근접 공격 준비선은 기존 몸체 높이에서 현재 대상 위치까지 이어진다. 따라서 총기 적이 경고선을 표시한 뒤 추격·후퇴·회전해도 시작점이 최초 월드 좌표에 남지 않는다. 총기 경고선의 기존 표시 조건과 사망·기절·상태 전환·시야 밖 숨김, 공격 판정 및 사격 방향은 변경하지 않았다.
+- 영향을 받은 시스템: 적 총기·근접 공격 경고선, 적 이동·회전 시 시각 피드백, Stage2 PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.48로 갱신해 표시 중인 총기·근접 경고선의 프레임별 원점·대상 갱신, 회귀 검사와 검증 제한을 기록했다.
+- 테스트 결과: **확인 불가**. `PrototypePlayModeSmokeTest`에 적 이동 뒤 경고선 시작·끝점이 최신 총구·대상 좌표와 일치하는지 검사하는 회귀 검사를 추가했지만, Unity 6000.1.13f1 배치 컴파일과 스모크는 다른 Unity 인스턴스가 프로젝트를 열고 있어 `HandleProjectAlreadyOpenInAnotherInstance` 단계에서 실행되지 않았다. 대체 `dotnet build Assembly-CSharp-Editor.csproj`도 기존 누락 파일 `Assets/TutorialInfo/Scripts/Readme.cs` 참조로 실패했다.
+- 남은 작업: **미실행**. 열린 Unity에서 컴파일이 끝난 뒤 `PrototypePlayModeSmokeTest.RunFromCommandLine`과 실제 Game View를 실행해, 레이저 표시 후 이동·회전하는 총기 적의 총구·대상 추적을 확인한다.
+
+## 2026-08-10 - DEADLINE 냉정한 시간 정지 시각 효과
+
+- 변경 유형: Built-in 풀스크린 셰이더·런타임 카메라 피드백·행동 노드·리플레이 비활성화·자동 스모크 추가, 기획 문서 갱신
+- 변경 내용: **구현 완료**. `WorldTimeVisualFeedback`가 런타임에 게임플레이 카메라의 `DeadlineVisualFeedback`을 생성·연결해 기존 씬과 프리팹을 재생성하지 않는다. `DeadlineController.Activated`·`Released`를 구독하고 `Time.unscaledDeltaTime`으로 0.14초 진입 링·플래시, 채도 55%·가장자리 18% 청록 틴트·비네트·미세 노이즈 유지, 0.24초 정상 해제 복원파를 표시한다. 플레이어와 조준 중심부는 상대적으로 선명하게 유지한다. 플레이어 위의 행동 노드 2개는 준비 행동 수만큼 청록색으로 채우며 세 번째 행동 거절 때 주황색으로 점멸한다. 효과 중 기존 월드 시간 암전 오버레이만 억제하고 IMGUI HUD는 후처리 뒤에 유지한다. 사망·컴포넌트 비활성화 같은 비정상 중단은 해제파 없이 즉시 초기화하며, 리플레이의 기존 라이브 시뮬레이션 비활성화 흐름에서도 효과를 끄고 과거 `DEADLINE` 구간을 재현하지 않는다. Resources 기반 셰이더가 누락되거나 미지원이면 원본 화면을 출력하고 오류를 한 번만 남긴다. 공개 진단 `CurrentPhase`, `EffectBlend`, `DisplayedActionCount`, `IsShaderReady`와 `Configure(DeadlineController)`를 추가했다. 색수차·카메라 흔들림·FOV 변경·월드 오브젝트 외곽선·궤적 강조는 이번 범위에서 제외했다.
+- 영향을 받은 시스템: 라이브 `DEADLINE` 진입·유지·해제 피드백, 게임플레이 카메라 Built-in 후처리, 행동 준비 UI, 월드 시간 암전 오버레이, 리플레이 라이브 시뮬레이션 비활성화
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/DeadlineVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Resources/Shaders/DeadlineScreenEffect.shader`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/DeadlineVisualFeedbackPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.47로 갱신해 구현 상태, 진입·유지·해제·비정상 중단·리플레이 정책, 자동 연결과 근거 경로, 자동 검증 결과 및 수동 확인 범위를 기록했다.
+- 테스트 결과: **통과**. Unity 6000.1.13f1 배치 컴파일이 `Tundra build success`와 종료 코드 0으로 완료됐다. `DeadlineVisualFeedbackPlayModeSmokeTest.RunFromCommandLine`은 Stage1 진입·유지·행동 1/2개·세 번째 거절·정상 해제, 비스케일 전환과 `Time.timeScale == 1`, 비정상 비활성화 즉시 초기화, 해제 후 비활성 상태를 검증했다. Tutorial·Stage2·Stage5·Stage6에서 런타임 컴포넌트 연결과 셰이더 준비를 확인했고, `StageReplayController.DisableLiveSimulation` 뒤 비활성·초기화도 통과했다. 스모크 중 Stage5·Stage6의 기존 AudioListener 부재 경고와 일부 씬의 기존 Missing Script 경고가 출력됐지만 새 어설션은 모두 통과했다.
+- 남은 작업: **확인 불가**. Stage1의 밝은 환경과 Stage5·Stage6의 어두운 네온 환경에서 실제 조준·적 식별·HUD 가독성, 링 강도·노이즈 체감과 여러 대상 해상도 품질은 사람 눈으로 수동 확인해야 한다.
+
+## 2026-08-10 - Tutorial 좌측 전광판 월드 시간 스크롤
+
+- 변경 유형: Synty 전광판 셰이더 시간 소스 교체, 런타임 머티리얼 오버라이드 추가, 기획 문서 갱신
+- 변경 내용: **구현 완료**. Tutorial 카메라의 기존 `WorldTimeVisualFeedback`가 `Gate 01`~`06 Status Display` 안에서 `LED_Panel_06` 이름의 화면 머티리얼 슬롯을 런타임 복제하고 `Deltatime/World Time Emissive Scroll` 셰이더로 교체한다. 복제본은 원래 텍스처·색·`_Speed`를 유지하면서 `WorldTimeController.WorldElapsedTime`을 사용하므로, 기존 아래 방향 화면 이동은 보존되고 월드 시간 감속·하드 프리즈에 같은 비율로 반응한다. 전역 `Time.timeScale`, 원본 Synty 머티리얼, 씬 직렬화 머티리얼은 바꾸지 않는다.
+- 영향을 받은 시스템: Tutorial 좌측 상태 전광판 화면 애니메이션, `WorldTimeController` 월드 시간 피드백, `DEADLINE` 하드 프리즈 시각 일관성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Shaders/WorldTimeEmissiveScroll.shader`, `ProjectDeltatime/Assets/_Project/Shaders/WorldTimeEmissiveScroll.shader.meta`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.46으로 갱신해 여섯 상태 전광판의 `WorldElapsedTime` 기반 스크롤, 전역 시간 미변경 원칙과 수동 검증 범위를 기록했다.
+- 테스트 결과: **미실행**. 사용자 요청에 따라 Unity 배치 컴파일·정적 검증·PlayMode 스모크를 실행하지 않았다.
+- 남은 작업: **확인 불가**. 실제 Tutorial에서 전광판이 기존과 같은 아래 방향으로 움직이면서, 정지 상태·행동 상태·`DEADLINE` 하드 프리즈에 맞춰 감속·정지하는지 사용자가 확인해야 한다.
+
+## 2026-08-10 - Tutorial 진행 게이트 철창 시각 개선
+
+- 변경 유형: Tutorial 게이트 시각 계층·전용 적용 경로·정적 및 PlayMode 검증 보강, 기획 문서 갱신
+- 변경 내용: **부분 구현**. `TutorialSceneBuilder`가 각 게이트에 폭 `0.24m`·높이 `2.45m`·깊이 `0.18m`, 중심 간격 `0.74m`인 세로 철창 17개와 기존 상·하단 레일을 생성하도록 바꿨고, 넓은 7개 셔터 판넬과 판넬별 상태 스트립은 생성하지 않는다. `Tools/Tutorial/Apply Bar Gate Visuals`와 명령줄 진입점은 Tutorial 씬의 여섯 게이트 시각 하위 오브젝트만 갱신하며 NavMesh와 나머지 환경은 재생성하지 않는다. 기존 충돌체·Layer 8·`TutorialGate` 상승/개방 로직은 유지한다. 단, 현재 열린 Unity 인스턴스가 프로젝트를 잠가 배치 적용이 시작 전에 중단되어 저장된 `Tutorial.unity`는 아직 기존 시각이다.
+- 영향을 받은 시스템: Tutorial 여섯 진행 게이트의 외형, 환경 전용 갱신 경로, 게이트 정적·PlayMode 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md` 1.6.46에 철창 규격·전용 갱신 경로·현재 저장 씬 적용 보류 상태를 기록했다.
+- 테스트 결과: **미실행**. 사용자 요청에 따라 정적 검증과 Tutorial PlayMode 스모크를 실행하지 않았다. Unity 배치 적용은 다른 Unity 인스턴스가 프로젝트를 열고 있어 `HandleProjectAlreadyOpenInAnotherInstance` 단계에서 중단됐다.
+- 남은 작업: **확인 불가**. 열린 Unity에서 `Tools/Tutorial/Apply Bar Gate Visuals`를 실행해 저장 씬에 반영한 뒤, 실제 철창 외형과 여섯 게이트의 상승·개방 동작을 사용자가 확인해야 한다.
+
 ## 2026-08-10 - 샷건 펠릿 수 4발 밸런스 조정
 
 - 변경 유형: 샷건 발사체 수 하향 조정, 무기 데이터·재생성 검증·기획 문서 갱신

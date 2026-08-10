@@ -13,6 +13,7 @@ namespace Deltatime.EditorTools
     public static class SoundManagerPlayModeSmokeTest
     {
         private const string ScenePath = "Assets/_Project/Scenes/MainScene.unity";
+        private const string EndingSceneName = "EndingScene";
         private const string RunningKey = "Deltatime.SoundSmoke.Running";
         private const string FailedKey = "Deltatime.SoundSmoke.Failed";
         private const string FailureKey = "Deltatime.SoundSmoke.Failure";
@@ -78,19 +79,36 @@ namespace Deltatime.EditorTools
 
             try
             {
+                SoundManager manager = UnityEngine.Object.FindFirstObjectByType<SoundManager>();
+                Require(manager != null, "SoundManager was not bootstrapped.");
+                Require(manager.Library != null, "SoundLibrary was not loaded from Resources.");
+
                 if (phase == 1)
                 {
                     Require(
                         SceneManager.GetActiveScene().name == "Tutorial",
                         "MainMenuController.Play did not load Tutorial.");
+                    Require(
+                        manager.CurrentBgmClip == manager.Library.TutorialBgm,
+                        "Tutorial did not select the tutorial BGM.");
+                    SceneManager.LoadScene(EndingSceneName);
+                    phase = 2;
+                    return;
+                }
+
+                if (phase == 2)
+                {
+                    Require(
+                        SceneManager.GetActiveScene().name == EndingSceneName,
+                        "Tutorial did not load EndingScene.");
+                    Require(
+                        manager.CurrentBgmClip == manager.Library.EndingBgm,
+                        "EndingScene did not select BGM_Ending.");
                     Debug.Log("SoundManager PlayMode smoke passed.");
                     EditorApplication.ExitPlaymode();
                     return;
                 }
 
-                SoundManager manager = UnityEngine.Object.FindFirstObjectByType<SoundManager>();
-                Require(manager != null, "SoundManager was not bootstrapped.");
-                Require(manager.Library != null, "SoundLibrary was not loaded from Resources.");
                 Require(manager.Library.IsConfigured(out string error), error);
                 Require(
                     manager.CurrentBgmClip == manager.Library.MainMenuBgm,
