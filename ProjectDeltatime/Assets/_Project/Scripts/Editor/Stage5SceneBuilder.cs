@@ -206,6 +206,67 @@ namespace Deltatime.EditorTools
             BuildStage5();
         }
 
+        /// <summary>
+        /// Rebuilds navigation from the currently open Stage5 scene without
+        /// recreating the scene from its Stage4 and Synty source scenes. Runtime
+        /// stair colliders are restored as bake sources first, then disabled
+        /// again after baking so rigidbodies use NavMesh-ground projection.
+        /// </summary>
+        [MenuItem("Tools/Prototype/Rebake Current Stage 5 Navigation")]
+        public static void RebakeCurrentStage5Navigation()
+        {
+            Scene stage5 = SceneManager.GetActiveScene();
+            if (stage5.path != Stage5ScenePath)
+            {
+                throw new InvalidOperationException(
+                    $"Open {Stage5ScenePath} before rebaking its current navigation.");
+            }
+
+            GameObject environmentRoot = FindSceneRoot(stage5, EnvironmentRootName);
+            if (environmentRoot == null)
+            {
+                throw new InvalidOperationException(
+                    "Stage5 dive-bar environment root is missing.");
+            }
+
+            List<GameObject> gameplayRoots = new List<GameObject>();
+            for (int i = 0; i < GameplayRootNames.Length; i++)
+            {
+                GameObject root = FindSceneRoot(stage5, GameplayRootNames[i]);
+                if (root != null)
+                {
+                    gameplayRoots.Add(root);
+                }
+            }
+
+            // ConfigureStage5ElevationMovement disables the physical stair
+            // colliders for play-mode movement. Restore them before collecting
+            // physics geometry so elevated routes remain in the NavMesh.
+            ConfigureDiveBarColliders(environmentRoot);
+            Collider leftSouthStair = FindLeftSouthStairCollider(environmentRoot);
+            Require(leftSouthStair != null && leftSouthStair.enabled,
+                "Stage5 left-south stair collider was not restored for NavMesh baking.");
+
+            NavMeshSurface surface = BuildStage5Navigation(
+                environmentRoot,
+                gameplayRoots);
+            ConfigureStage5ElevationMovement(stage5, environmentRoot);
+            ConfigureSouthExteriorCutaway(environmentRoot);
+            ConfigureDiveBarCamera(surface);
+
+            EditorSceneManager.MarkSceneDirty(stage5);
+            if (!EditorSceneManager.SaveScene(stage5, Stage5ScenePath))
+            {
+                throw new InvalidOperationException(
+                    $"Failed to save {Stage5ScenePath} after the current-scene NavMesh bake.");
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            ValidateCurrentStage5Navigation(environmentRoot, surface, leftSouthStair);
+            Debug.Log("Stage5 current-scene NavMesh re-bake passed.");
+        }
+
         public static void ValidateStage1Through4RegressionFromCommandLine()
         {
             PrototypeSceneBuilder.ValidateSavedPrototypeRoom();
@@ -1612,6 +1673,66 @@ namespace Deltatime.EditorTools
                 GroundMovementSegmentLength);
             EditorUtility.SetDirty(body);
             EditorUtility.SetDirty(movement);
+        }
+
+        private static Collider FindLeftSouthStairCollider(GameObject environmentRoot)
+        {
+            Collider[] colliders = environmentRoot.GetComponentsInChildren<Collider>(true);
+            Vector2 expectedPosition = new Vector2(-7.5f, -7.5f);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider.name != "SM_Bld_Steps_01")
+                {
+                    continue;
+                }
+
+                Vector3 position = collider.transform.position;
+                if (Vector2.Distance(
+                        new Vector2(position.x, position.z),
+                        expectedPosition) <= 0.1f)
+                {
+                    return collider;
+                }
+            }
+
+            return null;
+        }
+
+        private static void ValidateCurrentStage5Navigation(
+            GameObject environmentRoot,
+            NavMeshSurface surface,
+            Collider leftSouthStair)
+        {
+            string navigationPath = surface == null || surface.navMeshData == null
+                ? string.Empty
+                : AssetDatabase.GetAssetPath(surface.navMeshData);
+            Require(navigationPath == Stage5NavigationPath,
+                $"Stage5 uses the wrong NavMesh data: {navigationPath}");
+
+            NavMeshTriangulation triangulation = NavMesh.CalculateTriangulation();
+            Require(triangulation.vertices.Length > 0,
+                "Stage5 current-scene NavMesh bake has no triangles.");
+            Require(leftSouthStair != null && !leftSouthStair.enabled,
+                "Stage5 left-south stair collider must be disabled after baking for runtime traversal.");
+            Require(NavMesh.SamplePosition(
+                    leftSouthStair.bounds.center,
+                    out _,
+                    1.5f,
+                    NavMesh.AllAreas),
+                "Stage5 left-south stair has no nearby baked NavMesh.");
+
+            PlayerHealth player = UnityEngine.Object.FindFirstObjectByType<PlayerHealth>();
+            EnemyMotor[] motors = UnityEngine.Object.FindObjectsByType<EnemyMotor>(
+                FindObjectsSortMode.None);
+            ValidateStage5ElevationMovement(
+                player,
+                motors,
+                environmentRoot,
+                CalculateBounds(triangulation.vertices));
+            ValidateFurnitureNavMeshExclusion(
+                environmentRoot,
+                "Stage5 current-scene re-bake");
         }
 
         private static int DisableRuntimeTraversalColliders(GameObject environmentRoot)

@@ -145,12 +145,12 @@ namespace Deltatime.Tutorial
                             ? "마우스를 움직여 조준 방향을 크게 돌리세요."
                             : "WASD 방향키를 누른 채 Space로 표식 구간을 대시하세요.";
                     case TutorialStep.Melee:
-                        return "E로 근접 무기를 줍고, 표적을 향해 LMB로 공격하세요.";
+                        return "E로 근접 무기를 줍고, 표적을 향해 LMB - 좌 클릭으로 공격하세요.";
                     case TutorialStep.Pistol:
-                        return "E로 권총을 교체하고, 마우스로 조준한 뒤 LMB로 사격하세요.";
+                        return "E로 권총을 교체하고, 마우스로 조준한 뒤 LMB - 좌 클릭으로 사격하세요.";
                     case TutorialStep.ThrowAndRecover:
                         return !observedThrowOutcome
-                            ? "LMB 사격이 아니라 RMB로 권총을 던져 적을 기절시키고 무장을 해제하세요."
+                            ? "LMB - 좌 클릭 사격이 아니라 RMB - 우 클릭으로 권총을 던져 적을 기절시키고 무장을 해제하세요."
                             : "성공! 공중의 적 무기를 E로 잡으면 바로 DEADLINE으로 진행합니다.";
                     case TutorialStep.DeadlineApproach:
                         return "권총을 장비했습니다. 북쪽 포위전 중앙으로 이동하세요.";
@@ -167,7 +167,7 @@ namespace Deltatime.Tutorial
 
                         if (!observedTwoCauses)
                         {
-                            return "마우스로 앞의 두 적을 조준하고 LMB 두 번으로 원인 2개를 배치하세요.";
+                            return "마우스로 앞의 두 적을 조준하고 LMB - 좌 클릭 두 번으로 원인 2개를 배치하세요.";
                         }
 
                         return "WASD로 이동하여 원인과 월드를 실행하고 북쪽으로 탈출하세요.";

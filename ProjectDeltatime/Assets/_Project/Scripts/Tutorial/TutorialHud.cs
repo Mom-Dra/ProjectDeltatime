@@ -71,15 +71,15 @@ namespace Deltatime.Tutorial
                 148f);
             GUI.DrawTexture(lessonPanel, panelTexture);
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 12f, 676f, 32f),
+                new Rect(lessonPanel.x + 22f, lessonPanel.y + 12f, 676f, 36f),
                 director.StepTitle,
                 titleStyle);
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 48f, 676f, 50f),
+                new Rect(lessonPanel.x + 22f, lessonPanel.y + 52f, 676f, 48f),
                 director.Instruction,
                 instructionStyle);
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 102f, 676f, 30f),
+                new Rect(lessonPanel.x + 22f, lessonPanel.y + 104f, 676f, 28f),
                 director.ProgressText + "    |    R: 다시 시작",
                 statusStyle);
         }
@@ -123,7 +123,7 @@ namespace Deltatime.Tutorial
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 font = boldFont,
-                fontSize = 23,
+                fontSize = 20,
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(0.2f, 1f, 1f, 1f) }
             };

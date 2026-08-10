@@ -7,6 +7,76 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-10 - Stage5 왼쪽 아래 단상 계단 NavMesh 복구
+
+- 변경 유형: Stage5 이동 경로 버그 수정, 현재 씬 NavMesh 재베이크 도구 추가, 기획 문서 갱신
+- 변경 내용: **구현 완료**. 왼쪽 아래 단상의 `SM_Bld_Steps_01` 콜라이더가 런타임 이동을 위해 비활성화된 상태로 재베이크되어 계단 경로가 NavMesh에서 사라지던 문제를 수정했다. `Tools/Prototype/Rebake Current Stage 5 Navigation`은 현재 열린 Stage5만 대상으로 계단 콜라이더를 베이크 전에 복원하고, 가구 상면을 제외한 NavMesh 생성 뒤에는 `NavMeshGroundMovement`의 높이 투영을 유지하도록 계단 물리 콜라이더를 다시 비활성화한다. 전체 Stage5를 원본 씬에서 재생성하지 않는다.
+- 영향을 받은 시스템: Stage5 왼쪽 아래 단상 계단의 이동 경로, NavMeshSurface Physics Collider 수집, Rigidbody/NavMesh 높이 이동, 카메라·남쪽 컷어웨이 NavMesh 종속값
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Level/NavMeshGroundMovement.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.58로 갱신해 Stage5 단상 계단의 높이 이동·현재 씬 재베이크 순서·검증 상태를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드에서 계단 콜라이더 복원 → NavMesh 재베이크 → 런타임 계단 콜라이더 6개 재비활성화 → 전용 NavMesh 참조·삼각형·계단 주변 NavMesh·가구 상면 제외·높이 이동 구성 검증을 통과했다. 임시 명령 제거 후 Unity 컴파일도 오류 없이 완료됐으며 로그는 `ProjectDeltatime/Stage5LeftPlatformRepair.log`, `ProjectDeltatime/Stage5LeftPlatformRepairCompile.log`에 남았다.
+- 남은 작업: **확인 불가**. 실제 Play Mode에서 플레이어가 왼쪽 아래 단상 계단을 오르내리는 수동 조작은 미실행이다. 전체 Stage5 구조 검증은 현재 저장 씬의 무기 픽업 수가 기존 기대값 2개보다 적은 1개인 구성 문제 때문에 별도로 통과하지 못하며, 이 문제는 이번 수정 범위 밖이다.
+
+## 2026-08-10 - 야구방망이 휘두름음 전용 Swish 교체
+
+- 변경 유형: 근접 전투 오디오 자산 교체, 사운드 라이브러리 빌더·기획 문서 갱신
+- 변경 내용: **구현 완료**. 기존 Kenney `knifeSlice` 기반 OGG 두 개를 OpenGameArt Swishes Sound Pack의 CC0 `swish-5.wav`, `swish-6.wav`로 교체해 `SFX_Bat_Swing_01.wav`, `SFX_Bat_Swing_02.wav`에 배치했다. 기존 방망이 스윙 슬롯의 Unity `.meta` GUID를 유지했으므로 `DeltatimeSoundLibrary`의 두 `batSwingClips` 참조와 런타임 재생 경로는 바뀌지 않는다. `SoundLibraryBuilder`도 새 WAV 경로를 사용한다.
+- 영향을 받은 시스템: 방망이 휘두름 3D 효과음, 사운드 라이브러리 에셋 참조, 에디터 사운드 라이브러리 재구축
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/Swing/SFX_Bat_Swing_01.wav`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/Swing/SFX_Bat_Swing_02.wav`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/README.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.57로 갱신해 실제 Swish 원본·현재 WAV 파일·검증 제한을 기록했다.
+- 테스트 결과: **확인 불가**. 두 WAV 원본과 프로젝트 사본의 SHA-256이 각각 일치하고, 보존한 `.meta` GUID 두 개가 `DeltatimeSoundLibrary.asset`의 `batSwingClips` 참조와 일치함을 정적으로 확인했다. Unity 6000.1.13f1 배치 재구축·PlayMode 스모크는 열린 다른 Unity 인스턴스 때문에 **미실행**이다.
+- 남은 작업: **미실행**. 열린 Unity에서 컴파일이 끝난 뒤 `SoundLibraryBuilder.BuildAndValidateFromCommandLine`, `SoundManagerPlayModeSmokeTest.RunFromCommandLine` 및 실제 Game View 청감을 실행해야 한다.
+
+## 2026-08-10 - Stage5 현재 씬 NavMesh 재베이크
+
+- 변경 유형: 씬 내비게이션 데이터 재생성
+- 변경 내용: **구현 완료**. 저장된 현재 `Stage5.unity`의 기존 NavMeshSurface 설정을 기준으로 `Stage5Navigation.asset`을 다시 베이크했다. 베이크 중 가구 콜라이더 81개를 임시 `Not Walkable` 처리해 상단 표면이 이동면으로 생성되지 않게 했고, 재베이크된 NavMesh 경계에 맞춰 Stage5 카메라와 남쪽 외곽 컷어웨이의 NavMesh 종속 값을 다시 저장했다. Stage4 또는 Synty 원본 씬을 다시 복제하거나 현재 씬의 게임플레이 구성을 재생성하지 않았다.
+- 영향을 받은 시스템: Stage5 이동 경로 데이터, 가구 상단 이동면 제외, 카메라 이동 경계, 남쪽 외곽 컷어웨이
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5SceneBuilder.cs`
+- 기획서 반영 내용: 검토 완료. 기존 Stage5 이동·카메라 설계의 구현 데이터 재생성이므로 `docs/PROJECT_DESIGN_DOCUMENT.md` 변경은 없다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 모드에서 전용 NavMesh 검증을 통과했다. 전용 에셋 참조, 삼각형 생성, 가구 상단 NavMesh 제외를 확인했으며, 로그는 `ProjectDeltatime/Stage5NavMeshRebake.log`에 남았다. 임시 배치 명령 제거 후 Unity 배치 모드가 종료 코드 0으로 프로젝트를 다시 로드했다.
+- 남은 작업: **확인 불가**. 전체 Stage5 구조 검증은 현재 저장된 씬이 무기 픽업 1개만 포함해 기존 기대값(2개)을 충족하지 않아 통과하지 못했다. 이 구성 문제는 NavMesh 재베이크 범위 밖이므로 변경하지 않았으며, 실제 Play Mode 이동·경로 추적 수동 검증도 미실행이다.
+
+## 2026-08-10 - Tutorial·리플레이·DEADLINE HUD 텍스트 잘림 보정
+
+- 변경 유형: HUD 타이포그래피·레이블 영역 수정, 기획 문서 갱신
+- 변경 내용: **구현 완료**. Tutorial 하단 진행 패널의 청록색 단계 제목을 23pt에서 20pt로 낮추고 높이를 32px에서 36px으로 늘렸으며, 안내·진행 텍스트 영역도 이에 맞춰 재배치했다. 우상단 리플레이 결과·조작 안내와 활성 `DEADLINE` 행동 안내는 일반 중앙 메시지의 24pt 대신 전용 20pt 메시지 글꼴을 사용해 여러 줄이 패널에서 잘리지 않게 했다. 일반 중앙 메시지의 크기와 다른 게임 로직은 유지했다.
+- 영향을 받은 시스템: TutorialHud 하단 진행 패널, GameHud 리플레이·DEADLINE 우상단 오버레이, UI 가독성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.56으로 갱신해 상태별 텍스트 크기·영역 보정과 확인 상태를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 대조로 Tutorial 제목의 20pt/36px 레이블, 우상단 리플레이·DEADLINE의 전용 20pt 메시지 스타일 연결을 확인하고 `git diff --check`를 통과했다. Unity 컴파일·Play Mode 및 실제 Game View 가독성 확인은 **미실행/확인 불가**다.
+- 남은 작업: **확인 불가**. 목표 해상도에서 Tutorial의 긴 단계 제목·지시문, 리플레이 4줄, DEADLINE 3줄의 실제 줄바꿈과 여백을 수동 확인해야 한다.
+
+## 2026-08-10 - 야구방망이 빗나감 휘두름 효과음
+
+- 변경 유형: 근접 전투 오디오 추가, 사운드 라이브러리·PlayMode 회귀 검사·기획 문서 갱신
+- 변경 내용: **구현 완료**. CC0 Kenney RPG Audio의 `knifeSlice.ogg`, `knifeSlice2.ogg`를 `SFX_Bat_Swing_01.ogg`, `SFX_Bat_Swing_02.ogg`로 추가했다. `MeleeAttackExecution`은 유효한 방망이 공격 시작마다 공격자 위치에서 두 클립 중 하나를 재생하며, 대상이 없거나 사거리·시야 판정에 실패해도 재생한다. 실제 적중 시 기존 `SFX_Bat_Hit_01/02.ogg`는 그대로 별도 재생한다. 애니메이터 없는 `WeaponController` 즉시 판정 경로도 같은 휘두름음을 한 번 재생하며, 주먹·총기·투척에는 적용하지 않는다. `SoundLibrary` 구성·검증과 빌더·Resources 에셋 참조, `SoundManagerPlayModeSmokeTest`의 빗나감 1회·적중 시 휘두름/적중음 동시 재생 검증을 추가했다.
+- 영향을 받은 시스템: 플레이어·적 방망이 근접 공격, 애니메이션/즉시 근접 판정, 3D 공간 효과음 풀, 사운드 라이브러리 직렬화, 오디오 PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/Swing/SFX_Bat_Swing_01.ogg`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/Swing/SFX_Bat_Swing_02.ogg`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/README.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.55로 갱신해 휘두름음의 대상 무관 재생·적중음 공존·적용/제외 범위·검증 제한을 기록했다.
+- 테스트 결과: **확인 불가**. 원본 `knifeSlice` 두 파일과 프로젝트 사본의 SHA-256은 각각 일치했고, 새 Unity `.meta` GUID가 `DeltatimeSoundLibrary.asset`의 `batSwingClips` 두 참조와 일치한다. 새 코드·빌더·스모크의 정적 연결도 확인했다. Unity 6000.1.13f1 배치 사운드 라이브러리/PlayMode 스모크는 열린 다른 Unity 인스턴스 때문에 `HandleProjectAlreadyOpenInAnotherInstance`에서 실행되지 않았다. `dotnet build Assembly-CSharp-Editor.csproj`는 기존 누락 파일 `Assets/TutorialInfo/Scripts/Readme.cs` 때문에 실패했으며, 새 코드의 컴파일 결과를 독립 확인할 수 없다.
+- 남은 작업: **미실행**. 열린 Unity에서 컴파일 완료 후 `SoundLibraryBuilder.BuildAndValidateFromCommandLine`과 `SoundManagerPlayModeSmokeTest.RunFromCommandLine`을 실행하고, Game View에서 빗나감·적중 각각의 음량과 두 소리의 구분을 수동 확인해야 한다.
+
+## 2026-08-10 - 리플레이·DEADLINE HUD 우상단 배치
+
+- 변경 유형: HUD 레이아웃 수정, 기획 문서 갱신
+- 변경 내용: **구현 완료**. 리플레이 중 중앙에 표시되던 결과·조작 안내 패널과 활성 `DEADLINE` 중 하단 중앙에 표시되던 행동 수·실행 안내 패널을 우상단으로 옮겼다. 두 패널은 화면 우측·상단에서 각각 18px 여백을 두고 최대 폭 330px을 사용한다. 일반 플레이와 리플레이가 아닌 사망·클리어 메시지 위치, 입력·전투·리플레이 동작은 변경하지 않았다.
+- 영향을 받은 시스템: GameHud 리플레이 결과·재시작/다음 스테이지 안내, DEADLINE 행동 수·이동 실행 안내, 게임플레이 화면 가독성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.54로 갱신해 HUD 현황과 상태별 중앙·우상단 패널 배치를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 대조로 리플레이 패널이 `replay.IsReplaying`일 때 우상단 계산을 사용하고, 활성 `DEADLINE` 패널도 같은 우상단 계산을 사용하는지 확인했다. `git diff --check`는 통과했다. Unity 컴파일·Play Mode와 실제 Game View 해상도별 가독성 확인은 **미실행/확인 불가**다.
+- 남은 작업: **확인 불가**. 목표 해상도에서 리플레이 4줄 안내와 DEADLINE 3줄 안내의 줄바꿈·가독성, 게임 화면 시야 확보를 수동 확인해야 한다.
+
+## 2026-08-10 - UI 마우스 버튼 표기 통일
+
+- 변경 유형: UI 조작 안내 문구 수정, 기획 문서 갱신
+- 변경 내용: **구현 완료**. 게임플레이 HUD와 Tutorial 단계 안내에 표시되는 모든 LMB/RMB 문구를 각각 `LMB - 좌 클릭`, `RMB - 우 클릭` 형식으로 통일했다. 실제 Input System 좌·우 버튼 바인딩과 공격·투척 동작은 변경하지 않았다.
+- 영향을 받은 시스템: 게임플레이 HUD 하단 조작 안내, Tutorial 근접·권총·투척·DEADLINE 단계 지시
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.53으로 갱신해 조작 표와 HUD 설명에 동일 표기를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 문자열 검색으로 런타임 UI의 모든 LMB/RMB 안내가 새 표기를 사용하는지 확인하고 `git diff --check`를 통과했다. Unity 컴파일·Play Mode 및 실제 Game View 줄바꿈·가독성 확인은 문구 변경만으로 **미실행/확인 불가**다.
+- 남은 작업: **확인 불가**. 목표 해상도의 실제 Game View에서 길어진 HUD·Tutorial 문구의 줄바꿈과 가독성을 수동 확인해야 한다.
+
 ## 2026-08-10 - Stage5 이후 EndingScene 직행 및 Stage6 임시 제외
 
 - 변경 유형: 진행 경로 수정, Build Settings 수정

@@ -166,6 +166,7 @@ namespace Deltatime.Combat
             }
 
             nextUseTime = clock + Definition.UseInterval;
+            SoundManager.Instance?.PlayMeleeSwing(source.transform.position);
             MeleeAttackResolver.TryHitNearest(
                 source,
                 faction,

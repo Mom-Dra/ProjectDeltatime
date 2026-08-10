@@ -24,6 +24,7 @@ namespace Deltatime.UI
 
         private GUIStyle statusStyle;
         private GUIStyle messageStyle;
+        private GUIStyle overlayMessageStyle;
         private GUIStyle controlsStyle;
         private Texture2D whiteTexture;
         private Texture2D panelTexture;
@@ -135,11 +136,13 @@ namespace Deltatime.UI
 
             if (!string.IsNullOrEmpty(message))
             {
-                Rect messagePanel = new Rect(
-                    (Screen.width - 460f) * 0.5f,
-                    (Screen.height - 168f) * 0.5f,
-                    460f,
-                    168f);
+                Rect messagePanel = replay.IsReplaying
+                    ? CreateTopRightOverlay(330f, 144f)
+                    : new Rect(
+                        (Screen.width - 460f) * 0.5f,
+                        (Screen.height - 168f) * 0.5f,
+                        460f,
+                        168f);
                 GUI.DrawTexture(messagePanel, panelTexture);
                 GUI.Label(
                     new Rect(
@@ -148,7 +151,7 @@ namespace Deltatime.UI
                         messagePanel.width - 40f,
                         messagePanel.height - 32f),
                     message,
-                    messageStyle);
+                    replay.IsReplaying ? overlayMessageStyle : messageStyle);
             }
 
             DrawDeadlineFeedback();
@@ -166,7 +169,7 @@ namespace Deltatime.UI
             }
             else
             {
-                controls = "WASD 이동  |  마우스 조준  |  LMB 공격 / 자동소총 연사  |  RMB 투척\n" +
+                controls = "WASD 이동  |  마우스 조준  |  LMB - 좌 클릭 공격 / 자동소총 연사  |  RMB - 우 클릭 투척\n" +
                            "Q DEADLINE  |  Space 대시  |  E 잡기 / 획득 / 교체  |  R 다시 시작";
             }
             GUI.Label(
@@ -232,6 +235,11 @@ namespace Deltatime.UI
                 alignment = TextAnchor.MiddleCenter
             };
 
+            overlayMessageStyle = new GUIStyle(messageStyle)
+            {
+                fontSize = 20
+            };
+
             controlsStyle = new GUIStyle(GUI.skin.label)
             {
                 font = regularFont,
@@ -252,11 +260,7 @@ namespace Deltatime.UI
                     "DEADLINE\n" +
                     $"{causes}\n" +
                     "이동하여 실행";
-                Rect panel = new Rect(
-                    (Screen.width - 480f) * 0.5f,
-                    Screen.height * 0.62f,
-                    480f,
-                    142f);
+                Rect panel = CreateTopRightOverlay(330f, 142f);
                 GUI.DrawTexture(panel, panelTexture);
                 GUI.Label(
                     new Rect(
@@ -265,7 +269,7 @@ namespace Deltatime.UI
                         panel.width - 40f,
                         panel.height - 16f),
                     text,
-                    messageStyle);
+                    overlayMessageStyle);
                 return;
             }
 
@@ -285,6 +289,17 @@ namespace Deltatime.UI
                 54f);
             GUI.DrawTexture(warningPanel, panelTexture);
             GUI.Label(warningPanel, warning, statusStyle);
+        }
+
+        private static Rect CreateTopRightOverlay(float preferredWidth, float height)
+        {
+            const float screenMargin = 18f;
+            float width = Mathf.Min(preferredWidth, Screen.width - screenMargin * 2f);
+            return new Rect(
+                Screen.width - screenMargin - width,
+                screenMargin,
+                width,
+                height);
         }
 
         private void OnDestroy()

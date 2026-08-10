@@ -1,6 +1,7 @@
 using System;
 using Deltatime.Audio;
 using Deltatime.Combat;
+using Deltatime.Core;
 using Deltatime.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -120,6 +121,7 @@ namespace Deltatime.EditorTools
                 manager.PlayWeaponFire(pistol, Vector3.zero);
                 manager.PlayMeleeImpact(MeleeImpactKind.Punch, Vector3.zero);
                 manager.PlayMeleeImpact(MeleeImpactKind.Bat, Vector3.zero);
+                ValidateBatSwingFeedback(manager);
                 manager.PlayWeaponThrow(Vector3.zero);
                 manager.PlayUiClick();
                 manager.PlayDeadlineEnter();
@@ -174,6 +176,82 @@ namespace Deltatime.EditorTools
             if (!condition)
             {
                 throw new InvalidOperationException(message);
+            }
+        }
+
+        private static void ValidateBatSwingFeedback(SoundManager manager)
+        {
+            GameObject source = new GameObject("Bat Swing Miss Validation Source");
+            GameObject target = null;
+            try
+            {
+                MeleeAttackExecution execution =
+                    source.AddComponent<MeleeAttackExecution>();
+                int swingCountBeforeMiss = manager.MeleeSwingPlayCount;
+                int impactCountBeforeMiss = manager.MeleeImpactPlayCount;
+                Require(
+                    execution.BeginAttack(
+                        source,
+                        CombatFaction.Player,
+                        Vector3.forward,
+                        1.25f,
+                        45f,
+                        1,
+                        MeleeImpactKind.Bat),
+                    "Bat swing miss validation attack did not start.");
+                Require(
+                    manager.MeleeSwingPlayCount == swingCountBeforeMiss + 1,
+                    "A missed bat attack did not play exactly one swing sound.");
+                Require(
+                    manager.MeleeImpactPlayCount == impactCountBeforeMiss,
+                    "A missed bat attack incorrectly played an impact sound.");
+
+                target = new GameObject("Bat Swing Hit Validation Target");
+                target.transform.position = new Vector3(0f, 0f, 0.75f);
+                target.AddComponent<SphereCollider>().radius = 0.25f;
+                SwingValidationTarget damageable =
+                    target.AddComponent<SwingValidationTarget>();
+                Physics.SyncTransforms();
+                int swingCountBeforeHit = manager.MeleeSwingPlayCount;
+                int impactCountBeforeHit = manager.MeleeImpactPlayCount;
+                Require(
+                    execution.BeginAttack(
+                        source,
+                        CombatFaction.Player,
+                        Vector3.forward,
+                        1.25f,
+                        45f,
+                        1,
+                        MeleeImpactKind.Bat),
+                    "Bat swing hit validation attack did not start.");
+                Require(
+                    damageable.HitCount == 1,
+                    "Bat swing hit validation did not damage its target.");
+                Require(
+                    manager.MeleeSwingPlayCount == swingCountBeforeHit + 1 &&
+                    manager.MeleeImpactPlayCount == impactCountBeforeHit + 1,
+                    "A bat hit did not play both the swing and impact sounds.");
+            }
+            finally
+            {
+                if (target != null)
+                {
+                    UnityEngine.Object.Destroy(target);
+                }
+
+                UnityEngine.Object.Destroy(source);
+            }
+        }
+
+        private sealed class SwingValidationTarget : MonoBehaviour, IDamageable
+        {
+            public CombatFaction Faction => CombatFaction.Enemy;
+            public bool IsAlive => true;
+            public int HitCount { get; private set; }
+
+            public void ReceiveHit(DamageHit hit)
+            {
+                HitCount++;
             }
         }
     }

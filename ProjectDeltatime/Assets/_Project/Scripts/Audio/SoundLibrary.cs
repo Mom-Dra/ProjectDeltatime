@@ -33,6 +33,7 @@ namespace Deltatime.Audio
         [SerializeField] private WeaponFireSet[] weaponFireSets;
         [SerializeField] private AudioClip[] punchHitClips;
         [SerializeField] private AudioClip[] batHitClips;
+        [SerializeField] private AudioClip[] batSwingClips;
         [SerializeField] private AudioClip weaponThrowClip;
 
         [Header("UI")]
@@ -75,6 +76,11 @@ namespace Deltatime.Audio
             return GetRandomClip(impactKind == MeleeImpactKind.Bat ? batHitClips : punchHitClips);
         }
 
+        public AudioClip GetBatSwingClip()
+        {
+            return GetRandomClip(batSwingClips);
+        }
+
         public AudioClip GetDeadlineReleaseClip()
         {
             return GetRandomClip(deadlineReleaseClips);
@@ -88,6 +94,7 @@ namespace Deltatime.Audio
             WeaponFireSet[] fireSets,
             AudioClip[] punchHits,
             AudioClip[] batHits,
+            AudioClip[] batSwings,
             AudioClip throwClip,
             AudioClip uiClick,
             AudioClip deadlineImpact,
@@ -101,6 +108,7 @@ namespace Deltatime.Audio
             weaponFireSets = fireSets;
             punchHitClips = punchHits;
             batHitClips = batHits;
+            batSwingClips = batSwings;
             weaponThrowClip = throwClip;
             uiClickClip = uiClick;
             deadlineEnterImpactClip = deadlineImpact;
@@ -132,6 +140,7 @@ namespace Deltatime.Audio
             }
 
             if (!HasClips(punchHitClips) || !HasClips(batHitClips) ||
+                !HasClips(batSwingClips) ||
                 weaponThrowClip == null ||
                 uiClickClip == null ||
                 deadlineEnterImpactClip == null || deadlineTimeWarpClip == null ||

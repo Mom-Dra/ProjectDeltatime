@@ -36,6 +36,9 @@ MonoBehaviour:
   batHitClips:
   - {fileID: 8300000, guid: 862479b6788fc5b4a987ed1dfe8e840b, type: 3}
   - {fileID: 8300000, guid: 6961579f57fdb7b4787b799d5f77da43, type: 3}
+  batSwingClips:
+  - {fileID: 8300000, guid: c23ad57646f22f6438c9667bdc2d6a50, type: 3}
+  - {fileID: 8300000, guid: 0b46dfde2a27cd040a21a511dd99e40c, type: 3}
   weaponThrowClip: {fileID: 8300000, guid: fe45ff8b78f8e6c43b6550e6102058a0, type: 3}
   uiClickClip: {fileID: 8300000, guid: 0b5aeaabb2725494e9154e0e0ca7a42f, type: 3}
   deadlineEnterImpactClip: {fileID: 8300000, guid: 555ee7e7aba6119478b27cbbc4d8e091, type: 3}

@@ -7,11 +7,17 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-10 (KST) |
-| 문서 버전 | 1.6.52 |
+| 문서 버전 | 1.6.58 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 전투는 플레이어 현재 높이 수평 평면 조준점과 총구 기준 수평 발사, 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기를 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·해제음과 BGM 덕킹을 자동 재생한다. |
 
 ### 1.1 분석 기준과 범위
 
+- 2026-08-10 Stage5 왼쪽 아래 단상의 `SM_Bld_Steps_01` 계단이 런타임용 비활성 상태로 그대로 NavMesh 재베이크 입력에서 제외되던 문제를 복구했다. `Tools/Prototype/Rebake Current Stage 5 Navigation`은 현재 열린 `Stage5.unity`에서 계단 콜라이더를 베이크 직전에 복원하고, 베이크 후에는 `NavMeshGroundMovement` 높이 투영을 유지하도록 다시 비활성화한다. 전용 NavMesh 에셋 참조·삼각형 생성·계단 주변 NavMesh·가구 상면 제외·높이 이동 구성 검증을 거친다. **구현 완료**. Unity 6000.1.13f1 배치 재베이크 검증과 임시 명령 제거 후 컴파일은 통과했으며, 실제 Play Mode 계단 조작은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Level/NavMeshGroundMovement.cs`.
+
+- 2026-08-10 Tutorial 하단 진행 패널의 청록색 단계 제목은 23pt/32px 영역에서 20pt/36px 영역으로 조정하고, 안내·진행 텍스트의 세로 위치와 높이도 다시 배분해 잘림을 없앴다. 우상단 리플레이와 활성 `DEADLINE` 안내는 중앙 메시지의 24pt 글꼴 대신 전용 20pt 글꼴을 사용해 패널 내부의 여러 줄이 잘리지 않게 했다. 일반 중앙 메시지의 24pt 표기는 유지한다. **구현 완료**. 세 UI의 글꼴 크기와 레이블 영역을 정적으로 대조했으며, 실제 Game View 가독성은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`.
+- 2026-08-10 야구방망이의 유효한 공격 시작마다 공격자 위치에서 OpenGameArt CC0 Swishes Sound Pack의 `swish-5.wav`·`swish-6.wav` 기반 짧은 3D 휘두름음 중 하나를 재생한다. 대상이 없거나 사거리·시야 판정에 실패해도 소리는 나며, 실제 적중 시에는 기존 방망이 적중음이 별도로 겹친다. 애니메이션 공격과 애니메이터 없는 즉시 판정 경로 모두에 적용했고 주먹·총기·투척에는 적용하지 않았다. **구현 완료**. 새 WAV 원본과 프로젝트 사본의 SHA-256 일치, 유지된 Unity `.meta` GUID와 `DeltatimeSoundLibrary` 직렬화 참조, 코드 정적 연결은 확인했다. Unity 배치 사운드 스모크는 열린 다른 Unity 인스턴스 때문에 **미실행/확인 불가**이며, `dotnet build`는 기존 누락 파일 `Assets/TutorialInfo/Scripts/Readme.cs`로 실패했다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Combat/Swing`.
+- 2026-08-10 리플레이의 결과·조작 안내 패널과 활성 `DEADLINE`의 행동 수·실행 안내 패널을 중앙 화면에서 우상단으로 옮겼다. 두 패널은 좌우 18px 여백 안에서 최대 폭 330px을 사용하므로, 중앙의 리플레이와 실시간 전투 화면을 가리지 않는다. 일반 플레이와 리플레이가 아닌 사망·클리어 메시지의 기존 배치는 유지했으며 입력·전투·리플레이 동작은 변경하지 않았다. **구현 완료**. `GameHud`의 상태별 패널 분기와 우상단 좌표 계산을 정적으로 대조했으며, 실제 Game View의 해상도별 가독성은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`.
+- 2026-08-10 게임플레이 HUD와 Tutorial 단계 안내의 마우스 버튼 표기를 모두 `LMB - 좌 클릭`, `RMB - 우 클릭`으로 통일했다. 실제 좌·우 버튼 바인딩과 행동은 바꾸지 않았으며, 화면에 표시되는 조작 안내만 갱신했다. **구현 완료**. 두 런타임 UI 소스의 모든 LMB/RMB 표시 문자열이 새 표기를 사용하는지 정적 대조했으며, 실제 Game View의 줄바꿈·가독성은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`.
 - 2026-08-10 사용자 요청으로 본편 임시 진행 경로를 `Stage1 → Stage2 → Stage5 → EndingScene → MainScene`으로 변경했다. `StageSceneFlow`에서 Stage6를 플레이 가능 목록에서 잠시 제외하고, `GameBuildSceneCatalog`와 `ProjectSettings/EditorBuildSettings.asset`에서도 Stage6 씬을 제외했다. Stage6 씬·전용 에셋·스크립트는 삭제하지 않고 보존하므로 이후 재개 시 진행 목록과 빌드 등록을 복원하면 된다. **구현 완료**. `StageSceneFlow`·카탈로그·직렬화된 Build Settings의 정적 대조는 통과했으며, Unity 런타임 클리어 입력 검증은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Level/StageSceneFlow.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/GameBuildSceneCatalog.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`.
 - 2026-08-10 `SoundManager`는 `EndingScene`을 로드하면 `SoundLibrary.EndingBgm`을 선택해 비반복 재생하며, 현재 SoundLibrary의 `endingBgm` GUID는 `BGM_Ending.mp3` GUID와 일치한다. EndingScene의 Main Camera에는 활성 `AudioListener`가 있다. `SoundManagerPlayModeSmokeTest`는 MainScene→Tutorial→EndingScene 전환 뒤 `CurrentBgmClip == EndingBgm`을 검사한다. **구현 완료**. 분기·에셋 GUID·AudioListener의 정적 대조와 관련 파일 대상 `git diff --check`는 통과했지만, 프로젝트를 연 다른 Unity 인스턴스 때문에 새 PlayMode 스모크는 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Audio/BGM/BGM_Ending.mp3`, `ProjectDeltatime/Assets/_Project/Scenes/EndingScene.unity`.
 - 2026-08-10 `MainScene`은 기존 `게임 시작` 버튼 클릭 외에도 `N` 키로 `Tutorial`을 연다. `MainMenuController`가 공용 `PlayerControls.Gameplay.NextStage` 입력을 활성화해 같은 `Play()` 경로로 보내므로, Build Settings 대상 확인과 UI 클릭음도 버튼과 동일하게 적용한다. 중복 입력 중에는 씬 전환을 한 번만 요청한다. Canvas의 `TutorialKeyHint`는 Noto Sans KR TMP 폰트로 `N 키를 눌러 튜토리얼 시작`을 표시하며, `MainSceneBuilder`는 텍스트·폰트·비입력·반응형 좌표를 멱등 구성·검증한다. **구현 완료**. 소스와 직렬화된 씬의 입력 경로·문구·TMP 참조·앵커·크기 정적 대조는 통과했다. Unity 6000.1.13f1 배치 `MainSceneBuilder.BuildAndValidateFromCommandLine`은 다른 Unity 인스턴스가 프로젝트를 열고 있어 `HandleProjectAlreadyOpenInAnotherInstance` 단계에서 실행되지 않아, 실제 Game View 키 입력·문구 가시성은 **미실행/확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`.
@@ -186,7 +192,7 @@
 | 스테이지 적 등록·클리어 | 구현 완료 | 생존 적을 등록하고 0명이 되면 전투를 막고 클리어 리플레이를 요청한다. 클리어 리플레이의 `N`은 중앙 경로의 다음 목적지를 연다 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageSceneFlow.cs` | 현재 임시 경로는 `Stage1 → Stage2 → Stage5 → EndingScene` |
 | 사망·재시작 | 구현 완료 | 플레이어 사망 시 전투를 막고 사망 리플레이를 요청한다. 사망 리플레이 중 `N`은 무시하며 `R`로 현재 씬을 재로드한다 | `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs` | 체크포인트 없음 |
 | 스테이지 리플레이 | 부분 구현 | 카메라·일반 Transform·라인/VFX·등록 조명을 20Hz 소스 시각으로 기록하고 `WorldDeltaTime` 누적 표시 시간을 비스케일 1.00배로 구간 매핑한다. 캐릭터는 본 포즈 대신 시각 루트 1회 복제+Animator 파라미터/Trigger/Controller/활성 이벤트+체크포인트로 재생한다. ViewCone은 기록된 보간 포즈에서 재계산하며 클리어·사망 리플레이 모두 암흑 시야로 고정한다 | `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayRecordingClock.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayAnimationTrack.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Vision/VisionCone.cs` | 소스 300초/추정 64MiB에서 명시적 기록 중단. Deadline 카메라 복귀 0.2초. 수동 시각·프로파일 확인 불가 |
-| HUD | 부분 구현 | IMGUI로 적 수, 체력, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 리플레이 시간과 결과별 `N`·`R` 조작 안내를 표시 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 최종 해상도별 수동 확인 미실행 |
+| HUD | 부분 구현 | IMGUI로 적 수, 체력, 실시간, 월드 배율, 대시, `DEADLINE`, 무기, 리플레이 시간과 결과별 `N`·`R` 조작 안내를 표시한다. 리플레이 결과·조작과 활성 `DEADLINE` 행동 패널은 중앙 화면을 가리지 않도록 우상단에 표시한다 | `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs` | 디버그 HUD, 최종 해상도별 수동 확인 미실행 |
 | Stage1/Stage2 콘텐츠 | 부분 구현 | 두 씬 모두 플레이어 1, 이동 연사형 2, 근접 추격형 1, 권총·샷건 픽업 2, Navigation 1을 같은 위치에 배치한다. Stage1에는 플레이어·적 Synty 시각 4개와 Animator·역할 링을 추가했으며 Stage2는 캡슐 시각을 유지한다 | `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Prefabs/PistolPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/ShotgunPickup.prefab` | 게임플레이 배치는 같고 조명과 캐릭터 시각 적용 상태가 다름 |
 | Stage3 `Afterimage Club` 콘텐츠 | 구현 완료 | Synty 나이트클럽 바·DJ 부스·라운지·댄스 플로어와 캐릭터 4종, 플레이어 1, 이동 연사형 2, 근접 추격형 1, 픽업 2, 전용 Navigation을 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs` | 정적 검증·전용 플레이 모드 스모크 통과. 실조작/클리어 시각 품질은 확인 불가 |
 | Stage4 `Last Call Rooftop` 콘텐츠 | 구현 완료 | Synty 옥상 바·난간·소파 라운지·야외 테이블·화분·화로와 캐릭터 6종, 플레이어 1, 이동 연사형 3, 근접 추격형 2, 픽업 2, 전용 Navigation을 배치 | `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs` | 정적 검증·전용 플레이 모드 스모크 통과. 실조작/클리어 시각 품질은 확인 불가 |
@@ -452,7 +458,7 @@ flowchart TD
 | 3 | `Stage2` | 어두운 조명/암흑 시야 프로필의 동일 전투 방 | Ambient 0.35, Directional 0.06, Map Fill 0, 안개 19~42 | 부분 구현 |
 | 4 | `Stage3` | `Afterimage Club` 나이트클럽 전투 공간 | Synty 모듈형 클럽, 마젠타·시안·바이올렛·블루 정적 포인트 조명 4개, 전용 NavMesh | 구현 완료 |
 | 5 | `Stage4` | `Last Call Rooftop` 옥상 라운지 전투 공간 | Synty 옥상 바·난간·라운지·야외 테이블, 앰버·시안·마젠타·문라이트 정적 조명 4개, 전용 NavMesh | 구현 완료 |
-| 6 | `Stage5` | `Undertow Dive` 다이브 바 전투 공간 | 공식 Synty 데모의 바·좌석·서비스룸·기계식 황소 구역과 URP 국소 조명·Exp2 안개, 전용 NavMesh | 구현 완료 |
+| 6 | `Stage5` | `Undertow Dive` 다이브 바 전투 공간 | 공식 Synty 데모의 바·좌석·서비스룸·기계식 황소 구역과 URP 국소 조명·Exp2 안개, 왼쪽 아래 단상 계단을 포함한 전용 NavMesh | 구현 완료 |
 | 7 | `Stage6` | `Neon Overlook` 다층 옥상 전투 공간 | 공식 Synty `Demo_RooftopBar_01`의 두 Roof Layer·도시 배경·바/라운지/난간/통로·URP 조명·안개·반사 프로브, 전용 NavMesh | 구현 완료 |
 
 근거 파일: `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuButtonFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage3Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage4Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5Navigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage6.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage6Navigation.asset`
@@ -574,8 +580,8 @@ flowchart LR
 |---|---|---|
 | `W`, `A`, `S`, `D` | 이동 | 구현 완료 |
 | 마우스 이동 | 지면 조준·플레이어 회전 | 구현 완료 |
-| 마우스 왼쪽 | 권총·샷건 단발, 자동소총 홀드 연사, 빈손 주먹 / `DEADLINE` 중 Down 기반 공격 준비 | 구현 완료: 컴파일·씬 연결 확인, 실제 연사·산탄·주먹·`DEADLINE` 연계는 미실행으로 확인 불가 |
-| 마우스 오른쪽 | 무기 투척 / `DEADLINE` 중 투척 준비 | 구현 완료 |
+| `LMB - 좌 클릭` | 권총·샷건 단발, 자동소총 홀드 연사, 빈손 주먹 / `DEADLINE` 중 Down 기반 공격 준비 | 구현 완료: 컴파일·씬 연결 확인, 실제 연사·산탄·주먹·`DEADLINE` 연계는 미실행으로 확인 불가 |
+| `RMB - 우 클릭` | 무기 투척 / `DEADLINE` 중 투척 준비 | 구현 완료 |
 | `Q` | `DEADLINE` 즉시 발동 | 구현 완료: Q 바인딩, 충전·재사용 대기·하드 프리즈, 튜토리얼 발동/2개 행동/이동 해제 스모크 통과 |
 | `Space` | 이동 방향 대시 | 구현 완료 |
 | `E` | 공중 가로채기 또는 바닥 획득/교환 | 부분 구현: 바닥 교환은 기존 테스트 확인, 공중 가로채기는 최신 테스트 미검증 |
@@ -615,9 +621,10 @@ flowchart LR
 - MainScene은 원본 비율을 유지해 화면을 덮는 배경 위에 좌측 상단 타이틀과 그 아래 좌측의 배경 없는 흰색 `PLAY` 텍스트 하나만 표시한다. 투명 `Image`가 넓은 클릭 영역을 제공하며, `PLAY`는 hover 중 `1.08`배로 확대되고 누르는 동안 로고 빨간색 `RGB(224, 28, 28)`으로 표시된다. release·exit 시 흰색과 원래 크기로 복귀한다. Canvas 기준 해상도는 `1920×1080`, 폭/높이 일치값은 `0.5`다.
 - Tutorial은 좌측 상단에 현재 단계/전체 단계, 한국어 지시와 판정 진행도, 월드 배율·무기/탄약·`DEADLINE` 충전을 표시하며 완료 시 중앙 완료 패널을 표시한다.
 - 좌측 상단 상태 패널: 적 수, 체력, 실제 플레이 시간, 월드 배율 또는 리플레이 시간, 대시 상태, `DEADLINE` 상태, 무기/탄약 또는 근접 표시
-- 화면 중앙: 사망/클리어 메시지 또는 `DEADLINE` 행동 수·해제 안내
+- 화면 중앙: 일반 사망/클리어 메시지
+- 화면 우측 상단: 리플레이 결과·조작 안내 또는 활성 `DEADLINE`의 행동 수·실행 안내
 - 화면 상단 중앙: 사용 가능할 때 `PRESS Q TO DEADLINE` 안내
-- 화면 하단: 전체 키보드·마우스 조작법
+- 화면 하단: 전체 키보드·마우스 조작법. 마우스 버튼은 `LMB - 좌 클릭`, `RMB - 우 클릭`으로 표시
 - MainScene 외의 별도 메뉴, 설정, 일시정지, 인벤토리, 결과 화면은 없다.
 
 ### 7.6 예상되는 사용자 경험
@@ -1033,6 +1040,11 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-10 | 1.6.57 | 야구방망이 휘두름음을 Kenney 칼날 소리 대신 OpenGameArt CC0 Swishes Sound Pack의 전용 WAV 2종으로 교체했다. | 근접 전투, SoundLibrary, 전투 오디오 |
+| 2026-08-10 | 1.6.56 | Tutorial 하단 단계 제목과 우상단 리플레이·DEADLINE 안내의 글꼴/레이블 영역을 조정해 텍스트 잘림을 해소 | Tutorial HUD, GameHud 텍스트 가독성 |
+| 2026-08-10 | 1.6.55 | 야구방망이 공격 시작 시 CC0 Kenney RPG Audio 기반 3D 휘두름음을 대상 적중 여부와 무관하게 재생하고, 실제 적중 때 기존 적중음을 겹치도록 연결했다. | 근접 전투, SoundManager, SoundLibrary, 전투 오디오 |
+| 2026-08-10 | 1.6.54 | 리플레이 결과·조작 안내와 활성 DEADLINE 행동 패널을 중앙에서 우상단으로 옮겨 플레이 화면 가림을 줄임 | HUD 레이아웃, 리플레이·DEADLINE 화면 가독성 |
+| 2026-08-10 | 1.6.53 | 게임플레이 HUD와 Tutorial 안내의 마우스 버튼 표기를 `LMB - 좌 클릭`, `RMB - 우 클릭`으로 통일 | UI 조작 안내, Tutorial 온보딩 |
 | 2026-08-10 | 1.6.47 | 라이브 `DEADLINE`에 Built-in 풀스크린 진입·유지·복원 효과, 행동 노드 2개와 초과 거절 점멸, 비정상 중단 즉시 초기화, 리플레이 비활성화를 추가하고 배치 컴파일·전용 PlayMode 스모크 결과를 기록했다. | DEADLINE 시각 피드백, WorldTimeVisualFeedback, Resources 셰이더, 런타임 자동 연결, 리플레이 |
 | 2026-08-10 | 1.6.46 | Tutorial 왼쪽 상태 전광판 여섯 개의 스크롤을 전역 셰이더 시간 대신 `WorldElapsedTime`에 연결했고, 모든 진행 게이트의 17철창 시각 생성·전용 적용 경로·검증을 추가했다. 저장 씬 철창 적용은 열린 Unity 인스턴스 잠금으로 보류됐다. | Tutorial 전광판 월드 시간, 게이트 시각, WorldTimeVisualFeedback, TutorialSceneBuilder |
 | 2026-08-10 | 1.6.45 | 샷건 한 발의 펠릿 수를 8개에서 4개로 낮추고, 에셋·재생성값·저장 데이터 검증을 통일했다. 펠릿 피해, 18도 원형 콘, 지터·시드, 탄창, 발사 간격, 사거리와 반동은 유지했다. | 샷건 밸런스, WeaponDefinition, PrototypeSceneBuilder |

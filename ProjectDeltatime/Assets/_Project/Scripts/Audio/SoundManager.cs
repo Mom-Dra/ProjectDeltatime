@@ -35,6 +35,8 @@ namespace Deltatime.Audio
         private bool deadlineActive;
         private AudioClip requestedBgmClip;
         private int uiClickPlayCount;
+        private int meleeSwingPlayCount;
+        private int meleeImpactPlayCount;
 
         public static SoundManager Instance { get; private set; }
         public SoundLibrary Library => library;
@@ -43,6 +45,8 @@ namespace Deltatime.Audio
         public bool IsDeadlineTimeWarpLooping =>
             deadlineWarpSource != null && deadlineWarpSource.loop;
         public int UiClickPlayCount => uiClickPlayCount;
+        public int MeleeSwingPlayCount => meleeSwingPlayCount;
+        public int MeleeImpactPlayCount => meleeImpactPlayCount;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -109,13 +113,40 @@ namespace Deltatime.Audio
 
         public void PlayMeleeImpact(MeleeImpactKind impactKind, Vector3 position)
         {
+            AudioClip clip = library == null
+                ? null
+                : library.GetMeleeImpactClip(impactKind);
+            if (clip == null)
+            {
+                return;
+            }
+
+            meleeImpactPlayCount++;
             PlaySpatial(
-                library == null ? null : library.GetMeleeImpactClip(impactKind),
+                clip,
                 position,
                 impactKind == MeleeImpactKind.Bat ? 1f : 0.88f,
                 0.96f,
                 1.04f,
                 22f);
+        }
+
+        public void PlayMeleeSwing(Vector3 position)
+        {
+            AudioClip clip = library == null ? null : library.GetBatSwingClip();
+            if (clip == null)
+            {
+                return;
+            }
+
+            meleeSwingPlayCount++;
+            PlaySpatial(
+                clip,
+                position,
+                0.72f,
+                0.94f,
+                1.06f,
+                18f);
         }
 
         public void PlayWeaponThrow(Vector3 position)

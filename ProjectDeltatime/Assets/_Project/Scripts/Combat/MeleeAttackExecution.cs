@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Deltatime.Audio;
 using Deltatime.Core;
 using Deltatime.Visuals;
 using UnityEngine;
@@ -124,6 +125,11 @@ namespace Deltatime.Combat
         {
             currentAttack = request;
             hasCurrentAttack = true;
+            if (request.ImpactKind == MeleeImpactKind.Bat)
+            {
+                SoundManager.Instance?.PlayMeleeSwing(request.Source.transform.position);
+            }
+
             if (animationController == null)
             {
                 animationController =
