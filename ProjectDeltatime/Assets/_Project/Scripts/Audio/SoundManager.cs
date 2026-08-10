@@ -14,7 +14,7 @@ namespace Deltatime.Audio
         private const string LibraryResourceName = "DeltatimeSoundLibrary";
         private const int SpatialSourceCount = 16;
         private const float BgmVolume = 0.55f;
-        private const float StageBgmVolume = 0.5f;
+        private const float StageBgmVolume = 0.35f;
         private const float GlobalSfxVolume = 0.9f;
         private const float DeadlineDuckMultiplier = 0.4f;
         private const float BgmCrossfadeDuration = 0.25f;

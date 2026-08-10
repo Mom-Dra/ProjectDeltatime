@@ -104,25 +104,32 @@ namespace Deltatime.EditorTools
 
                 if (phase == 2)
                 {
-                    if (EditorApplication.timeSinceStartup - phaseStartedAt < BgmCrossfadeSettleDuration)
-                    {
-                        return;
-                    }
-
                     Require(
                         SceneManager.GetActiveScene().name == StageSceneName,
                         "Tutorial did not load Stage1.");
                     Require(
                         manager.CurrentBgmClip == manager.Library.StageBgm,
                         "Stage1 did not select the stage BGM.");
-                    ValidateStageBgmVolume(manager);
-                    SceneManager.LoadScene(EndingSceneName);
                     phaseStartedAt = EditorApplication.timeSinceStartup;
                     phase = 3;
                     return;
                 }
 
                 if (phase == 3)
+                {
+                    if (EditorApplication.timeSinceStartup - phaseStartedAt < BgmCrossfadeSettleDuration)
+                    {
+                        return;
+                    }
+
+                    ValidateStageBgmVolume(manager);
+                    SceneManager.LoadScene(EndingSceneName);
+                    phaseStartedAt = EditorApplication.timeSinceStartup;
+                    phase = 4;
+                    return;
+                }
+
+                if (phase == 4)
                 {
                     Require(
                         SceneManager.GetActiveScene().name == EndingSceneName,
@@ -278,8 +285,8 @@ namespace Deltatime.EditorTools
                 {
                     float stageBgmVolume = source.volume;
                     Require(
-                        Mathf.Approximately(stageBgmVolume, 0.5f),
-                        $"Stage BGM volume was not reduced to 0.50. Current: {stageBgmVolume:F3}.");
+                        Mathf.Approximately(stageBgmVolume, 0.35f),
+                        $"Stage BGM volume was not reduced to 0.35. Current: {stageBgmVolume:F3}.");
                     return;
                 }
             }

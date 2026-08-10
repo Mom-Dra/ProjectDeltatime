@@ -92,17 +92,18 @@ namespace Deltatime.UI
 
             string status =
                 $"적  {stage.RemainingEnemyCount}\n" +
-                $"체력  {playerHealth.CurrentHealth}/{playerHealth.MaximumHealth}\n" +
                 $"{timeStatus}\n" +
                 $"대시  {dashState}\n" +
-                $"DEADLINE  {deadlineState}\n" +
+                $"DEADLINE  {deadlineState}";
+            string vitalStatus =
+                $"체력  {playerHealth.CurrentHealth}/{playerHealth.MaximumHealth}\n" +
                 $"무기  {weaponName}  {ammunition}";
 
-            Rect statusPanel = new Rect(18f, 18f, 330f, 248f);
+            Rect statusPanel = new Rect(18f, 18f, 330f, 178f);
             GUI.DrawTexture(statusPanel, panelTexture);
-            GUI.Label(new Rect(32f, 28f, 300f, 188f), status, statusStyle);
+            GUI.Label(new Rect(32f, 28f, 300f, 112f), status, statusStyle);
 
-            Rect barBackground = new Rect(32f, 228f, 300f, 10f);
+            Rect barBackground = new Rect(32f, 158f, 300f, 10f);
             GUI.DrawTexture(barBackground, whiteTexture);
             Color previousColor = GUI.color;
             GUI.color = accentColor;
@@ -117,6 +118,17 @@ namespace Deltatime.UI
                     barBackground.height),
                 whiteTexture);
             GUI.color = previousColor;
+
+            Rect vitalPanel = CreateBottomLeftOverlay(330f, 76f, 78f);
+            GUI.DrawTexture(vitalPanel, panelTexture);
+            GUI.Label(
+                new Rect(
+                    vitalPanel.x + 14f,
+                    vitalPanel.y + 10f,
+                    vitalPanel.width - 28f,
+                    vitalPanel.height - 20f),
+                vitalStatus,
+                statusStyle);
 
             string message = null;
             switch (stage.CurrentState)
@@ -137,7 +149,7 @@ namespace Deltatime.UI
             if (!string.IsNullOrEmpty(message))
             {
                 Rect messagePanel = replay.IsReplaying
-                    ? CreateTopRightOverlay(330f, 144f)
+                    ? CreateTopCenterOverlay(330f, 144f)
                     : new Rect(
                         (Screen.width - 460f) * 0.5f,
                         (Screen.height - 168f) * 0.5f,
@@ -263,7 +275,7 @@ namespace Deltatime.UI
                 "DEADLINE\n" +
                 $"{causes}\n" +
                 "이동하여 실행";
-            Rect panel = CreateTopRightOverlay(330f, 142f);
+            Rect panel = CreateTopCenterOverlay(330f, 142f);
             GUI.DrawTexture(panel, panelTexture);
             GUI.Label(
                 new Rect(
@@ -275,13 +287,27 @@ namespace Deltatime.UI
                 overlayMessageStyle);
         }
 
-        private static Rect CreateTopRightOverlay(float preferredWidth, float height)
+        private static Rect CreateTopCenterOverlay(float preferredWidth, float height)
         {
             const float screenMargin = 18f;
             float width = Mathf.Min(preferredWidth, Screen.width - screenMargin * 2f);
             return new Rect(
-                Screen.width - screenMargin - width,
+                (Screen.width - width) * 0.5f,
                 screenMargin,
+                width,
+                height);
+        }
+
+        private static Rect CreateBottomLeftOverlay(
+            float preferredWidth,
+            float height,
+            float bottomOffset)
+        {
+            const float screenMargin = 18f;
+            float width = Mathf.Min(preferredWidth, Screen.width - screenMargin * 2f);
+            return new Rect(
+                screenMargin,
+                Mathf.Max(screenMargin, Screen.height - bottomOffset - height),
                 width,
                 height);
         }

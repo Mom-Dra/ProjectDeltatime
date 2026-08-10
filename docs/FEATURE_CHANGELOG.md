@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-10 - 스테이지 HUD 상·하단 재배치
+
+- 변경 유형: GameHud 레이아웃 수정, 기획 문서 갱신
+- 변경 내용: **구현 완료**. 리플레이 결과·조작 안내와 활성 `DEADLINE` 행동 안내를 우상단에서 가운데 상단으로 옮겼다. 좌상단 상태 패널은 적·시간·대시·`DEADLINE` 충전만 표시하도록 `330×178`로 축소했으며, 체력과 무기/탄약은 하단 조작 안내 위 14px 간격의 `330×76` 좌하단 패널로 분리했다. 입력·전투·리플레이 동작과 일반 사망/클리어 중앙 메시지는 유지했다.
+- 영향을 받은 시스템: GameHud 리플레이·DEADLINE 안내 위치, 체력·무기/탄약 상태 표시, 스테이지 화면 가독성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.61로 갱신해 상태별 HUD 영역과 패널 크기를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 대조로 리플레이·활성 DEADLINE이 같은 가운데 상단 좌표 계산을 사용하고, 체력·무기/탄약이 좌하단 `vitalStatus` 패널로 분리되며 좌상단 상태 문자열에서 제외되는지 확인하고 `git diff --check`를 통과했다. Unity 컴파일·Play Mode 및 실제 Game View 가독성 확인은 **미실행/확인 불가**다.
+- 남은 작업: **확인 불가**. 목표 해상도에서 상단 중앙 안내와 좌하단 체력·무기 패널, 하단 조작 안내 사이의 시각적 간격과 가독성을 수동 확인해야 한다.
+
+## 2026-08-10 - 스테이지 BGM 볼륨 추가 하향
+
+- 변경 유형: 사용자 청감 피드백 반영, 스테이지 BGM 믹스 재조정 및 회귀 검사 갱신
+- 변경 내용: **구현 완료**. 사용자 피드백에 따라 Stage1~Stage6 공용 `StageBgm` 기본 출력을 `0.50`에서 `0.35`로 더 낮췄다(직전 값 대비 30% 감소). MainScene·Tutorial·엔딩 BGM 기본 출력 `0.55`와 `DEADLINE` 덕킹 배율 `0.4`는 유지한다. 따라서 `DEADLINE` 중 스테이지 BGM 출력은 `0.14`다. `SoundManagerPlayModeSmokeTest`의 Stage1 출력 검증값도 `0.35`로 갱신했다.
+- 영향을 받은 시스템: Stage1~Stage6 BGM 출력, `DEADLINE` BGM 덕킹, 씬 간 BGM 크로스페이드, 오디오 PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.6.62로 갱신해 현재 스테이지 전용 기본 출력 `0.35`와 과거 조정 이력을 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 `SoundManagerPlayModeSmokeTest.RunFromCommandLine`이 MainScene→Tutorial→Stage1→EndingScene 흐름과 Stage1 `StageBgm`의 크로스페이드 완료 후 출력 `0.35`를 검사해 종료 코드 0으로 통과했다(`ProjectDeltatime/SoundManagerStageBgmSmoke.log`). `git diff --check`도 통과했다.
+- 남은 작업: **확인 불가**. 실제 스테이지에서 일반·`DEADLINE` 상태의 BGM 체감 볼륨을 수동 확인해야 한다.
+
 ## 2026-08-10 - 스테이지 BGM 볼륨 소폭 하향
 
 - 변경 유형: 스테이지 BGM 믹스 조정, 오디오 회귀 검사 및 기획 문서 갱신
