@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-13 - 적·무기 설계 문서 구조 정리
+
+- 변경 유형: 기획서 구조 개선, 구현 기준 수치 정리
+- 변경 내용: **문서화 완료**. 플레이어 설계의 `규칙 → 공통 스탯 → 유형별 스탯 → 행동별 처리 → 구현 상태` 흐름을 적 설계에 적용했다. 적은 감지·마지막 목격 위치·NavMesh 이동·월드 시간·기절·무장 해제·재무장·사망을 공통 규칙과 표로 분리하고, 원거리형·추적형·빈손 적의 수치와 행동을 각각 정리했다. 무기는 `WeaponDefinition` 기준의 공통 규칙과 상호작용 표를 추가하고, 권총·자동소총·샷건·근접 무기의 직렬화 수치·역할·적 AI 점사·투척·가로채기·재장전 상태를 분리해 기록했다. 강아지형 적과 재장전은 현재 근거가 없어 각각 **계획 필요**, **미구현**으로 남겼다.
+- 영향을 받은 시스템: 적 감지·이동·전투 AI, 적 기절·무장 해제·재무장·무기 드롭, 플레이어·적 무기 사용, 투사체·근접·투척 판정, 기획서의 전투·무기·적 상태 기준
+- 관련 파일: `docs/PROJECT_DESIGN_DOCUMENT_NOTION_FILLED.md`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyBehavior.cs`, `EnemyPerception.cs`, `EnemyMotor.cs`, `EnemyCombatant.cs`, `EnemyHealth.cs`, `EnemyWeaponDrop.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponDefinition.cs`, `WeaponController.cs`, `Projectile.cs`, `ThrownWeapon.cs`, `InterceptableWeapon.cs`, `WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Pistol.asset`, `AutomaticRifle.asset`, `Shotgun.asset`, `MeleeWeapon.asset`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `Stage2.unity`, `Stage5.unity`, `Stage6.unity`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT_NOTION_FILLED.md`의 적·무기 설계를 플레이어 설계와 같은 상세 구조로 확장했다. `docs/PROJECT_DESIGN_DOCUMENT.md`의 전투·무기·적 요약도 원거리형 탐지 `18m`, 추적형 탐지 `20m`, 실제 무기 상호작용 및 투척 수치와 일치하도록 갱신했으며 문서 버전을 `1.7.1`, 마지막 분석일을 `2026-08-13`으로 갱신했다.
+- 테스트 결과: **정적 대조 완료**. `EnemyCombatant.cs`, `EnemyMotor.cs`, `EnemyPerception.cs`, `WeaponDefinition.cs`, `WeaponController.cs`, 투척 관련 프리팹과 Pistol·AutomaticRifle·Shotgun·MeleeWeapon ScriptableObject, Stage1·Stage2·Stage5·Stage6 직렬화 값을 대조했다. 이번 변경은 문서 작업이므로 Unity 컴파일·PlayMode 스모크·실제 키보드/마우스 전투는 **미실행**이다.
+- 남은 작업: **확인 불가**. 실제 플레이테스트로 적의 예고선·거리 유지·주먹 우선·무기 재무장과 네 무기의 명중감·손 그립·투척 가로채기 가독성을 확인해야 한다. 재장전과 강아지형 적은 별도 기획이 필요하다.
+
+## 2026-08-12 - 실제 구현 기준 역기획 및 기획서 기준선 갱신
+
+- 변경 유형: 문서 역기획, 구현 상태 정합성 보정
+- 변경 내용: **문서화 완료**. AGENTS.md를 기준으로 현재 코드·저장 씬·프리팹·ScriptableObject·Input Action·Build Settings·에디터 스모크 코드·기존 테스트 로그를 대조했다. MainScene→Tutorial→Stage1→Stage2→Stage5→EndingScene→MainScene의 현재 활성 흐름, 월드 시간·`DEADLINE`, 제한 시야, Replay, 무기·적·튜토리얼·HUD·오디오의 실제 동작과 수치를 역기획 기준선으로 정리했다. 저장된 Stage3/4 씬 파일명(`Stage3_NoUse.unity`, `Stage_NoUse.unity`)과 Builder/Smoke 코드가 참조하는 `Stage3.unity`/`Stage4.unity` 사이의 불일치도 기록했다. 코드·씬·프리팹·ScriptableObject·입력 설정은 수정하지 않았고 Builder도 실행하지 않았다.
+- 영향을 받은 시스템: 프로젝트 진행 흐름 문서, 전투·무기·적·월드 시간·DEADLINE·시야·Replay·튜토리얼·스테이지·HUD·오디오·카메라·애니메이션·성능 검증 상태의 문서 기준선
+- 관련 파일: `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`, `AGENTS.md`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageSceneFlow.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`
+- 기획서 반영 내용: `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.7.0으로 갱신했다. 기존 변경 이력과 의사결정은 보존하고, 2026-08-12 최신 역기획 기준선·전체 루프·씬 흐름·시스템 의존 관계·수치·상태 표·근거 파일·불일치·미검증 항목·후속 과제를 추가했다. 과거 문서의 사운드 미구현 문장은 현재 `SoundManager` 구현과 충돌하므로 현재 구현 기준으로 보정했다.
+- 테스트 결과: **기존 로그 확인**. `TutorialSmoke.log`, `Stage5FinalSmoke.log`, `Stage6Smoke.log`, `ReplayAnimatorPlayModeFinal5.log`, `DeadlineVisualFeedbackSmoke.log`, `SoundManagerStageBgmSmoke.log`의 기존 결과 범위를 문서에 반영했다. `ReplayVisionPrototypeSmoke.log`와 `ReplayVisionStage5Smoke.log`의 실패 이력, `Stage6PerformanceBenchmark.log`의 1080p 판정 불가도 함께 기록했다. 이번 변경은 문서 작업이므로 Unity 컴파일·PlayMode 스모크·수동 Game View/청감 테스트는 **미실행**이다.
+- 남은 작업: **확인 불가**. Stage3/4 파일명과 Builder/Smoke 경로를 최신 저장 씬 기준으로 정리할지 결정하고, Replay 실패 항목, 실제 입력·청감·HUD/시야 가독성, 1920×1080 Stage6 성능, 재장전·저장·게임패드·사용자 음량 설정의 기획 필요성을 후속 검증한다.
+
 ## 2026-08-10 - 스테이지 HUD 상·하단 재배치
 
 - 변경 유형: GameHud 레이아웃 수정, 기획 문서 갱신
