@@ -6,8 +6,8 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-13 (KST) |
-| 문서 버전 | 1.7.1 |
+| 마지막 분석일 | 2026-08-14 (KST) |
+| 문서 버전 | 1.8.0 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 전투는 플레이어 현재 높이 수평 평면 조준점과 총구 기준 수평 발사, 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기를 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·해제음과 BGM 덕킹을 자동 재생한다. |
 
 ### 1.1 분석 기준과 범위
@@ -1350,6 +1350,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-14 | 1.8.0 | 게임 동작과 직렬화를 보존한 전면 구조 리팩터링, 어셈블리·테스트 경계, 에셋 감사, 에디터 공용 기반, 런타임 내부 협력 객체를 반영 | 전체 기술 구조, 리플레이, 적 AI, 튜토리얼, 플레이어 전투, 이동, 시각 피드백, 검증 |
 | 2026-08-10 | 1.6.62 | 사용자 청감 피드백에 따라 Stage1~Stage6 공용 BGM 기본 출력을 0.50에서 0.35로 추가 하향 | SoundManager, Stage BGM, 오디오 믹스 |
 | 2026-08-10 | 1.6.61 | 리플레이·DEADLINE 안내를 가운데 상단으로 이동하고, 체력·무기/탄약을 좌상단에서 좌하단으로 분리 | GameHud 레이아웃, 리플레이·DEADLINE·전투 상태 가독성 |
 | 2026-08-10 | 1.6.60 | Stage1~Stage6 공용 BGM 기본 출력을 0.55에서 0.50으로 낮추고, Stage1 PlayMode 스모크에서 클립 선택과 출력을 검사 | SoundManager, Stage BGM, 오디오 회귀 검사 |
@@ -1436,5 +1437,15 @@ Unity 버전: `6000.1.13f1`
 | 2026-07-31 | 1.1.1 | 밀착 시 근접 공격 시야 판정 수정, 선딜 중 35% 추적, 라이플 적의 공격/이동 상태 분리와 70% 후퇴 사격 반영 | 근접 공격, 후퇴 사격, 적 시야, 씬/밸런스 |
 | 2026-07-31 | 1.1.0 | NavMesh 기반 적 이동, 거리 유지 자동소총 점사형 2명, 플레이어 지속 추격 근접형 1명, 공통 적 행동 수명주기와 최신 배치 스모크 결과 반영 | 적 이동, AI Navigation, 연사형, 근접 추격형, 기절/무장 해제, 씬/밸런스 |
 | 2026-07-30 | 1.0.0 | 프로젝트 전체 구조, 코드, 씬, 프리팹, ScriptableObject, 입력, 설정, 패키지, 테스트 로그, Git 상태를 기준선으로 문서화 | 전체 프로젝트, 월드 시간, `DEADLINE`, 전투, 무기 가로채기, 적 AI, 시야, 리플레이, 스테이지 |
+
+## 14. 리팩터링 이후 기술 구조
+
+- 2026-08-14 기준 프로젝트는 런타임, 에디터, EditMode 테스트, PlayMode 테스트의 네 Assembly Definition 경계를 사용한다. 런타임 내부 타입은 테스트 어셈블리에만 공개하며 새 게임플레이 공개 API는 만들지 않는다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Deltatime.Runtime.asmdef`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Deltatime.Editor.asmdef`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/Deltatime.Tests.EditMode.asmdef`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/Deltatime.Tests.PlayMode.asmdef`, `ProjectDeltatime/Assets/_Project/Scripts/AssemblyInfo.cs`.
+- `StageReplayController`는 기존 씬 컴포넌트·직렬화 필드·공개 진단 API·등록 메서드·`ActiveRecorder`를 유지하는 façade다. 녹화 시계와 예산, 시각 등록, 시간축 변환, 재생 홀드/루프, 애니메이션 이벤트 기록/프록시 재생은 내부 협력 타입이 담당한다. 투사체·투척 무기·무기 외형·애니메이션·피격 효과는 내부 `IReplayCaptureSink`와 활성 레지스트리를 통해 등록한다. 20Hz 기록과 64MiB 예산은 유지했다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplaySubsystems.cs`.
+- `EnemyCombatant`는 기존 상속, enum, 직렬화, 공개 상태와 `Configure`를 유지하며 상태 타이머, 총기 사거리 판단, 무기 회수 선택, 경고선 표현을 내부 객체에 위임한다. `EnemyMotor`는 경로·Rigidbody 이동의 평면 벡터와 정지 거리 계산을 순수 계산 타입에 위임한다. 신규 씬 컴포넌트는 없다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMovementMath.cs`.
+- `TutorialDirector`는 기존 단계, 문구 결과와 공개 검증 API를 유지하며 단계 진행, 투척 회수, DEADLINE 시나리오 상태를 내부 객체에 위임한다. `PlayerCombat`은 공격 실행·무기 상호작용·DEADLINE 진입점을 그대로 유지하고 입력/자동 사격 및 근접 무기 선택 판단을 내부 타입에 위임한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombatSubsystems.cs`.
+- `WorldTimeVisualFeedback`와 `DeadlineVisualFeedback`는 씬 참조 결합과 렌더링을 계속 담당하고, 색상 혼합·감속량·단계 진행·링 파형 계산은 내부 순수 상태 타입에 위임한다. 전역 `Time.timeScale`은 변경하지 않는 기존 정책을 유지한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/DeadlineVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/VisualFeedbackState.cs`.
+- 에디터 스모크는 공용 `CommandLineSmokeRunner`로 콜백 수명과 PlayMode 진입을 통합했고, SceneBuilder는 실행/검증/캐릭터/NavMesh/프리뷰 역할별 공용 기반을 사용한다. 메뉴와 CLI 진입점, Build Settings의 `MainScene → Tutorial → Stage1 → Stage2 → Stage5 → EndingScene` 순서는 유지했다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/CommandLineSmokeRunner.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SceneBuilderInfrastructure.cs`, `ProjectDeltatime/ProjectSettings/EditorBuildSettings.asset`.
+- 에셋 감사는 삭제가 아닌 보고만 수행한다. 2026-08-14 감사 후보 15개와 Stage1 프리뷰·Stage3/4 경로 불일치는 보존 상태다. 세부 기준선과 테스트 결과는 `Docs/REFACTORING_AUDIT.md`에 기록했다. 후보의 실제 삭제 여부는 **계획 필요**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/ProjectAssetDependencyAudit.cs`, `Docs/REFACTORING_AUDIT.md`.
 
 이후 기능 변경은 `Docs/FEATURE_CHANGELOG.md`에 먼저 또는 동시에 기록하고, 이 문서의 구현 현황·시스템·수치·과제·의사결정·변경 이력을 함께 갱신한다.

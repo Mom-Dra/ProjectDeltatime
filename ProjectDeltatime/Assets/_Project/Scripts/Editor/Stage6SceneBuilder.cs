@@ -222,7 +222,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildStage6();
+            SceneBuildCommand.Run(BuildStage6);
         }
 
         public static void ValidateStage1Through5RegressionFromCommandLine()
@@ -2350,11 +2350,7 @@ namespace Deltatime.EditorTools
 
         private static void RequireOnNavMesh(Vector3 position, string subject)
         {
-            bool found = NavMesh.SamplePosition(
-                position,
-                out _,
-                1.5f,
-                NavMesh.AllAreas);
+            bool found = NavigationSceneSetup.IsOnNavMesh(position);
             Require(found,
                 $"Stage6 {subject} is not on the baked NavMesh ({position}).");
         }
@@ -2839,16 +2835,7 @@ namespace Deltatime.EditorTools
 
         private static GameObject FindSceneRoot(Scene scene, string name)
         {
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
-            {
-                if (roots[i].name == name)
-                {
-                    return roots[i];
-                }
-            }
-
-            return null;
+            return SceneValidation.FindRoot(scene, name);
         }
 
         private static Transform FindSceneTransform(Scene scene, string name)
@@ -2925,10 +2912,7 @@ namespace Deltatime.EditorTools
 
         private static void Require(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new InvalidOperationException(message);
-            }
+            SceneValidation.Require(condition, message);
         }
 
         private sealed class DemoSnapshot

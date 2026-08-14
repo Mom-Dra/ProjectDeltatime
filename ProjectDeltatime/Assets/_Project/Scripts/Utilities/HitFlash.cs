@@ -50,7 +50,7 @@ namespace Deltatime.Utilities
 
             line.startColor = color;
             line.endColor = color;
-            StageReplayController.ActiveRecorder?.RegisterRenderer(line);
+            ReplayVisualRegistry.Active?.RegisterRenderer(line);
         }
 
         private void Update()

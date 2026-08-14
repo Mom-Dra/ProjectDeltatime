@@ -75,21 +75,18 @@ namespace Deltatime.Tutorial
         private float completionRemaining;
         private bool hasPreviousAimAngle;
         private bool observedDash;
-        private bool observedThrowDrop;
-        private bool observedThrowOutcome;
-        private bool observedDeadlineActivation;
-        private bool observedTwoCauses;
-        private bool deadlineAiActive;
-        private bool deadlineSucceeded;
+        private readonly TutorialProgression progression = new();
+        private readonly TutorialThrowRecoveryScenario throwRecovery = new();
+        private readonly TutorialDeadlineScenario deadlineScenario = new();
+        private bool observedThrowOutcome => throwRecovery.OutcomeObserved;
         private static bool restoreDeadlineCheckpointAfterReload;
 
-        public TutorialStep CurrentStep { get; private set; } =
-            TutorialStep.TimeMovement;
+        public TutorialStep CurrentStep => progression.CurrentStep;
         public int CurrentStepIndex =>
             Mathf.Min((int)CurrentStep + 1, TotalStepCount);
-        public int TotalStepCount => 7;
+        public int TotalStepCount => TutorialProgression.TotalStepCount;
         public bool Completed => CurrentStep == TutorialStep.Complete;
-        public bool DeadlineSucceeded => deadlineSucceeded;
+        public bool DeadlineSucceeded => deadlineScenario.Succeeded;
         public bool PlayerDead => playerHealth != null && !playerHealth.IsAlive;
 
         public string StepTitle
@@ -137,11 +134,15 @@ namespace Deltatime.Tutorial
                 switch (CurrentStep)
                 {
                     case TutorialStep.TimeMovement:
-                        return movingProof < movementProofDuration
+                        return TutorialGuidancePolicy.NeedsMovementProof(
+                            movingProof,
+                            movementProofDuration)
                             ? "WASD로 이동하세요. 행동하면 월드 시간이 빨라집니다."
                             : "이제 멈추세요. 정지하면 월드가 0.02배로 느려집니다.";
                     case TutorialStep.AimAndDash:
-                        return accumulatedAimDegrees < aimProofDegrees
+                        return TutorialGuidancePolicy.NeedsAimProof(
+                            accumulatedAimDegrees,
+                            aimProofDegrees)
                             ? "마우스를 움직여 조준 방향을 크게 돌리세요."
                             : "WASD 방향키를 누른 채 Space로 표식 구간을 대시하세요.";
                     case TutorialStep.Melee:
@@ -149,23 +150,23 @@ namespace Deltatime.Tutorial
                     case TutorialStep.Pistol:
                         return "E로 권총을 교체하고, 마우스로 조준한 뒤 LMB - 좌 클릭으로 사격하세요.";
                     case TutorialStep.ThrowAndRecover:
-                        return !observedThrowOutcome
+                        return !throwRecovery.OutcomeObserved
                             ? "LMB - 좌 클릭 사격이 아니라 RMB - 우 클릭으로 권총을 던져 적을 기절시키고 무장을 해제하세요."
                             : "성공! 공중의 적 무기를 E로 잡으면 바로 DEADLINE으로 진행합니다.";
                     case TutorialStep.DeadlineApproach:
                         return "권총을 장비했습니다. 북쪽 포위전 중앙으로 이동하세요.";
                     case TutorialStep.Deadline:
-                        if (deadlineSucceeded)
+                        if (deadlineScenario.Succeeded)
                         {
                             return "DEADLINE 실행 성공. 열린 북쪽 출구로 탈출하세요.";
                         }
 
-                        if (!observedDeadlineActivation)
+                        if (!deadlineScenario.ActivationObserved)
                         {
                             return "Q: DEADLINE — 월드를 완전히 정지시키세요.";
                         }
 
-                        if (!observedTwoCauses)
+                        if (!deadlineScenario.TwoCausesObserved)
                         {
                             return "마우스로 앞의 두 적을 조준하고 LMB - 좌 클릭 두 번으로 원인 2개를 배치하세요.";
                         }
@@ -330,7 +331,7 @@ namespace Deltatime.Tutorial
 
                 case TutorialTrigger.TriggerKind.TutorialExit:
                     if (CurrentStep == TutorialStep.Deadline &&
-                        deadlineSucceeded)
+                        deadlineScenario.Succeeded)
                     {
                         CompleteTutorial();
                     }
@@ -439,9 +440,8 @@ namespace Deltatime.Tutorial
                 return;
             }
 
-            CurrentStep = TutorialStep.ThrowAndRecover;
-            observedThrowDrop = false;
-            observedThrowOutcome = false;
+            progression.MoveTo(TutorialStep.ThrowAndRecover);
+            throwRecovery.Reset();
             pistolDispenser.SetAvailable(true);
             deadlinePistolDispenser.SetAvailable(false);
             arenaEntranceGate.SetOpen(false, true);
@@ -462,7 +462,7 @@ namespace Deltatime.Tutorial
                 return;
             }
 
-            CurrentStep = TutorialStep.DeadlineApproach;
+            progression.MoveTo(TutorialStep.DeadlineApproach);
             deadlinePistolDispenser.SetAvailable(true);
             BeginDeadlineArena();
         }
@@ -543,20 +543,18 @@ namespace Deltatime.Tutorial
 
         private void UpdateThrowAndRecover()
         {
-            if (!observedThrowOutcome &&
-                observedThrowDrop &&
-                throwEnemyHealth.IsAlive &&
-                throwEnemyHealth.IsStunned &&
-                throwEnemyBehavior.IsDisarmed &&
-                !throwEnemyWeapon.HasWeapon)
+            if (throwRecovery.TryObserveOutcome(
+                    throwEnemyHealth.IsAlive,
+                    throwEnemyHealth.IsStunned,
+                    throwEnemyBehavior.IsDisarmed,
+                    throwEnemyWeapon.HasWeapon))
             {
-                observedThrowOutcome = true;
                 pistolDispenser.SetAvailable(false);
                 deadlinePistolDispenser.SetAvailable(true);
                 arenaEntranceGate.SetOpen(true);
             }
 
-            if (observedThrowOutcome && playerWeapon.HasWeapon)
+            if (throwRecovery.OutcomeObserved && playerWeapon.HasWeapon)
             {
                 throwEnemyHealth.gameObject.SetActive(false);
                 deadlinePistolDispenser.SetAvailable(false);
@@ -566,25 +564,18 @@ namespace Deltatime.Tutorial
 
         private void UpdateDeadline()
         {
-            if (deadline.IsActive)
+            if (deadlineScenario.Observe(
+                    deadline.IsActive,
+                    deadline.StagedActionCount,
+                    deadline.MaxStagedActions))
             {
-                observedDeadlineActivation = true;
-                if (!deadlineAiActive)
-                {
-                    deadlineAiActive = true;
-                    SetDeadlineEnemiesEnabled(true);
-                }
-
-                if (deadline.StagedActionCount >= deadline.MaxStagedActions)
-                {
-                    observedTwoCauses = true;
-                }
+                SetDeadlineEnemiesEnabled(true);
             }
         }
 
         private void AdvanceTo(TutorialStep nextStep)
         {
-            CurrentStep = nextStep;
+            progression.MoveTo(nextStep);
             switch (nextStep)
             {
                 case TutorialStep.AimAndDash:
@@ -626,19 +617,16 @@ namespace Deltatime.Tutorial
         {
             if (CurrentStep == TutorialStep.ThrowAndRecover)
             {
-                observedThrowDrop = true;
+                throwRecovery.ObserveDrop();
             }
         }
 
         private void BeginDeadlineArena()
         {
-            CurrentStep = TutorialStep.Deadline;
+            progression.MoveTo(TutorialStep.Deadline);
             arenaEntranceGate.SetOpen(false);
             arenaExitGate.SetOpen(false, true);
-            observedDeadlineActivation = false;
-            observedTwoCauses = false;
-            deadlineAiActive = false;
-            deadlineSucceeded = false;
+            deadlineScenario.Begin();
             SetDeadlineEnemiesEnabled(false);
             deadline.enabled = true;
             deadline.RefillCharges();
@@ -652,9 +640,8 @@ namespace Deltatime.Tutorial
                 return;
             }
 
-            if (observedDeadlineActivation && observedTwoCauses)
+            if (deadlineScenario.TrySucceed())
             {
-                deadlineSucceeded = true;
                 arenaExitGate.SetOpen(true);
                 return;
             }
@@ -666,9 +653,7 @@ namespace Deltatime.Tutorial
         {
             SetDeadlineEnemiesEnabled(false);
             ResetDeadlineEnemyPoses();
-            deadlineAiActive = false;
-            observedDeadlineActivation = false;
-            observedTwoCauses = false;
+            deadlineScenario.ResetAttempt();
             deadline.RefillCharges();
 
             MovePlayerToDeadlineResetPoint();
@@ -719,7 +704,7 @@ namespace Deltatime.Tutorial
 
         private void CompleteTutorial()
         {
-            CurrentStep = TutorialStep.Complete;
+            progression.MoveTo(TutorialStep.Complete);
             completionRemaining = completionDelay;
             SetDeadlineEnemiesEnabled(false);
             deadline.enabled = false;

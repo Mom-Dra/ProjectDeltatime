@@ -140,7 +140,7 @@ namespace Deltatime.Combat
                 return;
             }
 
-            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+            ReplayVisualRegistry.Active?.RegisterRendererHierarchy(
                 transform);
         }
 

@@ -203,7 +203,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildStage5();
+            SceneBuildCommand.Run(BuildStage5);
         }
 
         /// <summary>
@@ -299,48 +299,22 @@ namespace Deltatime.EditorTools
                     "Stage5 preview requires its active gameplay camera.");
             }
 
-            const int width = 1280;
-            const int height = 720;
-            RenderTexture target = new RenderTexture(width, height, 24);
-            Texture2D preview = new Texture2D(
-                width,
-                height,
-                TextureFormat.RGB24,
-                false);
-            RenderTexture previousActive = RenderTexture.active;
-            RenderTexture previousTarget = camera.targetTexture;
-
-            try
-            {
-                TopDownCameraController controller =
-                    camera.GetComponent<TopDownCameraController>();
-                controller?.SnapToTarget();
-                camera.targetTexture = target;
-                RenderTexture.active = target;
-                camera.Render();
-                preview.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
-                preview.Apply();
-
-                string previewPath = Path.Combine(
-                    Application.dataPath,
-                    "_Project",
-                    "Art",
-                    "Generated",
-                    "Stage5Preview.png");
-                Directory.CreateDirectory(Path.GetDirectoryName(previewPath));
-                File.WriteAllBytes(previewPath, preview.EncodeToPNG());
-                AssetDatabase.ImportAsset(
-                    PreviewAssetPath,
-                    ImportAssetOptions.ForceSynchronousImport);
-                Debug.Log($"Stage5 preview captured at {previewPath}.");
-            }
-            finally
-            {
-                camera.targetTexture = previousTarget;
-                RenderTexture.active = previousActive;
-                UnityEngine.Object.DestroyImmediate(preview);
-                UnityEngine.Object.DestroyImmediate(target);
-            }
+            string previewPath = Path.Combine(
+                Application.dataPath,
+                "_Project",
+                "Art",
+                "Generated",
+                "Stage5Preview.png");
+            PreviewCapture.CapturePng(
+                camera,
+                1280,
+                720,
+                previewPath,
+                () => camera.GetComponent<TopDownCameraController>()?.SnapToTarget());
+            AssetDatabase.ImportAsset(
+                PreviewAssetPath,
+                ImportAssetOptions.ForceSynchronousImport);
+            Debug.Log($"Stage5 preview captured at {previewPath}.");
         }
 
         private static void RequireSourceAssets()
@@ -2424,11 +2398,7 @@ namespace Deltatime.EditorTools
 
         private static void RequireOnNavMesh(Vector3 position, string subject)
         {
-            bool found = NavMesh.SamplePosition(
-                position,
-                out _,
-                1.5f,
-                NavMesh.AllAreas);
+            bool found = NavigationSceneSetup.IsOnNavMesh(position);
             Require(found,
                 $"Stage5 {subject} is not on the baked NavMesh ({position}).");
         }
@@ -2664,16 +2634,7 @@ namespace Deltatime.EditorTools
 
         private static GameObject FindSceneRoot(Scene scene, string name)
         {
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
-            {
-                if (roots[i].name == name)
-                {
-                    return roots[i];
-                }
-            }
-
-            return null;
+            return SceneValidation.FindRoot(scene, name);
         }
 
         private static Transform FindDirectChild(Transform parent, string name)
@@ -2704,10 +2665,7 @@ namespace Deltatime.EditorTools
 
         private static void Require(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new InvalidOperationException(message);
-            }
+            SceneValidation.Require(condition, message);
         }
 
         private readonly struct CameraSettings

@@ -39,6 +39,12 @@ namespace Deltatime.EditorTools
         private static bool gateLayoutValidated;
         private static bool characterVisualsValidated;
         private static Vector3 movementProbeStart;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeChanged,
+                HandleLog);
 
         static TutorialPlayModeSmokeTest()
         {
@@ -56,7 +62,6 @@ namespace Deltatime.EditorTools
             }
 
             TutorialSceneBuilder.ValidateSavedTutorial();
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FailedKey, false);
             SessionState.SetString(FailureKey, string.Empty);
@@ -64,17 +69,12 @@ namespace Deltatime.EditorTools
             phaseStartedAt = EditorApplication.timeSinceStartup;
             gateLayoutValidated = false;
             characterVisualsValidated = false;
-            Application.logMessageReceived += HandleLog;
-            Attach();
-            EditorApplication.EnterPlaymode();
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void Attach()
         {
-            EditorApplication.update -= Tick;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
-            EditorApplication.playModeStateChanged += HandlePlayModeChanged;
+            Runner.Attach();
         }
 
         private static void HandlePlayModeChanged(PlayModeStateChange state)
@@ -711,9 +711,7 @@ namespace Deltatime.EditorTools
 
         private static void Finish()
         {
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
-            Application.logMessageReceived -= HandleLog;
+            Runner.Detach();
             if (addedKeyboard && testKeyboard != null)
             {
                 UnityEngine.InputSystem.InputSystem.RemoveDevice(testKeyboard);

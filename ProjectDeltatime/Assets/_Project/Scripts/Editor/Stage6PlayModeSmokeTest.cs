@@ -31,7 +31,12 @@ namespace Deltatime.EditorTools
         private const string FailureKey = "Deltatime.Stage6Smoke.Failure";
         private const string PhaseKey = "Deltatime.Stage6Smoke.Phase";
 
-        private static bool callbacksAttached;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeStateChanged,
+                HandleLog);
         private static bool validationRan;
         private static double playStartedAt;
         private static bool movementProbePending;
@@ -63,48 +68,22 @@ namespace Deltatime.EditorTools
             SessionState.SetBool(FailedKey, false);
             SessionState.SetString(FailureKey, string.Empty);
             SessionState.SetString(PhaseKey, "entering");
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            AttachCallbacks();
-            EditorApplication.isPlaying = true;
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void ResumePendingSmoke()
         {
-            if (!SessionState.GetBool(RunningKey, false) ||
-                EditorApplication.isPlayingOrWillChangePlaymode)
-            {
-                return;
-            }
-
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            AttachCallbacks();
-            EditorApplication.isPlaying = true;
+            Runner.ResumeSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void AttachCallbacks()
         {
-            if (callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = true;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
-            Application.logMessageReceived += HandleLog;
+            Runner.Attach();
         }
 
         private static void DetachCallbacks()
         {
-            if (!callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = false;
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
-            Application.logMessageReceived -= HandleLog;
+            Runner.Detach();
         }
 
         private static void HandlePlayModeStateChanged(PlayModeStateChange state)

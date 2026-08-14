@@ -149,21 +149,8 @@ namespace Deltatime.TimeSystem
             }
 
             float progress = GetPhaseProgress();
-            float ringRadius = 0f;
-            float ringStrength = 0f;
-            float flashStrength = 0f;
-            if (CurrentPhase == VisualPhase.Entering)
-            {
-                ringRadius = Mathf.Lerp(1.08f, 0.12f, progress);
-                ringStrength = Mathf.Sin(progress * Mathf.PI);
-                flashStrength = Mathf.Pow(1f - progress, 3f) * 0.34f;
-            }
-            else if (CurrentPhase == VisualPhase.Releasing)
-            {
-                ringRadius = Mathf.Lerp(0.08f, 1.16f, progress);
-                ringStrength = Mathf.Sin(progress * Mathf.PI);
-                flashStrength = Mathf.Sin(progress * Mathf.PI) * 0.08f;
-            }
+            DeadlineRingVisualState ring =
+                DeadlineVisualState.EvaluateRing(CurrentPhase, progress);
 
             Vector2 effectCenter = GetPlayerViewportPosition();
             effectMaterial.SetFloat(BlendId, EffectBlend);
@@ -179,9 +166,9 @@ namespace Deltatime.TimeSystem
                 source.height > 0
                     ? (float)source.width / source.height
                     : 1f);
-            effectMaterial.SetFloat(RingRadiusId, ringRadius);
-            effectMaterial.SetFloat(RingStrengthId, ringStrength);
-            effectMaterial.SetFloat(FlashStrengthId, flashStrength);
+            effectMaterial.SetFloat(RingRadiusId, ring.Radius);
+            effectMaterial.SetFloat(RingStrengthId, ring.Strength);
+            effectMaterial.SetFloat(FlashStrengthId, ring.FlashStrength);
             effectMaterial.SetFloat(
                 UnscaledTimeId,
                 UnityEngine.Time.unscaledTime);
@@ -331,17 +318,11 @@ namespace Deltatime.TimeSystem
 
         private float GetPhaseProgress()
         {
-            if (CurrentPhase == VisualPhase.Entering)
-            {
-                return Mathf.Clamp01(phaseElapsed / EnterDuration);
-            }
-
-            if (CurrentPhase == VisualPhase.Releasing)
-            {
-                return Mathf.Clamp01(phaseElapsed / ReleaseDuration);
-            }
-
-            return CurrentPhase == VisualPhase.Active ? 1f : 0f;
+            return DeadlineVisualState.PhaseProgress(
+                CurrentPhase,
+                phaseElapsed,
+                EnterDuration,
+                ReleaseDuration);
         }
 
         private Vector2 GetPlayerViewportPosition()

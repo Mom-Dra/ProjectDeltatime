@@ -383,7 +383,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildPrototypeRoom();
+            SceneBuildCommand.Run(BuildPrototypeRoom);
         }
 
         [MenuItem("Tools/Prototype/Animation/Apply Characters To Stage 1")]
@@ -618,42 +618,17 @@ namespace Deltatime.EditorTools
             ValidateScene(scene, Stage1DeadlineCharges);
 
             Camera camera = UnityEngine.Object.FindObjectOfType<Camera>();
-            const int width = 1280;
-            const int height = 720;
-            RenderTexture target = new RenderTexture(width, height, 24);
-            Texture2D preview = new Texture2D(width, height, TextureFormat.RGB24, false);
-            RenderTexture previousActive = RenderTexture.active;
-            RenderTexture previousTarget = camera.targetTexture;
-
-            try
-            {
-                camera.targetTexture = target;
-                RenderTexture.active = target;
-                camera.Render();
-                preview.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
-                preview.Apply();
-
-                string previewPath = System.IO.Path.Combine(
-                    Application.dataPath,
-                    "_Project",
-                    "Art",
-                    "Generated",
-                    "Stage1Preview.png");
-                System.IO.Directory.CreateDirectory(
-                    System.IO.Path.GetDirectoryName(previewPath));
-                System.IO.File.WriteAllBytes(previewPath, preview.EncodeToPNG());
-                AssetDatabase.ImportAsset(
-                    "Assets/_Project/Art/Generated/Stage1Preview.png",
-                    ImportAssetOptions.ForceSynchronousImport);
-                Debug.Log($"3D preview captured at {previewPath}.");
-            }
-            finally
-            {
-                camera.targetTexture = previousTarget;
-                RenderTexture.active = previousActive;
-                UnityEngine.Object.DestroyImmediate(preview);
-                UnityEngine.Object.DestroyImmediate(target);
-            }
+            string previewPath = System.IO.Path.Combine(
+                Application.dataPath,
+                "_Project",
+                "Art",
+                "Generated",
+                "Stage1Preview.png");
+            PreviewCapture.CapturePng(camera, 1280, 720, previewPath);
+            AssetDatabase.ImportAsset(
+                "Assets/_Project/Art/Generated/Stage1Preview.png",
+                ImportAssetOptions.ForceSynchronousImport);
+            Debug.Log($"3D preview captured at {previewPath}.");
         }
 
         [MenuItem("Tools/Prototype/Validate Stage 1 + Stage 2")]

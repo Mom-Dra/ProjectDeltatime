@@ -132,10 +132,10 @@ namespace Deltatime.Player
                 catchBufferRemaining = 0f;
             }
 
-            bool shouldUseWeapon = input.FirePressed ||
-                (input.FireHeld &&
-                 weapon.Definition != null &&
-                 weapon.Definition.IsAutomatic);
+            bool shouldUseWeapon = PlayerAttackDecision.ShouldUseWeapon(
+                input.FirePressed,
+                input.FireHeld,
+                weapon.Definition);
             if (shouldUseWeapon)
             {
                 bool weaponUseSucceeded = TryUseEquippedWeapon(
@@ -461,26 +461,11 @@ namespace Deltatime.Player
                 pickupLayers,
                 QueryTriggerInteraction.Collide);
 
-            InterceptableWeapon nearest = null;
-            float nearestDistanceSquared = float.PositiveInfinity;
-
-            for (int i = 0; i < count; i++)
-            {
-                InterceptableWeapon candidate =
-                    interactionResults[i].GetComponentInParent<InterceptableWeapon>();
-                if (candidate == null || !candidate.IsCatchable)
-                {
-                    continue;
-                }
-
-                float distanceSquared =
-                    (candidate.transform.position - transform.position).sqrMagnitude;
-                if (distanceSquared < nearestDistanceSquared)
-                {
-                    nearestDistanceSquared = distanceSquared;
-                    nearest = candidate;
-                }
-            }
+            InterceptableWeapon nearest =
+                PlayerWeaponInteractionSelector.FindNearestAirborne(
+                    interactionResults,
+                    count,
+                    transform.position);
 
             if (nearest == null || !nearest.TryCatch(weapon))
             {
@@ -500,26 +485,11 @@ namespace Deltatime.Player
                 pickupLayers,
                 QueryTriggerInteraction.Collide);
 
-            WeaponPickup nearest = null;
-            float nearestDistanceSquared = float.PositiveInfinity;
-
-            for (int i = 0; i < count; i++)
-            {
-                WeaponPickup pickup =
-                    interactionResults[i].GetComponentInParent<WeaponPickup>();
-                if (pickup == null || pickup.Definition == null)
-                {
-                    continue;
-                }
-
-                float distanceSquared =
-                    (pickup.transform.position - transform.position).sqrMagnitude;
-                if (distanceSquared < nearestDistanceSquared)
-                {
-                    nearestDistanceSquared = distanceSquared;
-                    nearest = pickup;
-                }
-            }
+            WeaponPickup nearest =
+                PlayerWeaponInteractionSelector.FindNearestGround(
+                    interactionResults,
+                    count,
+                    transform.position);
 
             if (nearest != null)
             {

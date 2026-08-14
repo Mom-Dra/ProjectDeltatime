@@ -7,6 +7,46 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-14 - 전면 리팩터링 1단계: 기준선·저장소 위생·어셈블리 경계
+
+- 변경 유형: 저장소 정리, 패키지 의존성 정리, 어셈블리 경계 추가, 검증 기반 추가
+- 변경 내용: **구현 완료**. 추적 중인 `.DS_Store` 4개를 제거하고 재유입을 차단했다. 문서에서 인용되지 않은 루트 로그 95개를 제거하고 이후 검증 로그 경로를 `Logs/Validation`로 통일했다. 사용되지 않는 `com.unity.multiplayer.center`를 제거하고 `com.unity.test-framework 1.5.1`을 직접 의존성으로 선언했다. Runtime, Editor, EditMode, PlayMode Assembly Definition과 테스트 전용 `InternalsVisibleTo`, `.editorconfig`를 추가했다. `AssetDatabase.GetDependencies` 기반 읽기 전용 에셋 감사 도구를 추가했다.
+- 영향을 받은 시스템: 저장소 위생, Unity 패키지, 컴파일 경계, 테스트, 에셋 관리
+- 관련 파일: `ProjectDeltatime/.gitignore`, `ProjectDeltatime/.editorconfig`, `ProjectDeltatime/Packages/manifest.json`, `ProjectDeltatime/Packages/packages-lock.json`, `ProjectDeltatime/Assets/_Project/Deltatime.Runtime.asmdef`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Deltatime.Editor.asmdef`, `ProjectDeltatime/Assets/_Project/Tests/`, `ProjectDeltatime/Assets/_Project/Scripts/AssemblyInfo.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ProjectAssetDependencyAudit.cs`, `Docs/REFACTORING_AUDIT.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md` 1.8.0에 현재 어셈블리·테스트 경계와 보수적 에셋 감사 정책을 기록했다.
+- 테스트 결과: **구현 완료**. 기준선 및 단계별 Unity 6000.1.13f1 배치 컴파일 종료 코드 0. 에셋 감사는 루트 77개, 의존성 1,554개, 후보 15개, 누락 빌더 경로 3개, 고아 `.meta` 0개를 보고했다.
+- 남은 작업: **계획 필요**. 감사 후보 15개는 삭제하지 않았으며 실제 사용 여부를 사람의 콘텐츠 판단과 함께 재검토해야 한다.
+
+## 2026-08-14 - 전면 리팩터링 2단계: 스모크·SceneBuilder 공용 기반
+
+- 변경 유형: 에디터 도구 리팩터링, 중복 제거
+- 변경 내용: **구현 완료**. 기존 10개 PlayMode 스모크의 콜백 수명과 씬 열기/PlayMode 진입을 `CommandLineSmokeRunner`로 통합했다. SceneBuilder 공통 기능을 실행, 검증, 캐릭터 설정, NavMesh, 프리뷰 캡처 역할로 분리했다. 모든 기존 메뉴와 `RunFromCommandLine()` 진입점은 유지했다.
+- 영향을 받은 시스템: Prototype, Tutorial, Stage1/3/4/5/6, Replay, SoundManager, DEADLINE 스모크, Main/Prototype/Tutorial/Stage3/4/5/6/WeaponCalibration/Ending 빌더
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/CommandLineSmokeRunner.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SceneBuilderInfrastructure.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/*PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/*SceneBuilder.cs`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md` 1.8.0에 에디터 검증과 SceneBuilder 공용 구조를 기록했다.
+- 테스트 결과: **부분 구현**. Stage1 캐릭터 애니메이션, Stage6, SoundManager 스모크는 통과했고 Replay는 일괄 1차 실패 후 단독 재실행 통과했다. Prototype 투척 설정, Tutorial Synty 개수, Stage3/4 파일명, Stage5 픽업 개수, DEADLINE visual의 Build Settings상 Stage6 제외는 기존 또는 현재 콘텐츠 기준 실패로 분류했다. 자세한 서명은 `Docs/REFACTORING_AUDIT.md`에 기록했다.
+- 남은 작업: **확인 불가**. 리팩터링 전 독립 임시 프로젝트의 빌더 산출물을 작업 시작 전에 보존하지 않아 전후 YAML/GUID 바이트 대조는 수행하지 못했다. 현재 Git에는 씬·프리팹·ScriptableObject 변경이 없다.
+
+## 2026-08-14 - 전면 리팩터링 3단계: 런타임 책임 분해
+
+- 변경 유형: 런타임 구조 리팩터링, 내부 순수 로직 추출, 회귀 테스트 추가
+- 변경 내용: **구현 완료**. `StageReplayController`, `EnemyCombatant`, `TutorialDirector`, `PlayerCombat`, `EnemyMotor`, 월드/DEADLINE 시각 피드백의 기존 `MonoBehaviour`, 직렬화 필드, 공개 API를 유지하면서 내부 협력 타입으로 녹화·재생·상태·선택·표현 계산을 분리했다. 리플레이는 내부 `IReplayCaptureSink`와 활성 레지스트리를 사용하고 호환용 `StageReplayController.ActiveRecorder`를 유지한다. 신규 씬 컴포넌트나 공개 게임플레이 API는 추가하지 않았다.
+- 영향을 받은 시스템: 리플레이, 애니메이션 프록시, 투사체/무기 시각 등록, 적 AI, 무기 회수, 튜토리얼 진행, 플레이어 전투, Rigidbody/NavMesh 이동, 월드 시간 시각 피드백
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplaySubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialDirector.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombatSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMovementMath.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/VisualFeedbackState.cs`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md` 1.8.0에 façade와 내부 협력 객체의 현재 책임, 호환성 정책, 20Hz/64MiB 보존을 기록했다.
+- 테스트 결과: **구현 완료**. 최종 Unity 배치 컴파일 종료 코드 0, EditMode 17/17 통과, PlayMode 테스트 어셈블리 1/1 통과, Replay 단독 스모크 통과. 입력, 밸런스, 씬·프리팹·ScriptableObject에는 Git 변경이 없다.
+- 남은 작업: **계획 필요**. 현재 콘텐츠 기준으로 실패하는 Prototype/Tutorial/Stage3/4/Stage5/DEADLINE visual 스모크는 기능 수정 범위를 분리해 처리해야 한다.
+
+## 2026-08-14 - 전면 리팩터링 4단계: 감사 문서와 최종 검증
+
+- 변경 유형: 감사 문서 추가, 설계 문서 갱신, 최종 검증
+- 변경 내용: **구현 완료**. 기준선, 제거/보존 항목, 에셋 후보, 아키텍처, 알려진 실패와 검증 결과를 `Docs/REFACTORING_AUDIT.md`에 기록하고 설계 문서를 1.8.0으로 갱신했다.
+- 영향을 받은 시스템: 프로젝트 문서, 품질 기준선, 향후 유지보수
+- 관련 파일: `Docs/REFACTORING_AUDIT.md`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: 기존 의사결정과 변경 이력을 보존하고 리팩터링 이후 기술 구조를 추가했다.
+- 테스트 결과: **부분 구현**. Unity 컴파일, EditMode, PlayMode, 통과 가능한 기존 스모크와 에셋 감사를 실행했다. Stage6 성능 벤치마크는 90프레임 워밍업/300프레임 샘플을 종료 코드 0으로 완료했으나 실제 배치 해상도 321×531로 인해 1080p 60 FPS 판정은 **확인 불가**다. 참고값은 CPU 평균 21.67ms/p95 48.97ms, GPU 평균 17.80ms/p95 44.99ms다. 최종 Git 상태, diff, diff check는 작업 종료 직전에 확정한다.
+- 남은 작업: **확인 불가**. 실제 Game View 체감과 독립 빌더 산출물 전후 비교는 이번 자동 검증 범위에서 확인하지 못했다.
+
 ## 2026-08-13 - 적·무기 설계 문서 구조 정리
 
 - 변경 유형: 기획서 구조 개선, 구현 기준 수치 정리

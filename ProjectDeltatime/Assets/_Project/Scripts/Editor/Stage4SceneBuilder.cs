@@ -139,7 +139,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildStage4();
+            SceneBuildCommand.Run(BuildStage4);
         }
 
         [MenuItem("Tools/Prototype/Validate Stage 4 - Last Call Rooftop")]
@@ -659,11 +659,7 @@ namespace Deltatime.EditorTools
 
         private static void DisableColliders(GameObject root)
         {
-            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < colliders.Length; i++)
-            {
-                colliders[i].enabled = false;
-            }
+            CharacterSceneSetup.DisableColliders(root);
         }
 
         private static void CreateCollisionBlocker(

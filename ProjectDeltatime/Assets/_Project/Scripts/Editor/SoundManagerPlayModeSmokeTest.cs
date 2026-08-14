@@ -23,6 +23,11 @@ namespace Deltatime.EditorTools
         private static double playModeStartedAt;
         private static double phaseStartedAt;
         private static int phase;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeChanged);
 
         static SoundManagerPlayModeSmokeTest()
         {
@@ -39,20 +44,15 @@ namespace Deltatime.EditorTools
                 return;
             }
 
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FailedKey, false);
             SessionState.SetString(FailureKey, string.Empty);
-            Attach();
-            EditorApplication.EnterPlaymode();
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void Attach()
         {
-            EditorApplication.update -= Tick;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
-            EditorApplication.playModeStateChanged += HandlePlayModeChanged;
+            Runner.Attach();
         }
 
         private static void HandlePlayModeChanged(PlayModeStateChange state)
@@ -190,8 +190,7 @@ namespace Deltatime.EditorTools
             SessionState.EraseBool(RunningKey);
             SessionState.EraseBool(FailedKey);
             SessionState.EraseString(FailureKey);
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
+            Runner.Detach();
 
             if (failed)
             {

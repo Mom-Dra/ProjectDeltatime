@@ -386,7 +386,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildTutorial();
+            SceneBuildCommand.Run(BuildTutorial);
         }
 
         [MenuItem("Tools/Tutorial/Apply Environment Redesign")]
@@ -2358,16 +2358,7 @@ namespace Deltatime.EditorTools
 
         private static GameObject FindSceneRoot(Scene scene, string name)
         {
-            GameObject[] roots = scene.GetRootGameObjects();
-            for (int i = 0; i < roots.Length; i++)
-            {
-                if (roots[i].name == name)
-                {
-                    return roots[i];
-                }
-            }
-
-            return null;
+            return SceneValidation.FindRoot(scene, name);
         }
 
         private static T FindSceneComponent<T>(Scene scene)
@@ -2392,10 +2383,7 @@ namespace Deltatime.EditorTools
 
         private static void Require(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new InvalidOperationException(message);
-            }
+            SceneValidation.Require(condition, message);
         }
     }
 }

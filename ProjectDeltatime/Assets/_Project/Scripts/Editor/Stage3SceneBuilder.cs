@@ -138,7 +138,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildStage3();
+            SceneBuildCommand.Run(BuildStage3);
         }
 
         [MenuItem("Tools/Prototype/Validate Stage 3 - Afterimage Club")]
@@ -596,11 +596,7 @@ namespace Deltatime.EditorTools
 
         private static void DisableColliders(GameObject root)
         {
-            Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
-            for (int i = 0; i < colliders.Length; i++)
-            {
-                colliders[i].enabled = false;
-            }
+            CharacterSceneSetup.DisableColliders(root);
         }
 
         private static void CreateCollisionBlocker(

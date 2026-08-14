@@ -103,15 +103,7 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            try
-            {
-                BuildWeaponCalibrationScene();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogException(exception);
-                EditorApplication.Exit(1);
-            }
+            SceneBuildCommand.Run(BuildWeaponCalibrationScene);
         }
 
         public static void ValidateFromCommandLine()
@@ -268,10 +260,7 @@ namespace Deltatime.EditorTools
 
         private static void Require(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new InvalidOperationException(message);
-            }
+            SceneValidation.Require(condition, message);
         }
     }
 }

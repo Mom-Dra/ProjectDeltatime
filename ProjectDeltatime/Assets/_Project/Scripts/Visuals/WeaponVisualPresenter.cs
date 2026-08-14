@@ -126,7 +126,7 @@ namespace Deltatime.Visuals
             ApplyModelTransforms(definition);
             weapon.SetCustomHeldVisualActive(true);
             characterVisual?.RefreshRenderers();
-            StageReplayController.ActiveRecorder?.RegisterRendererHierarchy(
+            ReplayVisualRegistry.Active?.RegisterRendererHierarchy(
                 displayedModel.transform);
         }
 

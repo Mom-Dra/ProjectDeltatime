@@ -50,7 +50,12 @@ namespace Deltatime.EditorTools
         private static float previousReplayElapsed;
         private static float previousReplaySourceTimestamp;
         private static float deadlineLongWorldStart;
-        private static bool callbacksAttached;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeStateChanged,
+                HandleLog);
         private static readonly System.Collections.Generic.Dictionary<int, Vector3>
             EnemyMovementStarts =
                 new System.Collections.Generic.Dictionary<int, Vector3>();
@@ -73,35 +78,17 @@ namespace Deltatime.EditorTools
             SessionState.SetString(FailureTextKey, string.Empty);
             SessionState.SetString(PhaseKey, "entering");
 
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            AttachCallbacks();
-            EditorApplication.isPlaying = true;
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void AttachCallbacks()
         {
-            if (callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = true;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
-            Application.logMessageReceived += HandleLog;
+            Runner.Attach();
         }
 
         private static void DetachCallbacks()
         {
-            if (!callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = false;
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeStateChanged;
-            Application.logMessageReceived -= HandleLog;
+            Runner.Detach();
         }
 
         private static void HandlePlayModeStateChanged(PlayModeStateChange state)

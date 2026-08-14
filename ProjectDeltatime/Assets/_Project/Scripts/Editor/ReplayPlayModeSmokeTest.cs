@@ -21,7 +21,11 @@ namespace Deltatime.EditorTools
             "Deltatime.ReplaySmoke.Running";
         private const string PhaseKey = "Deltatime.ReplaySmoke.Phase";
 
-        private static bool callbacksAttached;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeStateChanged);
         private static double playStartedAt;
         private static bool setupComplete;
         private static bool slowStarted;
@@ -56,34 +60,17 @@ namespace Deltatime.EditorTools
         {
             SessionState.SetBool(RunningKey, true);
             SessionState.SetString(PhaseKey, "entering");
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            AttachCallbacks();
-            EditorApplication.isPlaying = true;
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
         }
 
         private static void AttachCallbacks()
         {
-            if (callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = true;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
+            Runner.Attach();
         }
 
         private static void DetachCallbacks()
         {
-            if (!callbacksAttached)
-            {
-                return;
-            }
-
-            callbacksAttached = false;
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -=
-                HandlePlayModeStateChanged;
+            Runner.Detach();
         }
 
         private static void HandlePlayModeStateChanged(
@@ -400,8 +387,11 @@ namespace Deltatime.EditorTools
                 $"{memory.TrackedActorCount}, events={memory.AnimationEventCount}, " +
                 $"checkpoints={memory.AnimationCheckpointCount}, transforms=" +
                 $"{memory.AnimationTransformSampleCount}, bones=" +
-                $"{memory.BonePoseCount}, legacyBonesPerFrame=" +
-                $"{legacyBoneTransformsPerFrame}.");
+                $"{memory.BonePoseCount}, controllerChanges=" +
+                $"{replay.RecordedAnimationControllerChangeCount}, " +
+                $"visuals={replay.TrackedVisualCount}, " +
+                $"visualsBeforeEquipment={trackedVisualsBeforeEquipment}, " +
+                $"legacyBonesPerFrame={legacyBoneTransformsPerFrame}.");
             Require(
                 replay.HasRecordedAnimationTrigger(
                     Animator.StringToHash("AttackA")) &&

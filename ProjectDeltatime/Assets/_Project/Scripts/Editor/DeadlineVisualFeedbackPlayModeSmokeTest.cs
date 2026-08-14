@@ -50,6 +50,11 @@ namespace Deltatime.EditorTools
         private static int attachmentSceneIndex;
         private static DeadlineController deadline;
         private static DeadlineVisualFeedback visualFeedback;
+        private static readonly CommandLineSmokeRunner Runner =
+            new CommandLineSmokeRunner(
+                RunningKey,
+                Tick,
+                HandlePlayModeChanged);
 
         static DeadlineVisualFeedbackPlayModeSmokeTest()
         {
@@ -66,20 +71,15 @@ namespace Deltatime.EditorTools
                 return;
             }
 
-            EditorSceneManager.OpenScene(Stage1ScenePath, OpenSceneMode.Single);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FailedKey, false);
             SessionState.SetString(FailureKey, string.Empty);
-            Attach();
-            EditorApplication.EnterPlaymode();
+            Runner.OpenSceneAndEnterPlayMode(Stage1ScenePath);
         }
 
         private static void Attach()
         {
-            EditorApplication.update -= Tick;
-            EditorApplication.update += Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
-            EditorApplication.playModeStateChanged += HandlePlayModeChanged;
+            Runner.Attach();
         }
 
         private static void HandlePlayModeChanged(PlayModeStateChange state)
@@ -351,8 +351,7 @@ namespace Deltatime.EditorTools
             SessionState.EraseBool(RunningKey);
             SessionState.EraseBool(FailedKey);
             SessionState.EraseString(FailureKey);
-            EditorApplication.update -= Tick;
-            EditorApplication.playModeStateChanged -= HandlePlayModeChanged;
+            Runner.Detach();
 
             if (failed)
             {

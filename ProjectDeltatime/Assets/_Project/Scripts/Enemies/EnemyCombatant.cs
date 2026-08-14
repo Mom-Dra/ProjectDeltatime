@@ -91,7 +91,8 @@ namespace Deltatime.Enemies
         [SerializeField] private LayerMask weaponPickupLayers = ~0;
 
         private readonly Collider[] weaponSearchHits = new Collider[32];
-        private float stateTimeRemaining;
+        private readonly EnemyCombatStateController combatState = new();
+        private readonly EnemyWarningPresenter warningPresenter = new();
         private int burstShotsRemaining;
         private float nextWeaponSearchWorldTime;
         private float pendingAttackRange;
@@ -105,10 +106,9 @@ namespace Deltatime.Enemies
         private WeaponPickup weaponTarget;
         private Renderer combatIdentityRingRenderer;
 
-        public CombatState CurrentState { get; private set; } =
-            CombatState.Detecting;
-        public MovementMode CurrentMovementMode { get; private set; } =
-            MovementMode.Stopped;
+        public CombatState CurrentState => combatState.CurrentState;
+        public MovementMode CurrentMovementMode =>
+            combatState.CurrentMovementMode;
         public WeaponPickup CurrentWeaponTarget => weaponTarget;
         public event Action CloseAttackPerformed;
 
@@ -153,6 +153,7 @@ namespace Deltatime.Enemies
                 Disarm();
             }
 
+            warningPresenter.Bind(warningLine);
             SetWarningVisible(false);
         }
 
@@ -174,9 +175,9 @@ namespace Deltatime.Enemies
             float deltaTime = worldTime.WorldDeltaTime;
             if (!AdvanceStatus(deltaTime))
             {
-                CurrentState = IsStunned
+                combatState.SetState(IsStunned
                     ? CombatState.Stunned
-                    : CombatState.Dead;
+                    : CombatState.Dead);
                 StopMovement();
                 SetWarningVisible(false);
                 return;
@@ -251,6 +252,7 @@ namespace Deltatime.Enemies
             weapon = weaponController;
             weaponDrop = dropController;
             warningLine = telegraphLine;
+            warningPresenter.Bind(warningLine);
             playerVision = vision;
             bodyRenderer = enemyBodyRenderer;
             weaponRenderer = heldWeaponRenderer;
@@ -359,36 +361,38 @@ namespace Deltatime.Enemies
             if (canSeeTarget)
             {
                 float distance = perception.PlanarDistanceToTarget;
-                if (distance > preferredMaximumRange)
+                switch (EnemyFirearmRangePolicy.Decide(
+                            distance,
+                            preferredMinimumRange,
+                            preferredMaximumRange))
                 {
-                    CurrentMovementMode = MovementMode.Pursuing;
-                    CurrentState = CombatState.Pursuing;
-                    motor.MoveTowards(
-                        perception.Target.position,
-                        preferredMaximumRange * 0.9f,
-                        deltaTime);
-                    return;
+                    case FirearmRangeDecision.Pursue:
+                        combatState.SetMovementMode(MovementMode.Pursuing);
+                        combatState.SetState(CombatState.Pursuing);
+                        motor.MoveTowards(
+                            perception.Target.position,
+                            preferredMaximumRange * 0.9f,
+                            deltaTime);
+                        return;
+
+                    case FirearmRangeDecision.Retreat:
+                        combatState.SetMovementMode(MovementMode.Retreating);
+                        Vector3 away =
+                            -perception.PlanarDirectionToTarget;
+                        motor.MoveTowards(
+                            transform.position +
+                            (away * retreatStepDistance),
+                            0.15f,
+                            deltaTime,
+                            retreatMoveSpeedMultiplier,
+                            false);
+                        motor.RotateTowards(
+                            perception.Target.position,
+                            deltaTime);
+                        return;
                 }
 
-                if (distance < preferredMinimumRange)
-                {
-                    CurrentMovementMode = MovementMode.Retreating;
-                    Vector3 away =
-                        -perception.PlanarDirectionToTarget;
-                    motor.MoveTowards(
-                        transform.position +
-                        (away * retreatStepDistance),
-                        0.15f,
-                        deltaTime,
-                        retreatMoveSpeedMultiplier,
-                        false);
-                    motor.RotateTowards(
-                        perception.Target.position,
-                        deltaTime);
-                    return;
-                }
-
-                CurrentMovementMode = MovementMode.Holding;
+                combatState.SetMovementMode(MovementMode.Holding);
                 motor.Stop();
                 motor.RotateTowards(
                     perception.Target.position,
@@ -410,8 +414,7 @@ namespace Deltatime.Enemies
             }
 
             UpdateWarningLine(weapon.Muzzle.position);
-            stateTimeRemaining -= deltaTime;
-            if (stateTimeRemaining <= 0f)
+            if (combatState.AdvanceStateTimer(deltaTime))
             {
                 burstShotsRemaining = Mathf.Max(
                     1,
@@ -539,8 +542,8 @@ namespace Deltatime.Enemies
                 return;
             }
 
-            CurrentState = CombatState.Pursuing;
-            CurrentMovementMode = MovementMode.Pursuing;
+            combatState.SetState(CombatState.Pursuing);
+            combatState.SetMovementMode(MovementMode.Pursuing);
             bool arrived = motor.MoveTowards(
                 destination,
                 canSeeTarget ? attackRange * 0.8f : 0.15f,
@@ -589,7 +592,7 @@ namespace Deltatime.Enemies
                 return;
             }
 
-            CurrentMovementMode = MovementMode.Pursuing;
+            combatState.SetMovementMode(MovementMode.Pursuing);
             motor.MoveTowards(
                 perception.Target.position,
                 pendingAttackRange * 0.55f,
@@ -604,8 +607,7 @@ namespace Deltatime.Enemies
                 transform.position +
                 (Vector3.up * 0.45f));
 
-            stateTimeRemaining -= deltaTime;
-            if (stateTimeRemaining <= 0f)
+            if (combatState.AdvanceStateTimer(deltaTime))
             {
                 TransitionTo(CombatState.Attacking, 0f);
             }
@@ -659,8 +661,7 @@ namespace Deltatime.Enemies
                     deltaTime);
             }
 
-            stateTimeRemaining -= deltaTime;
-            if (stateTimeRemaining <= 0f)
+            if (combatState.AdvanceStateTimer(deltaTime))
             {
                 TransitionTo(CombatState.Detecting, 0f);
             }
@@ -730,14 +731,12 @@ namespace Deltatime.Enemies
                 }
             }
 
-            WeaponPickup selected = bestFirearm;
-            if (bestMelee != null &&
-                (bestFirearm == null ||
-                 bestFirearmPath >=
-                 bestMeleePath + firearmPathTolerance))
-            {
-                selected = bestMelee;
-            }
+            WeaponPickup selected = EnemyWeaponSearchPolicy.Select(
+                bestFirearm,
+                bestFirearmPath,
+                bestMelee,
+                bestMeleePath,
+                firearmPathTolerance);
 
             if (selected != null && selected.TryReserve(this))
             {
@@ -767,8 +766,8 @@ namespace Deltatime.Enemies
                 }
             }
 
-            CurrentState = CombatState.SeekingWeapon;
-            CurrentMovementMode = MovementMode.SeekingWeapon;
+            combatState.SetState(CombatState.SeekingWeapon);
+            combatState.SetMovementMode(MovementMode.SeekingWeapon);
             SetWarningVisible(false);
 
             Vector3 offset = weaponTarget.transform.position -
@@ -835,8 +834,8 @@ namespace Deltatime.Enemies
                 return;
             }
 
-            CurrentState = CombatState.Pursuing;
-            CurrentMovementMode = MovementMode.Pursuing;
+            combatState.SetState(CombatState.Pursuing);
+            combatState.SetMovementMode(MovementMode.Pursuing);
             bool arrived = motor.MoveTowards(
                 perception.LastKnownTargetPosition,
                 0.2f,
@@ -844,7 +843,7 @@ namespace Deltatime.Enemies
             if (arrived)
             {
                 StopMovement();
-                CurrentState = CombatState.Detecting;
+                combatState.SetState(CombatState.Detecting);
             }
         }
 
@@ -872,7 +871,7 @@ namespace Deltatime.Enemies
 
         private void StopMovement()
         {
-            CurrentMovementMode = MovementMode.Stopped;
+            combatState.SetMovementMode(MovementMode.Stopped);
             motor?.Stop();
         }
 
@@ -880,8 +879,7 @@ namespace Deltatime.Enemies
             CombatState nextState,
             float stateDuration)
         {
-            CurrentState = nextState;
-            stateTimeRemaining = Mathf.Max(0f, stateDuration);
+            combatState.TransitionTo(nextState, stateDuration);
             SetWarningVisible(false);
         }
 
@@ -916,21 +914,17 @@ namespace Deltatime.Enemies
 
         private void UpdateWarningLine(Vector3 origin)
         {
-            if (warningLine == null ||
-                !warningLine.enabled ||
-                perception.Target == null)
+            if (perception.Target == null)
             {
                 return;
             }
 
-            warningLine.positionCount = 2;
-            warningLine.SetPosition(0, origin);
-            warningLine.SetPosition(1, perception.Target.position);
+            warningPresenter.Update(origin, perception.Target.position);
         }
 
         private void RefreshWarningLine()
         {
-            if (warningLine == null || !warningLine.enabled)
+            if (!warningPresenter.IsVisible)
             {
                 return;
             }
@@ -957,10 +951,7 @@ namespace Deltatime.Enemies
 
         private void SetWarningVisible(bool visible)
         {
-            if (warningLine != null)
-            {
-                warningLine.enabled = visible;
-            }
+            warningPresenter.SetVisible(visible);
         }
 
         private void OnDestroy()

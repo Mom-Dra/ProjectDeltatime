@@ -13,7 +13,7 @@ using UnityEngine.Rendering;
 namespace Deltatime.Replay
 {
     [DefaultExecutionOrder(10000)]
-    public sealed class StageReplayController : MonoBehaviour
+    public sealed class StageReplayController : MonoBehaviour, IReplayCaptureSink
     {
         public static StageReplayController ActiveRecorder { get; private set; }
 
@@ -107,13 +107,13 @@ namespace Deltatime.Replay
             new List<MonoBehaviour>();
 
         private Transform replayRoot;
-        private ReplayRecordingClock recordingClock;
+        private readonly ReplayCaptureSession captureSession =
+            new ReplayCaptureSession();
+        private readonly ReplayPlaybackSession playbackSession =
+            new ReplayPlaybackSession();
         private bool replayRequested;
         private float firstPresentationTime;
         private float lastPresentationTime;
-        private float playbackTime;
-        private float holdRemaining;
-        private float captureAccumulator;
         private bool hasCapturedDeadlineState;
         private bool lastCapturedDeadlineState;
         private float nextFallbackRendererDiscoveryTime;
@@ -302,7 +302,9 @@ namespace Deltatime.Replay
                 timingSamples[0].SourceTimestamp);
         public float PlaybackElapsed =>
             IsReplaying
-                ? Mathf.Max(0f, playbackTime - firstPresentationTime)
+                ? Mathf.Max(
+                    0f,
+                    playbackSession.CurrentTime - firstPresentationTime)
                 : 0f;
         public float CurrentSourceTimestamp { get; private set; }
         public bool IsRecording => enabled && !IsReplaying &&
@@ -473,8 +475,8 @@ namespace Deltatime.Replay
                 visualSamples,
                 cameraSamples.Count,
                 timingSamples.Count,
-                recordingClock.SourceElapsedTime,
-                recordingClock.ReplayElapsedTime,
+                captureSession.SourceElapsedTime,
+                captureSession.ReplayElapsedTime,
                 recordingLimitReached,
                 recordingLimitReason);
         }
@@ -536,8 +538,8 @@ namespace Deltatime.Replay
             }
 
             track.Capture(
-                recordingClock.SourceElapsedTime,
-                recordingClock.ReplayElapsedTime,
+                captureSession.SourceElapsedTime,
+                captureSession.ReplayElapsedTime,
                 true);
             return true;
         }
@@ -551,10 +553,11 @@ namespace Deltatime.Replay
                 return;
             }
 
-            track.RecordController(
+            ReplayAnimationRecorder.RecordController(
+                track,
                 controller,
-                recordingClock.SourceElapsedTime,
-                recordingClock.ReplayElapsedTime);
+                captureSession.SourceElapsedTime,
+                captureSession.ReplayElapsedTime);
         }
 
         public void RecordAnimatorTrigger(
@@ -567,11 +570,12 @@ namespace Deltatime.Replay
                 return;
             }
 
-            track.RecordTrigger(
+            ReplayAnimationRecorder.RecordTrigger(
+                track,
                 parameterHash,
                 set,
-                recordingClock.SourceElapsedTime,
-                recordingClock.ReplayElapsedTime);
+                captureSession.SourceElapsedTime,
+                captureSession.ReplayElapsedTime);
         }
 
         public void RecordAnimatorActive(
@@ -583,10 +587,11 @@ namespace Deltatime.Replay
                 return;
             }
 
-            track.RecordActive(
+            ReplayAnimationRecorder.RecordActive(
+                track,
                 active,
-                recordingClock.SourceElapsedTime,
-                recordingClock.ReplayElapsedTime);
+                captureSession.SourceElapsedTime,
+                captureSession.ReplayElapsedTime);
         }
 
         private bool TryGetAnimationTrack(
@@ -623,6 +628,7 @@ namespace Deltatime.Replay
             }
 
             ActiveRecorder = this;
+            ReplayVisualRegistry.SetActive(this);
         }
 
         private void EnsureReplayRoot()
@@ -668,7 +674,7 @@ namespace Deltatime.Replay
                 return;
             }
 
-            recordingClock.Advance(realDeltaTime, worldTime.WorldDeltaTime);
+            captureSession.Advance(realDeltaTime, worldTime.WorldDeltaTime);
             if (recordingLimitReached)
             {
                 if (replayRequested)
@@ -685,15 +691,10 @@ namespace Deltatime.Replay
             // takes at normal (1x) world speed.  Capturing the accumulated
             // delta avoids reconstructing variable slow motion from a guessed
             // or hard-coded multiplier during playback.
-            float captureInterval = 1f / Mathf.Max(1f, captureRate);
-            captureAccumulator += realDeltaTime;
-            bool captureDue = captureAccumulator >= captureInterval;
+            bool captureDue = captureSession.ConsumeCaptureDue(
+                realDeltaTime,
+                captureRate);
             bool deadlineStateChanged = HasDeadlineStateChanged();
-
-            if (captureDue)
-            {
-                captureAccumulator %= captureInterval;
-            }
 
             if (captureDue || deadlineStateChanged)
             {
@@ -702,7 +703,7 @@ namespace Deltatime.Replay
             }
 
             if (!recordingLimitReached &&
-                recordingClock.SourceElapsedTime >=
+                captureSession.SourceElapsedTime >=
                 maximumSourceRecordingDuration)
             {
                 if (!captureDue && !deadlineStateChanged)
@@ -733,8 +734,7 @@ namespace Deltatime.Replay
             }
 
             ReplayMemoryStatistics statistics = GetMemoryStatistics();
-            ReplayRecordingLimitReason reason = ReplayRecordingBudget.Evaluate(
-                statistics.SourceDuration,
+            ReplayRecordingLimitReason reason = captureSession.EvaluateBudget(
                 statistics.EstimatedBytes,
                 maximumSourceRecordingDuration,
                 MemoryBudgetBytes);
@@ -834,7 +834,7 @@ namespace Deltatime.Replay
             tracksByInstanceId.Add(instanceId, track);
             tracks.Add(track);
             explicitlyRegisteredRendererIds.Add(instanceId);
-            track.Capture(recordingClock.SourceElapsedTime, true);
+            track.Capture(captureSession.SourceElapsedTime, true);
             return true;
         }
 
@@ -911,7 +911,7 @@ namespace Deltatime.Replay
 
         private void CaptureFrame(bool forceKeyframe)
         {
-            float timestamp = recordingClock.SourceElapsedTime;
+            float timestamp = captureSession.SourceElapsedTime;
             bool deadlineActive = deadline != null && deadline.IsActive;
             hasCapturedDeadlineState = true;
             lastCapturedDeadlineState = deadlineActive;
@@ -925,14 +925,14 @@ namespace Deltatime.Replay
             timingSamples.Add(new ReplayTimingSample(
                 timestamp,
                 worldTime.WorldElapsedTime,
-                recordingClock.ReplayElapsedTime,
+                captureSession.ReplayElapsedTime,
                 deadlineActive));
 
             for (int i = 0; i < animationTracks.Count; i++)
             {
                 animationTracks[i].Capture(
                     timestamp,
-                    recordingClock.ReplayElapsedTime,
+                    captureSession.ReplayElapsedTime,
                     forceKeyframe);
             }
 
@@ -993,7 +993,7 @@ namespace Deltatime.Replay
             {
                 if (!fallbackRendererDiscoveryInitialized ||
                     (fallbackRendererDiscoveryInterval > 0f &&
-                     recordingClock.SourceElapsedTime >=
+                     captureSession.SourceElapsedTime >=
                      nextFallbackRendererDiscoveryTime))
                 {
                     RefreshFallbackRendererCandidates();
@@ -1019,7 +1019,7 @@ namespace Deltatime.Replay
             CollectDynamicRootRenderers();
             if (!fallbackRendererDiscoveryInitialized ||
                 (fallbackRendererDiscoveryInterval > 0f &&
-                 recordingClock.SourceElapsedTime >=
+                 captureSession.SourceElapsedTime >=
                  nextFallbackRendererDiscoveryTime))
             {
                 RefreshFallbackRendererCandidates();
@@ -1079,7 +1079,7 @@ namespace Deltatime.Replay
 
             fallbackRendererDiscoveryInitialized = true;
             nextFallbackRendererDiscoveryTime =
-                recordingClock.SourceElapsedTime +
+                captureSession.SourceElapsedTime +
                 fallbackRendererDiscoveryInterval;
         }
 
@@ -1358,23 +1358,11 @@ namespace Deltatime.Replay
                     0f);
             }
 
-            int low = 0;
-            int high = replaySegments.Count - 1;
-            while (low < high)
-            {
-                int middle = low + ((high - low) / 2);
-                if (replaySegments[middle].PresentationEnd <=
-                    presentationTimestamp)
-                {
-                    low = middle + 1;
-                }
-                else
-                {
-                    high = middle;
-                }
-            }
-
-            ReplaySegment segment = replaySegments[low];
+            int segmentIndex = ReplayTimeline.FindSegmentIndex(
+                replaySegments,
+                presentationTimestamp,
+                segment => segment.PresentationEnd);
+            ReplaySegment segment = replaySegments[segmentIndex];
             if (presentationTimestamp >= lastPresentationTime)
             {
                 segment = replaySegments[replaySegments.Count - 1];
@@ -1401,10 +1389,7 @@ namespace Deltatime.Replay
             replayRoot.gameObject.SetActive(true);
             IsReplaying = true;
             float replayTimeOrigin = timingSamples[0].ReplayTimestamp;
-            for (int i = 0; i < animationTracks.Count; i++)
-            {
-                animationTracks[i].PrepareForReplay(replayTimeOrigin);
-            }
+            ReplayAnimationPlayer.Prepare(animationTracks, replayTimeOrigin);
 
             DisableLiveSimulation();
 
@@ -1413,20 +1398,16 @@ namespace Deltatime.Replay
                 tracks[i].HideSource();
             }
 
-            for (int i = 0; i < animationTracks.Count; i++)
-            {
-                animationTracks[i].HideSource();
-            }
+            ReplayAnimationPlayer.HideSources(animationTracks);
 
             for (int i = 0; i < lightTracks.Count; i++)
             {
                 lightTracks[i].HideSource();
             }
 
-            playbackTime = firstPresentationTime;
+            playbackSession.Reset(firstPresentationTime);
             CurrentSourceTimestamp = replaySegments[0].SourceStart;
-            holdRemaining = 0f;
-            ApplyReplay(playbackTime);
+            ApplyReplay(playbackSession.CurrentTime);
         }
 
         private void DisableLiveSimulation()
@@ -1461,30 +1442,16 @@ namespace Deltatime.Replay
                 return;
             }
 
-            if (holdRemaining > 0f)
+            ReplayPlaybackStep step = playbackSession.Advance(
+                realDeltaTime,
+                firstPresentationTime,
+                lastPresentationTime,
+                endHoldDuration,
+                loop);
+            if (step.ShouldApply)
             {
-                holdRemaining = Mathf.Max(0f, holdRemaining - realDeltaTime);
-                if (holdRemaining > 0f || !loop)
-                {
-                    return;
-                }
-
-                playbackTime = firstPresentationTime;
+                ApplyReplay(step.PresentationTime);
             }
-            else
-            {
-                playbackTime += realDeltaTime;
-            }
-
-            if (playbackTime >= lastPresentationTime)
-            {
-                playbackTime = lastPresentationTime;
-                ApplyReplay(playbackTime);
-                holdRemaining = endHoldDuration;
-                return;
-            }
-
-            ApplyReplay(playbackTime);
         }
 
         private void ApplyReplay(float presentationTimestamp)
@@ -1499,12 +1466,10 @@ namespace Deltatime.Replay
                 tracks[i].Apply(replayPosition.SourceTimestamp);
             }
 
-            for (int i = 0; i < animationTracks.Count; i++)
-            {
-                animationTracks[i].Apply(
-                    presentationTimestamp,
-                    replayPosition.SourceTimestamp);
-            }
+            ReplayAnimationPlayer.Apply(
+                animationTracks,
+                presentationTimestamp,
+                replayPosition.SourceTimestamp);
 
             for (int i = 0; i < lightTracks.Count; i++)
             {
@@ -1535,7 +1500,7 @@ namespace Deltatime.Replay
                 segment.CameraRecoveryDuration > 0f)
             {
                 float recoveryBlend = Mathf.Clamp01(
-                    (playbackTime - segment.CameraRecoveryStart) /
+                    (playbackSession.CurrentTime - segment.CameraRecoveryStart) /
                     segment.CameraRecoveryDuration);
                 CurrentCameraRecoveryBlend = recoveryBlend;
                 if (recoveryBlend < 1f)
@@ -1737,6 +1702,7 @@ namespace Deltatime.Replay
 
         private void OnDestroy()
         {
+            ReplayVisualRegistry.Clear(this);
             if (ActiveRecorder == this)
             {
                 ActiveRecorder = null;
@@ -1747,10 +1713,7 @@ namespace Deltatime.Replay
                 tracks[i].Dispose();
             }
 
-            for (int i = 0; i < animationTracks.Count; i++)
-            {
-                animationTracks[i].Dispose();
-            }
+            ReplayAnimationPlayer.Dispose(animationTracks);
         }
 
         private readonly struct CameraSample

@@ -54,9 +54,12 @@ namespace Deltatime.EditorTools
 
         public static void BuildAndValidateFromCommandLine()
         {
-            BuildMainScene();
-            ValidateMainScene();
-            Debug.Log("MainScene build and validation completed.");
+            SceneBuildCommand.Run(() =>
+            {
+                BuildMainScene();
+                ValidateMainScene();
+                Debug.Log("MainScene build and validation completed.");
+            });
         }
 
         [MenuItem("Tools/Main Menu/Validate Main Scene")]
@@ -382,10 +385,7 @@ namespace Deltatime.EditorTools
 
         private static void Require(bool condition, string message)
         {
-            if (!condition)
-            {
-                throw new System.InvalidOperationException(message);
-            }
+            SceneValidation.Require(condition, message);
         }
     }
 }

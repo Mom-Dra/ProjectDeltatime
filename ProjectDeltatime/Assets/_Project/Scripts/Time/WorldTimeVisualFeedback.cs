@@ -125,11 +125,13 @@ namespace Deltatime.TimeSystem
                 return;
             }
 
-            Color target = Color.Lerp(
+            Color target = WorldTimeVisualState.TargetBackground(
                 nearlyStoppedColor,
                 activeColor,
-                Mathf.Clamp01(worldTime.CurrentTimeScale));
-            float blend = 1f - Mathf.Exp(-colorBlendSpeed * UnityEngine.Time.unscaledDeltaTime);
+                worldTime.CurrentTimeScale);
+            float blend = WorldTimeVisualState.ExponentialBlend(
+                colorBlendSpeed,
+                UnityEngine.Time.unscaledDeltaTime);
             gameplayCamera.backgroundColor = Color.Lerp(
                 gameplayCamera.backgroundColor,
                 target,
@@ -151,7 +153,8 @@ namespace Deltatime.TimeSystem
                 return;
             }
 
-            float slowAmount = 1f - Mathf.Clamp01(worldTime.CurrentTimeScale);
+            float slowAmount = WorldTimeVisualState.SlowAmount(
+                worldTime.CurrentTimeScale);
             if (slowAmount <= 0.001f)
             {
                 return;

@@ -64,8 +64,8 @@ namespace Deltatime.Visuals
         private void OnEnable()
         {
             Subscribe();
-            StageReplayController.ActiveRecorder?.RegisterAnimationSource(this);
-            StageReplayController.ActiveRecorder?.RecordAnimatorActive(
+            ReplayVisualRegistry.Active?.RegisterAnimationSource(this);
+            ReplayVisualRegistry.Active?.RecordAnimatorActive(
                 this,
                 true);
         }
@@ -89,7 +89,7 @@ namespace Deltatime.Visuals
 
         private void OnDisable()
         {
-            StageReplayController.ActiveRecorder?.RecordAnimatorActive(
+            ReplayVisualRegistry.Active?.RecordAnimatorActive(
                 this,
                 false);
             Unsubscribe();
@@ -416,7 +416,7 @@ namespace Deltatime.Visuals
             }
 
             animator.SetTrigger(parameterHash);
-            StageReplayController.ActiveRecorder?.RecordAnimatorTrigger(
+            ReplayVisualRegistry.Active?.RecordAnimatorTrigger(
                 this,
                 parameterHash,
                 true);
@@ -430,7 +430,7 @@ namespace Deltatime.Visuals
             }
 
             animator.ResetTrigger(parameterHash);
-            StageReplayController.ActiveRecorder?.RecordAnimatorTrigger(
+            ReplayVisualRegistry.Active?.RecordAnimatorTrigger(
                 this,
                 parameterHash,
                 false);
@@ -440,7 +440,7 @@ namespace Deltatime.Visuals
             RuntimeAnimatorController controller)
         {
             animator.runtimeAnimatorController = controller;
-            StageReplayController.ActiveRecorder?.RecordAnimatorController(
+            ReplayVisualRegistry.Active?.RecordAnimatorController(
                 this,
                 controller);
         }

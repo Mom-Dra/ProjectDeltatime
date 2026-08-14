@@ -92,17 +92,21 @@ namespace Deltatime.Enemies
                 return false;
             }
 
-            Vector3 destinationOffset = destination - body.position;
-            destinationOffset.y = 0f;
-            if (destinationOffset.magnitude <= Mathf.Max(0f, stoppingDistance))
+            Vector3 destinationOffset = EnemyMovementMath.PlanarOffset(
+                body.position,
+                destination);
+            if (EnemyMovementMath.HasReached(
+                    destinationOffset,
+                    stoppingDistance))
             {
                 return true;
             }
 
             EnsurePath(destination);
             Vector3 steeringTarget = ResolveSteeringTarget(destination);
-            Vector3 direction = steeringTarget - body.position;
-            direction.y = 0f;
+            Vector3 direction = EnemyMovementMath.PlanarOffset(
+                body.position,
+                steeringTarget);
             if (direction.sqrMagnitude <= 0.000001f)
             {
                 return false;
@@ -116,12 +120,11 @@ namespace Deltatime.Enemies
                     worldDeltaTime);
             }
 
-            float requestedDistance = Mathf.Min(
-                effectiveMoveSpeed * worldDeltaTime,
-                Mathf.Max(
-                    0f,
-                    destinationOffset.magnitude -
-                    Mathf.Max(0f, stoppingDistance)));
+            float requestedDistance = EnemyMovementMath.RequestedDistance(
+                effectiveMoveSpeed,
+                worldDeltaTime,
+                destinationOffset.magnitude,
+                stoppingDistance);
             float movedDistance = MoveWithCollision(
                 direction,
                 requestedDistance);
@@ -221,8 +224,9 @@ namespace Deltatime.Enemies
 
         private void EnsurePath(Vector3 destination)
         {
-            bool destinationChanged =
-                (destination - lastPathDestination).sqrMagnitude > 0.16f;
+            bool destinationChanged = EnemyMovementMath.DestinationChanged(
+                destination,
+                lastPathDestination);
             if (hasPath &&
                 !destinationChanged &&
                 worldTime != null &&
