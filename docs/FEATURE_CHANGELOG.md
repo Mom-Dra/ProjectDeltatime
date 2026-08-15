@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-15 - 바닥 무기 아웃라인 리플레이 잔류 수정
+
+- 변경 유형: 버그 수정, 리플레이 시각 등록, PlayMode 회귀 테스트 갱신
+- 변경 내용: **구현 완료**. 동적으로 생성되거나 무기 교환으로 월드 모델이 바뀐 `WeaponPickup`은 모델과 아웃라인 렌더러 구성 완료 후 `ReplayVisualRegistry`에 전체 렌더러 계층을 즉시 등록한다. 따라서 렌더러 탐색 간격이 `0`인 Stage1·Tutorial에서도 적 드롭·투척 착지·가로채기 교환 등으로 게임 중 생성된 원본 바닥 무기와 황금색 아웃라인이 리플레이 전환 시 함께 숨겨지고, 기록된 리플레이 프록시만 표시된다.
+- 영향을 받은 시스템: StageReplayController 렌더러 등록, 동적 바닥 무기, 무기 교환, 적 드롭·투척 착지, Tutorial, 바닥 무기 아웃라인
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/WeaponPickupOutlineTests.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.8.2로 갱신해 동적 바닥 픽업·아웃라인의 이벤트 기반 리플레이 등록과 원본 숨김 정책을 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 PlayMode `WeaponPickupOutlineTests` 3/3 통과. 신규 회귀 테스트는 초기 탐색 뒤 생성된 픽업, `fallbackRendererDiscoveryInterval = 0`, 리플레이 시작 조건에서 원본 무기와 생성된 아웃라인 렌더러가 모두 비활성화되는지 확인한다.
+- 남은 작업: **확인 불가**. 실제 Stage1·Tutorial 플레이에서 적 드롭·투척 착지 후 리플레이 화면을 사람 눈으로 확인하는 수동 평가는 미실행이다.
+
+## 2026-08-15 - 바닥 무기 황금색 아웃라인
+
+- 변경 유형: 기능 추가, 시각 피드백, 프리팹·에디터 빌더·테스트 갱신
+- 변경 내용: **구현 완료**. 모든 `WeaponPickup`이 현재 월드 모델의 `MeshRenderer`·`SkinnedMeshRenderer`를 대상으로 원본 메시·본을 공유하는 inverted-hull 렌더러를 Play Mode에서 생성한다. Built-in 전용 셰이더와 공유 머티리얼은 고정 황금색 `(1, 0.55, 0.035, 1)`, 화면 기준 2px, `Cull Front`, `ZTest LEqual`, `ZWrite Off`, 렌더 큐 3050을 사용한다. 모든 서브메시를 그리며 원본 머티리얼은 바꾸지 않고 그림자·프로브·모션 벡터·추가 콜라이더를 만들지 않는다. 직접 배치·적 드롭 착지·투척 착지·교환·튜토리얼 지급으로 생긴 바닥 총기와 근접 무기에 적용하며 비행 중 `ThrownWeapon`·`InterceptableWeapon`은 제외한다.
+- 영향을 받은 시스템: 바닥 무기 가시성, 무기 획득·교환, 적 드롭·투척 착지, Tutorial 무기 지급, Built-in 렌더링, 픽업 프리팹 재생성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Visuals/WeaponPickupOutline.cs`, `ProjectDeltatime/Assets/_Project/Shaders/WeaponPickupOutline.shader`, `ProjectDeltatime/Assets/_Project/Materials/WeaponPickupOutline.mat`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponPickup.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/WeaponPickup.prefab`, `ProjectDeltatime/Assets/_Project/Prefabs/*Pickup.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/WeaponPickupOutlineTests.cs`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.8.1로 갱신하고 바닥 무기 아웃라인의 적용 대상, 깊이·제한 시야 정책, 렌더링 수치와 검증 상태를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 임포트·컴파일 종료 코드 0, `BuildPlaceableWeaponPickups` 재생성·검증 종료 코드 0, EditMode 17/17 통과, PlayMode 전체 3/3 통과(전용 아웃라인 2건 포함). 최초 전용 PlayMode 실행은 저장 프리팹 컴포넌트 초기화 순서로 1건 실패했으나 활성 조건을 보정한 뒤 최종 실행이 통과했다. 새 셰이더 임포트 오류는 없었다.
+- 남은 작업: **확인 불가**. Stage1과 Tutorial의 1920×1080 Game View에서 실제 2px 두께·황금색 대비·벽 가림·제한 시야 경계의 육안 평가는 **미실행**이다. 상호작용 거리, 콜라이더, 무기 밸런스와 월드 시간 동작은 변경하지 않았다.
+
 ## 2026-08-14 - 전면 리팩터링 1단계: 기준선·저장소 위생·어셈블리 경계
 
 - 변경 유형: 저장소 정리, 패키지 의존성 정리, 어셈블리 경계 추가, 검증 기반 추가

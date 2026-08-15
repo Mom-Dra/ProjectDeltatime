@@ -49,6 +49,8 @@ namespace Deltatime.EditorTools
             Materials + "/PrototypeChaser3D.mat";
         private const string WeaponMaterialPath = Materials + "/PrototypeWeapon3D.mat";
         private const string PickupMaterialPath = Materials + "/PrototypePickup3D.mat";
+        private const string PickupOutlineMaterialPath =
+            Materials + "/WeaponPickupOutline.mat";
         private const string AccentMaterialPath = Materials + "/PrototypeAccent3D.mat";
         private const string VisionMaterialPath = Materials + "/PrototypeVisionCone3D.mat";
         private const string ProjectilePrefabPath = Prefabs + "/Projectile.prefab";
@@ -131,6 +133,8 @@ namespace Deltatime.EditorTools
                 0.45f,
                 0.55f,
                 new Color(0.08f, 0.018f, 0.002f, 1f));
+            Material pickupOutlineMaterial =
+                EnsureWeaponPickupOutlineMaterial();
             Material accentMaterial = EnsureStandardMaterial(
                 AccentMaterialPath,
                 new Color(0.02f, 0.6f, 0.8f, 1f),
@@ -147,7 +151,7 @@ namespace Deltatime.EditorTools
             WeaponDefinition shotgun = EnsureShotgunDefinition();
             WeaponDefinition meleeWeapon = EnsureMeleeWeaponDefinition();
             EnsureProjectilePrefab(lineMaterial);
-            EnsurePickupPrefab(pickupMaterial);
+            EnsurePickupPrefab(pickupMaterial, pickupOutlineMaterial);
             EnsureThrownWeaponPrefab(pickupMaterial, lineMaterial);
             EnsureInterceptableWeaponPrefab(pickupMaterial, lineMaterial);
 
@@ -164,6 +168,7 @@ namespace Deltatime.EditorTools
                 MeleeWeaponDefinitionPath);
             EnsureConfiguredPickupPrefabs(
                 pickupMaterial,
+                pickupOutlineMaterial,
                 pistol,
                 automaticRifle,
                 shotgun,
@@ -353,6 +358,8 @@ namespace Deltatime.EditorTools
                     0.55f,
                     new Color(0.08f, 0.018f, 0.002f, 1f));
             }
+            Material pickupOutlineMaterial =
+                EnsureWeaponPickupOutlineMaterial();
 
             WeaponDefinition pistol = LoadPlaceableWeaponDefinition(
                 PistolDefinitionPath,
@@ -369,6 +376,7 @@ namespace Deltatime.EditorTools
 
             EnsureConfiguredPickupPrefabs(
                 pickupMaterial,
+                pickupOutlineMaterial,
                 pistol,
                 automaticRifle,
                 shotgun,
@@ -1547,7 +1555,9 @@ namespace Deltatime.EditorTools
             UnityEngine.Object.DestroyImmediate(root);
         }
 
-        private static void EnsurePickupPrefab(Material pickupMaterial)
+        private static void EnsurePickupPrefab(
+            Material pickupMaterial,
+            Material pickupOutlineMaterial)
         {
             GameObject root = CreatePrimitiveObject(
                 "WeaponPickup",
@@ -1559,6 +1569,9 @@ namespace Deltatime.EditorTools
             BoxCollider collider = root.GetComponent<BoxCollider>();
             collider.isTrigger = true;
             root.AddComponent<WeaponPickup>();
+            WeaponPickupOutline outline =
+                root.AddComponent<WeaponPickupOutline>();
+            outline.Configure(pickupOutlineMaterial);
 
             PrefabUtility.SaveAsPrefabAsset(root, PickupPrefabPath);
             UnityEngine.Object.DestroyImmediate(root);
@@ -1566,6 +1579,7 @@ namespace Deltatime.EditorTools
 
         private static void EnsureConfiguredPickupPrefabs(
             Material pickupMaterial,
+            Material pickupOutlineMaterial,
             WeaponDefinition pistol,
             WeaponDefinition automaticRifle,
             WeaponDefinition shotgun,
@@ -1575,49 +1589,61 @@ namespace Deltatime.EditorTools
                 PistolPickupPrefabPath,
                 "Pistol Pickup",
                 pickupMaterial,
+                pickupOutlineMaterial,
                 pistol,
                 pistol.AmmunitionCapacity);
             EnsureConfiguredPickupPrefab(
                 AutomaticRiflePickupPrefabPath,
                 "Automatic Rifle Pickup",
                 pickupMaterial,
+                pickupOutlineMaterial,
                 automaticRifle,
                 automaticRifle.AmmunitionCapacity);
             EnsureConfiguredPickupPrefab(
                 ShotgunPickupPrefabPath,
                 "Shotgun Pickup",
                 pickupMaterial,
+                pickupOutlineMaterial,
                 shotgun,
                 shotgun.AmmunitionCapacity);
             EnsureConfiguredPickupPrefab(
                 MeleeWeaponPickupPrefabPath,
                 "Melee Weapon Pickup",
                 pickupMaterial,
+                pickupOutlineMaterial,
                 meleeWeapon,
                 meleeWeapon.AmmunitionCapacity);
 
             ValidateConfiguredPickupPrefab(
                 PistolPickupPrefabPath,
+                pickupOutlineMaterial,
                 pistol,
                 pistol.AmmunitionCapacity);
             ValidateConfiguredPickupPrefab(
                 AutomaticRiflePickupPrefabPath,
+                pickupOutlineMaterial,
                 automaticRifle,
                 automaticRifle.AmmunitionCapacity);
             ValidateConfiguredPickupPrefab(
                 ShotgunPickupPrefabPath,
+                pickupOutlineMaterial,
                 shotgun,
                 shotgun.AmmunitionCapacity);
             ValidateConfiguredPickupPrefab(
                 MeleeWeaponPickupPrefabPath,
+                pickupOutlineMaterial,
                 meleeWeapon,
                 meleeWeapon.AmmunitionCapacity);
+            ValidatePickupOutlinePrefab(
+                PickupPrefabPath,
+                pickupOutlineMaterial);
         }
 
         private static void EnsureConfiguredPickupPrefab(
             string path,
             string pickupName,
             Material pickupMaterial,
+            Material pickupOutlineMaterial,
             WeaponDefinition definition,
             int ammunition)
         {
@@ -1631,11 +1657,30 @@ namespace Deltatime.EditorTools
             BoxCollider collider = root.GetComponent<BoxCollider>();
             collider.isTrigger = true;
             WeaponPickup pickup = root.AddComponent<WeaponPickup>();
+            WeaponPickupOutline outline =
+                root.AddComponent<WeaponPickupOutline>();
+            outline.Configure(pickupOutlineMaterial);
             pickup.Initialize(definition, ammunition);
+            RemovePickupFallbackVisual(root);
             ConfigurePickupColliderToWorldModel(root.transform, collider);
 
             PrefabUtility.SaveAsPrefabAsset(root, path);
             UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        private static void RemovePickupFallbackVisual(GameObject root)
+        {
+            MeshRenderer renderer = root.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                UnityEngine.Object.DestroyImmediate(renderer);
+            }
+
+            MeshFilter filter = root.GetComponent<MeshFilter>();
+            if (filter != null)
+            {
+                UnityEngine.Object.DestroyImmediate(filter);
+            }
         }
 
         private static void ConfigurePickupColliderToWorldModel(
@@ -1733,6 +1778,7 @@ namespace Deltatime.EditorTools
 
         private static void ValidateConfiguredPickupPrefab(
             string path,
+            Material expectedOutlineMaterial,
             WeaponDefinition expectedDefinition,
             int expectedAmmunition)
         {
@@ -1740,6 +1786,9 @@ namespace Deltatime.EditorTools
             WeaponPickup pickup = prefab == null
                 ? null
                 : prefab.GetComponent<WeaponPickup>();
+            WeaponPickupOutline outline = prefab == null
+                ? null
+                : prefab.GetComponent<WeaponPickupOutline>();
             BoxCollider collider = prefab == null
                 ? null
                 : prefab.GetComponent<BoxCollider>();
@@ -1760,6 +1809,8 @@ namespace Deltatime.EditorTools
             if (pickup == null ||
                 pickup.Definition != expectedDefinition ||
                 pickup.Ammunition != expectedAmmunition ||
+                outline == null ||
+                outline.OutlineMaterial != expectedOutlineMaterial ||
                 collider == null ||
                 !collider.isTrigger ||
                 !hasWorldModel ||
@@ -1767,6 +1818,22 @@ namespace Deltatime.EditorTools
             {
                 throw new InvalidOperationException(
                     $"Invalid configured weapon pickup prefab at {path}.");
+            }
+        }
+
+        private static void ValidatePickupOutlinePrefab(
+            string path,
+            Material expectedOutlineMaterial)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            WeaponPickupOutline outline = prefab == null
+                ? null
+                : prefab.GetComponent<WeaponPickupOutline>();
+            if (outline == null ||
+                outline.OutlineMaterial != expectedOutlineMaterial)
+            {
+                throw new InvalidOperationException(
+                    $"Invalid weapon pickup outline at {path}.");
             }
         }
 
@@ -2048,6 +2115,39 @@ namespace Deltatime.EditorTools
 
             material.shader = shader;
             material.color = Color.white;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        private static Material EnsureWeaponPickupOutlineMaterial()
+        {
+            Shader shader = Shader.Find("Deltatime/Weapon Pickup Outline");
+            if (shader == null)
+            {
+                throw new InvalidOperationException(
+                    "The weapon pickup outline shader is missing.");
+            }
+
+            Material material = AssetDatabase.LoadAssetAtPath<Material>(
+                PickupOutlineMaterialPath);
+            if (material == null)
+            {
+                material = new Material(shader)
+                {
+                    name = "WeaponPickupOutline"
+                };
+                AssetDatabase.CreateAsset(
+                    material,
+                    PickupOutlineMaterialPath);
+            }
+
+            material.shader = shader;
+            material.SetColor(
+                "_OutlineColor",
+                new Color(1f, 0.55f, 0.035f, 1f));
+            material.SetFloat("_OutlinePixels", 2f);
+            material.renderQueue = 3050;
+            material.enableInstancing = true;
             EditorUtility.SetDirty(material);
             return material;
         }

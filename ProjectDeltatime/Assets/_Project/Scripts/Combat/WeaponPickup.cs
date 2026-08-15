@@ -1,4 +1,6 @@
 using Deltatime.Enemies;
+using Deltatime.Replay;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -15,6 +17,7 @@ namespace Deltatime.Combat
         private EnemyCombatant reservationOwner;
         private GameObject customModel;
         private WeaponDefinition customModelDefinition;
+        private WeaponPickupOutline pickupOutline;
 
         public WeaponDefinition Definition => definition;
         public int Ammunition => ammunition;
@@ -22,6 +25,7 @@ namespace Deltatime.Combat
 
         private void Awake()
         {
+            pickupOutline = GetComponent<WeaponPickupOutline>();
             if (bodyRenderer == null)
             {
                 bodyRenderer = GetComponentInChildren<Renderer>();
@@ -136,6 +140,35 @@ namespace Deltatime.Combat
             {
                 RemoveCustomModel();
             }
+
+            Transform visualRoot = null;
+            if (hasCustomModel && customModel != null)
+            {
+                visualRoot = customModel.transform;
+            }
+            else if (!hasCustomModel && bodyRenderer != null)
+            {
+                visualRoot = bodyRenderer.transform;
+            }
+
+            RefreshOutline(visualRoot);
+        }
+
+        private void RefreshOutline(Transform visualRoot)
+        {
+            if (pickupOutline == null)
+            {
+                pickupOutline = GetComponent<WeaponPickupOutline>();
+            }
+
+            if (definition == null)
+            {
+                pickupOutline?.Clear();
+                return;
+            }
+
+            pickupOutline?.Refresh(visualRoot);
+            ReplayVisualRegistry.Active?.RegisterRendererHierarchy(transform);
         }
 
         private void EnsureCustomModel()

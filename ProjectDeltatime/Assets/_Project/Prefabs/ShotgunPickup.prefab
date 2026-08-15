@@ -186,6 +186,7 @@ GameObject:
   - component: {fileID: 3308099479773024232}
   - component: {fileID: 1319365153974085616}
   - component: {fileID: 3776347413947104877}
+  - component: {fileID: 748399100420010004}
   m_Layer: 0
   m_Name: ShotgunPickup
   m_TagString: Untagged
@@ -246,6 +247,19 @@ MonoBehaviour:
   ammunition: 6
   bodyRenderer: {fileID: 0}
   pickupColor: {r: 1, g: 0.8, b: 0.15, a: 1}
+--- !u!114 &748399100420010004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7775364355097311644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f2d0e338c414de0b7c9258baf2e0d4a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  outlineMaterial: {fileID: 2100000, guid: c51e0f7e877d45d7a1b4c25e77b2802a, type: 2}
 --- !u!1 &8700778405660215319
 GameObject:
   m_ObjectHideFlags: 0
