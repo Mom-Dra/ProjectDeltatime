@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Deltatime.Combat;
 using Deltatime.Player;
@@ -20,6 +21,7 @@ namespace Deltatime.EditorTools
         private const string RunningKey =
             "Deltatime.ReplaySmoke.Running";
         private const string PhaseKey = "Deltatime.ReplaySmoke.Phase";
+        private const string HudOnlyKey = "Deltatime.ReplaySmoke.HudOnly";
 
         private static readonly CommandLineSmokeRunner Runner =
             new CommandLineSmokeRunner(
@@ -58,6 +60,15 @@ namespace Deltatime.EditorTools
 
         public static void RunFromCommandLine()
         {
+            SessionState.SetBool(HudOnlyKey, false);
+            SessionState.SetBool(RunningKey, true);
+            SessionState.SetString(PhaseKey, "entering");
+            Runner.OpenSceneAndEnterPlayMode(ScenePath);
+        }
+
+        public static void RunHudFromCommandLine()
+        {
+            SessionState.SetBool(HudOnlyKey, true);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetString(PhaseKey, "entering");
             Runner.OpenSceneAndEnterPlayMode(ScenePath);
@@ -189,13 +200,28 @@ namespace Deltatime.EditorTools
                 if (slowReleased && !replayRequested && elapsed >= 3d)
                 {
                     replayRequested = true;
+                    replay.RecordTimelineEvent(
+                        StageReplayController.ReplayTimelineEventKind.Clear);
                     Require(replay.RequestReplay(),
                         "Replay smoke request was rejected.");
                 }
 
                 if (replayRequested && !replayValidated && elapsed >= 3.35d)
                 {
-                    ValidateReplay();
+                    if (SessionState.GetBool(HudOnlyKey, false))
+                    {
+                        Require(replay.IsReplaying,
+                            "Replay HUD smoke did not enter playback.");
+                        ValidateReplayTimelineEvents();
+                        SessionState.SetString(PhaseKey, "stopping");
+                        EditorApplication.isPlaying = false;
+                        return;
+                    }
+                    else
+                    {
+                        ValidateReplay();
+                    }
+
                     replayValidated = true;
                 }
 
@@ -247,6 +273,8 @@ namespace Deltatime.EditorTools
                 "Replay smoke dependencies are missing.");
 
             activity.Pulse(1f, 1.5f);
+            replay.RecordTimelineEvent(
+                StageReplayController.ReplayTimelineEventKind.Kill);
             trackedVisualsBeforeEquipment = replay.TrackedVisualCount;
             DriveAnimationEvent(
                 "normal-speed AttackA",
@@ -414,8 +442,42 @@ namespace Deltatime.EditorTools
                 "manual-unscaled proxy Animator.");
             Require(CountReplayHitFlashes() >= 2,
                 "Replay did not retain both normal and strong-slow hit VFX event tracks.");
+            ValidateReplayTimelineEvents();
             Require(Mathf.Approximately(Time.timeScale, 1f),
                 "Replay changed global Time.timeScale.");
+        }
+
+        private static void ValidateReplayTimelineEvents()
+        {
+            IReadOnlyList<StageReplayController.ReplayTimelineEvent> events =
+                replay.TimelineEvents;
+            bool foundKill = false;
+            bool foundDeadline = false;
+            bool foundClear = false;
+            float previousTime = -1f;
+            for (int i = 0; i < events.Count; i++)
+            {
+                StageReplayController.ReplayTimelineEvent timelineEvent =
+                    events[i];
+                Require(
+                    timelineEvent.PlaybackTime + 0.001f >= previousTime &&
+                    timelineEvent.PlaybackTime <= replay.RecordedDuration + 0.05f,
+                    $"Replay HUD event time is outside the recorded timeline: " +
+                    $"{timelineEvent.Kind}={timelineEvent.PlaybackTime:0.000}, " +
+                    $"duration={replay.RecordedDuration:0.000}.");
+                previousTime = timelineEvent.PlaybackTime;
+                foundKill |= timelineEvent.Kind ==
+                             StageReplayController.ReplayTimelineEventKind.Kill;
+                foundDeadline |= timelineEvent.Kind ==
+                                 StageReplayController.ReplayTimelineEventKind.Deadline;
+                foundClear |= timelineEvent.Kind ==
+                              StageReplayController.ReplayTimelineEventKind.Clear;
+            }
+
+            Require(
+                foundKill && foundDeadline && foundClear,
+                "Replay HUD timeline did not retain KILL, DEADLINE, and CLEAR events.");
+            Debug.Log("Replay HUD timeline event validation passed.");
         }
 
         private static int CountReplayHitFlashes()
@@ -495,6 +557,7 @@ namespace Deltatime.EditorTools
         private static void FinishFailure(Exception exception)
         {
             SessionState.EraseBool(RunningKey);
+            SessionState.EraseBool(HudOnlyKey);
             SessionState.EraseString(PhaseKey);
             DetachCallbacks();
             Debug.LogError($"Replay play-mode smoke test failed: {exception}");
@@ -509,6 +572,7 @@ namespace Deltatime.EditorTools
         private static void FinishSuccess()
         {
             SessionState.EraseBool(RunningKey);
+            SessionState.EraseBool(HudOnlyKey);
             SessionState.EraseString(PhaseKey);
             DetachCallbacks();
             Debug.Log("Replay play-mode smoke test passed.");

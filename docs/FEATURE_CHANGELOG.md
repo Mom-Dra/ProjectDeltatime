@@ -7,6 +7,16 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-17 - Replay UI와 In-Game Cyber HUD 통합
+
+- 변경 유형: 브랜치 통합, 상태별 HUD 렌더링, 공용 상호작용 안내, 문서 재정리
+- 변경 내용: **구현 완료**. `codex/ui-replay-integration`은 `feature/InGameUI`의 Cyber HUD·아이콘·Safe Area·반응형 레이아웃을 일반 InGame과 Tutorial의 기준으로 유지하고, `GameHud`가 `StageReplayController.IsReplaying`이면 Cyber HUD를 그리기 전에 반환하여 Replay 프레임·타임라인·이벤트 마커만 표시한다. Replay 타임라인 기록과 Kill/DEADLINE/Clear/Dead 이벤트 연결·HUD 전용 스모크는 유지했다. `PlayerCombat`의 `PickUp`·`Swap`·`Catch` 상태는 공용 `CyberHudRenderer.DrawWeaponInteractionPrompt`로 옮겨 E 키와 한국어 행동명을 Cyber 스타일로 표시한다. 일반 HUD에서는 조작 안내 위, Tutorial에서는 수업 패널 위에 Safe Area와 현재 배율을 따라 배치하며, 안내 대상이 없거나 Tutorial 완료 또는 Replay 중에는 표시하지 않는다.
+- 영향을 받은 시스템: `GameHud`, `TutorialHud`, 공용 Cyber HUD 렌더러, Replay 타임라인·이벤트, 플레이어 무기 상호작용 정책, HUD 아이콘/무기 아이콘 참조, EditMode·Replay·Tutorial HUD 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/CyberHudPresentation.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombatSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/HudPresentationTests.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/CoreBehaviorTests.cs`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md` 1.9.3에 이 통합 규칙을 최신 HUD 기준으로 추가했다. 이전 브랜치의 테스트 기록은 이 통합의 최신 결과로 사용하지 않는다.
+- 테스트 결과: **확인 불가**. Unity 6000.1.13f1 배치 컴파일과 선택 EditMode 테스트를 새 worktree에서 요청했으나, 라이선스 entitlement는 확인된 뒤에도 Package Manager가 `Library/PackageCache`를 재구성하는 중 `ENOSPC: no space left on device`로 종료 코드 1을 반환했고 결과 XML을 생성하지 않았다. 따라서 실제 컴파일·테스트는 실행됐다고 판정할 수 없다. Replay 일반/Replay HUD 전용, Tutorial/InGame HUD 스모크와 1920×1080·1280×720 캡처도 디스크 공간 확보 전에는 미실행이다. 통합 코드의 `git diff --check`는 문서 충돌 해결 후 다시 실행 대상으로 남긴다.
+- 남은 작업: **계획 필요**. 디스크 공간을 확보한 환경에서 컴파일, `HudPresentationTests`, `CoreBehaviorTests`, Replay 일반·HUD 전용 스모크, Tutorial 스모크, `HudVisualCapture`를 새로 실행하고 결과를 이 항목에 갱신해야 한다.
+
 ## 2026-08-17 - In-Game HUD 외곽 프레임 제거
 
 - 변경 유형: UI 시각 정리, 공용 OnGUI 렌더링·레이아웃 검증 갱신

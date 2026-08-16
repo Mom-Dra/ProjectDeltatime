@@ -216,6 +216,25 @@ namespace Deltatime.Tests.EditMode
                 Is.True);
         }
 
+        [TestCase(false, false, false, (int)PlayerWeaponInteractionPrompt.None)]
+        [TestCase(false, true, false, (int)PlayerWeaponInteractionPrompt.PickUp)]
+        [TestCase(false, true, true, (int)PlayerWeaponInteractionPrompt.Swap)]
+        [TestCase(true, false, false, (int)PlayerWeaponInteractionPrompt.Catch)]
+        [TestCase(true, true, true, (int)PlayerWeaponInteractionPrompt.Catch)]
+        public void PlayerWeaponInteractionPrompt_UsesActionPriority(
+            bool hasAirborneWeapon,
+            bool hasGroundWeapon,
+            bool hasEquippedWeapon,
+            int expected)
+        {
+            Assert.That(
+                PlayerWeaponInteractionPromptPolicy.Resolve(
+                    hasAirborneWeapon,
+                    hasGroundWeapon,
+                    hasEquippedWeapon),
+                Is.EqualTo((PlayerWeaponInteractionPrompt)expected));
+        }
+
         [TestCase("Stage1", "Stage2")]
         [TestCase("Stage2", "Stage5")]
         [TestCase("Stage5", "EndingScene")]

@@ -7,8 +7,14 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-17 (KST) |
-| 문서 버전 | 1.9.2 |
+| 문서 버전 | 1.9.3 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 전투는 플레이어 현재 높이 수평 평면 조준점과 총구 기준 수평 발사, 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기를 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+
+### 1.0.1 2026-08-17 Replay/In-Game HUD 통합 기준
+
+- 이 절은 HUD에 관한 이전 서술보다 우선하는 최신 기준이다. **구현 완료**. 일반 InGame과 Tutorial은 `CyberHudPresentation`의 독립형 Cyber 패널·HUD 아이콘·무기 `HudIcon`·`Screen.safeArea`·1920×1080 기준 반응형 배율을 사용한다. 일반 InGame의 `GameHud`는 조작 안내 위에, Tutorial의 `TutorialHud`는 수업 패널 위에 공용 Cyber 상호작용 안내를 표시한다. 안내는 `PlayerCombat.WeaponInteractionPrompt`의 `PickUp`/`Swap`/`Catch`만 E 키와 각각 `무기 줍기`/`무기 교체`/`무기 캐치`로 렌더링하고, 대상이 없거나 Tutorial이 완료되면 숨긴다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/UI/CyberHudPresentation.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`.
+- Replay는 일반 Cyber HUD와 겹치지 않는다. **구현 완료**. `GameHud`는 `StageReplayController.IsReplaying`일 때 Cyber HUD 생성 전에 Replay 전용 경로로 분기해 화면 프레임, 재생 시간축, Kill/DEADLINE/Clear/Dead 이벤트 마커, R 재시작 및 조건부 N 다음 스테이지 안내만 표시한다. 타임라인 이벤트 기록은 `StageController`와 `StageReplayController`가 연결하며, Replay 전용 HUD 스모크 진입점은 유지한다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayPlayModeSmokeTest.cs`.
+- 통합 코드의 Unity 실행 검증은 **확인 불가**다. 2026-08-17 새 worktree에서 Unity 6000.1.13f1 배치 컴파일·선택 EditMode 테스트를 시도했지만, Package Manager가 새 `Library/PackageCache`를 구성하는 중 `ENOSPC: no space left on device`로 종료 코드 1을 반환해 결과 XML이 생성되지 않았다. 이전 브랜치 로그는 이 통합의 결과로 재사용하지 않는다. 디스크 공간을 확보한 뒤 `HudPresentationTests`, `CoreBehaviorTests`, Replay 일반·HUD 전용 스모크, Tutorial 스모크, `HudVisualCapture`의 Stage1·Tutorial 1920×1080/1280×720 캡처를 재실행해야 한다.
 
 ### 1.1 분석 기준과 범위
 

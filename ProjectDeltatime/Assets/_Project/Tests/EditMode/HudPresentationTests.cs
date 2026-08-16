@@ -148,5 +148,27 @@ namespace Deltatime.Tests.EditMode
             Assert.That(layout.Contains(layout.TopMessagePanel), Is.True);
             Assert.That(layout.Contains(layout.CenterMessagePanel), Is.True);
         }
+
+        [TestCase(1920f, 1080f)]
+        [TestCase(1280f, 720f)]
+        public void InteractionPrompt_UsesSafeAreaAndAvoidsItsAnchor(
+            float width,
+            float height)
+        {
+            CyberHudLayout layout = CyberHudLayout.Calculate(
+                new Rect(0f, 0f, width, height));
+
+            Rect gamePrompt = layout.GetWeaponInteractionPromptPanel(false);
+            Rect tutorialPrompt = layout.GetWeaponInteractionPromptPanel(true);
+
+            Assert.That(layout.Contains(gamePrompt), Is.True);
+            Assert.That(layout.Contains(tutorialPrompt), Is.True);
+            Assert.That(gamePrompt.Overlaps(layout.ControlsPanel), Is.False);
+            Assert.That(tutorialPrompt.Overlaps(layout.TutorialPanel), Is.False);
+            Assert.That(gamePrompt.yMax, Is.LessThanOrEqualTo(
+                layout.ControlsPanel.yMin));
+            Assert.That(tutorialPrompt.yMax, Is.LessThanOrEqualTo(
+                layout.TutorialPanel.yMin));
+        }
     }
 }

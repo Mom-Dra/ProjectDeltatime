@@ -18,6 +18,7 @@ namespace Deltatime.Tutorial
         private GUIStyle instructionStyle;
         private GUIStyle statusStyle;
         private GUIStyle completeStyle;
+        private PlayerCombat playerCombat;
         private float styledScale = -1f;
 
         public bool HasRequiredVisualAssets =>
@@ -36,6 +37,8 @@ namespace Deltatime.Tutorial
                     this);
                 enabled = false;
             }
+
+            ResolvePlayerCombat();
         }
 
         private void OnGUI()
@@ -96,6 +99,14 @@ namespace Deltatime.Tutorial
                     28f * layout.Scale),
                 director.ProgressText + "    |    R: 다시 시작",
                 statusStyle);
+
+            ResolvePlayerCombat();
+            GetRenderer().DrawWeaponInteractionPrompt(
+                layout,
+                true,
+                playerCombat == null
+                    ? PlayerWeaponInteractionPrompt.None
+                    : playerCombat.WeaponInteractionPrompt);
         }
 
         public void Configure(
@@ -108,6 +119,15 @@ namespace Deltatime.Tutorial
             worldTime = timeSource;
             weapon = playerWeapon;
             deadline = deadlineController;
+            ResolvePlayerCombat();
+        }
+
+        private void ResolvePlayerCombat()
+        {
+            if (playerCombat == null && weapon != null)
+            {
+                playerCombat = weapon.GetComponent<PlayerCombat>();
+            }
         }
 
         private CyberHudRenderer GetRenderer()

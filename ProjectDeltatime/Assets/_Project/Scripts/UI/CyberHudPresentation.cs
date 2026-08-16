@@ -182,6 +182,24 @@ namespace Deltatime.UI
                    rect.xMax <= SafeArea.xMax + 0.01f &&
                    rect.yMax <= SafeArea.yMax + 0.01f;
         }
+
+        public Rect GetWeaponInteractionPromptPanel(bool isTutorial)
+        {
+            Rect anchor = isTutorial ? TutorialPanel : ControlsPanel;
+            float horizontalMargin = 12f * Scale;
+            float width = Mathf.Min(
+                246f * Scale,
+                Mathf.Max(0f, SafeArea.width - horizontalMargin * 2f));
+            float height = 46f * Scale;
+            float x = Mathf.Clamp(
+                anchor.center.x - width * 0.5f,
+                SafeArea.xMin + horizontalMargin,
+                SafeArea.xMax - horizontalMargin - width);
+            float y = Mathf.Max(
+                SafeArea.yMin,
+                anchor.yMin - height - 10f * Scale);
+            return new Rect(x, y, width, height);
+        }
     }
 
     internal static class HudDisplayFormatter
@@ -386,12 +404,64 @@ namespace Deltatime.UI
             }
         }
 
+        public void DrawWeaponInteractionPrompt(
+            CyberHudLayout layout,
+            bool isTutorial,
+            PlayerWeaponInteractionPrompt prompt)
+        {
+            string action = GetWeaponInteractionAction(prompt);
+            if (string.IsNullOrEmpty(action))
+            {
+                return;
+            }
+
+            float scale = layout.Scale;
+            Rect panel = layout.GetWeaponInteractionPromptPanel(isTutorial);
+            if (panel.width <= 0f || panel.height > layout.SafeArea.height)
+            {
+                return;
+            }
+            DrawPanel(panel, scale, CyberHudPalette.Accent);
+
+            Rect key = new Rect(
+                panel.x + 10f * scale,
+                panel.y + 9f * scale,
+                30f * scale,
+                28f * scale);
+            DrawKeyCap(key, scale);
+            GUI.Label(key, "E", controlKeyStyle);
+            GUI.Label(
+                new Rect(
+                    key.xMax + 12f * scale,
+                    panel.y,
+                    Mathf.Max(0f, panel.xMax - key.xMax - 22f * scale),
+                    panel.height),
+                action,
+                controlLabelStyle);
+        }
+
         public void Dispose()
         {
             if (solidTexture != null)
             {
                 Object.Destroy(solidTexture);
                 solidTexture = null;
+            }
+        }
+
+        private static string GetWeaponInteractionAction(
+            PlayerWeaponInteractionPrompt prompt)
+        {
+            switch (prompt)
+            {
+                case PlayerWeaponInteractionPrompt.PickUp:
+                    return "무기 줍기";
+                case PlayerWeaponInteractionPrompt.Swap:
+                    return "무기 교체";
+                case PlayerWeaponInteractionPrompt.Catch:
+                    return "무기 캐치";
+                default:
+                    return null;
             }
         }
 
