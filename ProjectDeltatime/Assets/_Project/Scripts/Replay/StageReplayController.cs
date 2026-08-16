@@ -24,6 +24,28 @@ namespace Deltatime.Replay
             DeadlineAftermath
         }
 
+        public enum ReplayTimelineEventKind
+        {
+            Kill,
+            Deadline,
+            Clear,
+            Dead
+        }
+
+        public readonly struct ReplayTimelineEvent
+        {
+            public ReplayTimelineEvent(
+                ReplayTimelineEventKind kind,
+                float playbackTime)
+            {
+                Kind = kind;
+                PlaybackTime = Mathf.Max(0f, playbackTime);
+            }
+
+            public ReplayTimelineEventKind Kind { get; }
+            public float PlaybackTime { get; }
+        }
+
         private const string BaseColorProperty = "_BaseColor";
         private const string ColorProperty = "_Color";
 
@@ -80,6 +102,8 @@ namespace Deltatime.Replay
             new List<ReplayTimingSample>(2048);
         private readonly List<ReplaySegment> replaySegments =
             new List<ReplaySegment>(128);
+        private readonly List<ReplayTimelineEvent> timelineEvents =
+            new List<ReplayTimelineEvent>(32);
         private readonly Dictionary<int, VisualTrack> tracksByInstanceId =
             new Dictionary<int, VisualTrack>();
         private readonly List<VisualTrack> tracks = new List<VisualTrack>();
@@ -306,6 +330,8 @@ namespace Deltatime.Replay
                     0f,
                     playbackSession.CurrentTime - firstPresentationTime)
                 : 0f;
+        public IReadOnlyList<ReplayTimelineEvent> TimelineEvents =>
+            timelineEvents;
         public float CurrentSourceTimestamp { get; private set; }
         public bool IsRecording => enabled && !IsReplaying &&
                                    !recordingLimitReached;
@@ -695,6 +721,10 @@ namespace Deltatime.Replay
                 realDeltaTime,
                 captureRate);
             bool deadlineStateChanged = HasDeadlineStateChanged();
+            if (deadlineStateChanged && deadline != null && deadline.IsActive)
+            {
+                RecordTimelineEvent(ReplayTimelineEventKind.Deadline);
+            }
 
             if (captureDue || deadlineStateChanged)
             {
@@ -782,6 +812,18 @@ namespace Deltatime.Replay
 
             replayRequested = true;
             return true;
+        }
+
+        public void RecordTimelineEvent(ReplayTimelineEventKind kind)
+        {
+            if (!enabled || IsReplaying || recordingLimitReached)
+            {
+                return;
+            }
+
+            timelineEvents.Add(new ReplayTimelineEvent(
+                kind,
+                captureSession.ReplayElapsedTime));
         }
 
         public bool RegisterLight(Light source)

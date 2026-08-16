@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-17 - 리플레이 HUD 정보 표기 정리
+
+- 변경 유형: 리플레이 HUD 정보 밀도 축소 및 정렬 보정
+- 변경 내용: **구현 완료**. 중앙 상단의 재생 단계 캡슐(`NORMAL`/`DEADLINE`/`AFTERMATH`)과 우측 세로 `RECORDED VIEW`를 제거해 화면 중심의 게임 장면을 비웠다. 하단 `R RESTART`·`N NEXT STAGE`는 28px 키캡, 라벨 기준선, 구분선 여백을 공통 값으로 정렬했고, 위 행의 `CLEAR` 라벨은 마커와 겹치지 않도록 위로 올렸다. 타임라인 이벤트 기록·재생 규칙은 변경하지 않았다.
+- 영향을 받은 시스템: `GameHud` 리플레이 레이아웃과 조작 안내 가독성
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md` 1.8.4의 분석 기준·UI/HUD·구현 현황에 제거된 표기와 현재 검증 상태를 반영했다.
+- 테스트 결과: **확인 불가**. 제거 뒤 Unity 6000.1.13f1 배치 Replay HUD 스모크를 실행했으나 이미 열려 있던 Unity 프로젝트 때문에 `HandleProjectAlreadyOpenInAnotherInstance`로 시작 단계에서 중단됐다(`ProjectDeltatime/ReplayHudSimplifiedSmoke.log`). 종료하지 않은 기존 Unity 인스턴스는 보존했다. 직전 레이아웃의 Unity 컴파일 및 전용 이벤트 스모크는 통과했지만(`ProjectDeltatime/ReplayHudAlignmentSmoke.log`), 이번 최종 소스의 결과로 간주하지 않았다. 정적 참조 검사는 제거 대상 스타일·그리기 메서드가 남아 있지 않음을 확인했다.
+- 남은 작업: **확인 불가**. Unity 프로젝트 잠금이 해제된 뒤 전용 Replay HUD 스모크와 16:9 Game View의 키캡·CLEAR 라벨 가독성 수동 점검을 재실행해야 한다.
+
+## 2026-08-16 - CCTV 스타일 리플레이 HUD 및 이벤트 타임라인
+
+- 변경 유형: 리플레이 UI 개편, 의미 이벤트 기록 추가, PlayMode 검증 보강
+- 변경 내용: **구현 완료**. 리플레이 중 기존 라이브 디버그 패널과 중앙 결과 메시지를 CCTV/기록 영상 스타일 전용 HUD로 전환했다. 화면 모서리 브래킷, 좌상단 각진 `REPLAY`·`STAGE` 카드와 `CLEAR`/`DEAD` 결과, 하단의 현재/총 재생 시간과 청록색 진행선·현재 위치, 중앙 정렬 `R RESTART` 및 클리어 시 `N NEXT STAGE` 키캡을 표시한다. `StageReplayController`는 정규화된 재생 시간으로 `KILL`·`DEADLINE`·`CLEAR`·`DEAD` 의미 이벤트를 기록하고, HUD는 KILL을 청록 원형, DEADLINE을 청록 마름모, CLEAR를 황금색 마름모, DEAD를 빨간색 마름모로 그린다. 가까운 마커는 두 행으로 분리한다. CCTV 노이즈와 타임라인 탐색 입력은 추가하지 않았으며, 라이브 HUD·입력 바인딩·재생 속도·스테이지 전환 규칙은 유지했다. 후속 정보 표기 축소와 정렬 보정은 2026-08-17 항목에 기록한다.
+- 영향을 받은 시스템: GameHud 리플레이 레이아웃, StageReplayController 이벤트 기록, 적 처치·클리어·플레이어 사망 상태 전환, DEADLINE 구간 감지, Restart/다음 스테이지 안내, 리플레이 PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Level/StageController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/ReplayPlayModeSmokeTest.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: 당시 `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.8.3으로 갱신해 리플레이 전용 CCTV HUD 구성, 의미 이벤트 종류·형태·색상, 결과별 키 안내, 제외 범위와 검증 상태를 분석 기준·UI/HUD·구현 현황·실패/종료 흐름에 반영했다. 1.8.4의 후속 정리는 2026-08-17 항목에 기록한다.
+- 테스트 결과: **Unity 컴파일 및 전용 PlayMode 스모크 통과**. Unity 6000.1.13f1 배치 모드에서 당시 소스가 `Tundra build success`로 컴파일됐고, `ReplayPlayModeSmokeTest.RunHudFromCommandLine`이 리플레이 진입, KILL→DEADLINE→CLEAR 이벤트 순서, 각 이벤트 시간이 기록 재생 범위 안에 있는지 확인해 종료 코드 0으로 통과했다(`ProjectDeltatime/ReplayHudFinalSmoke.log`). 일반 `ReplayPlayModeSmokeTest.RunFromCommandLine`은 이번 HUD 단언에 도달하기 전 기존 Animator Controller 변경 횟수 기대 2/실제 1 불일치로 실패했다(`ProjectDeltatime/ReplayHudSmoke.log`). `dotnet build`는 기존 누락 소스 `Assets/TutorialInfo/Scripts/Readme.cs`와 Unity 생성 프로젝트의 패키지 참조 문제로 실패했으며, Unity 자체 컴파일 결과를 최종 근거로 사용했다. 이후 레이아웃 변경의 재검증 상태는 2026-08-17 항목을 따른다.
+- 남은 작업: **확인 불가**. 목표 16:9 Game View에서 참고 이미지 대비 간격·선 두께·문자 가독성, 이벤트가 밀집한 실제 클리어 리플레이, 사망 리플레이의 DEAD 마커와 R-only 안내는 사람 눈으로 수동 확인해야 한다. 배치 Editor의 `ScreenCapture`가 결과 파일을 생성하지 않아 자동 시각 캡처는 완료하지 못했다. 기존 전체 리플레이 스모크의 Animator Controller 변경 횟수 불일치도 별도 회귀 조사 대상으로 남는다.
+
 ## 2026-08-15 - 바닥 무기 아웃라인 리플레이 잔류 수정
 
 - 변경 유형: 버그 수정, 리플레이 시각 등록, PlayMode 회귀 테스트 갱신

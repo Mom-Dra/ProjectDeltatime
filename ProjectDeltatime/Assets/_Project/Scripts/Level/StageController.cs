@@ -85,9 +85,18 @@ namespace Deltatime.Level
         public void NotifyEnemyDied(EnemyHealth enemy)
         {
             livingEnemies.Remove(enemy);
-            if (CurrentState == StageState.Active && livingEnemies.Count == 0)
+            if (CurrentState != StageState.Active)
+            {
+                return;
+            }
+
+            replay?.RecordTimelineEvent(
+                StageReplayController.ReplayTimelineEventKind.Kill);
+            if (livingEnemies.Count == 0)
             {
                 CurrentState = StageState.Cleared;
+                replay?.RecordTimelineEvent(
+                    StageReplayController.ReplayTimelineEventKind.Clear);
                 if (playerCombat != null)
                 {
                     playerCombat.SetCombatEnabled(false);
@@ -152,6 +161,8 @@ namespace Deltatime.Level
             }
 
             CurrentState = StageState.PlayerDead;
+            replay?.RecordTimelineEvent(
+                StageReplayController.ReplayTimelineEventKind.Dead);
             if (playerCombat != null)
             {
                 playerCombat.SetCombatEnabled(false);
