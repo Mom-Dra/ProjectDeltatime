@@ -3,6 +3,14 @@ using UnityEngine;
 
 namespace Deltatime.Player
 {
+    internal enum PlayerWeaponInteractionPrompt
+    {
+        None,
+        PickUp,
+        Swap,
+        Catch
+    }
+
     internal static class PlayerAttackDecision
     {
         internal static bool ShouldUseWeapon(
@@ -75,6 +83,29 @@ namespace Deltatime.Player
             }
 
             return nearest;
+        }
+    }
+
+    internal static class PlayerWeaponInteractionPromptPolicy
+    {
+        internal static PlayerWeaponInteractionPrompt Resolve(
+            bool hasAirborneWeapon,
+            bool hasGroundWeapon,
+            bool hasEquippedWeapon)
+        {
+            if (hasAirborneWeapon)
+            {
+                return PlayerWeaponInteractionPrompt.Catch;
+            }
+
+            if (!hasGroundWeapon)
+            {
+                return PlayerWeaponInteractionPrompt.None;
+            }
+
+            return hasEquippedWeapon
+                ? PlayerWeaponInteractionPrompt.Swap
+                : PlayerWeaponInteractionPrompt.PickUp;
         }
     }
 }

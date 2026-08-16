@@ -48,9 +48,12 @@ namespace Deltatime.Player
         private Vector3 stagedRecoilDisplacement;
         private int stagedMeleeAttackCount;
         private int stagedUnarmedPunchCount;
+        private PlayerWeaponInteractionPrompt weaponInteractionPrompt;
 
         public bool CombatEnabled { get; private set; } = true;
         public WeaponController Weapon => weapon;
+        internal PlayerWeaponInteractionPrompt WeaponInteractionPrompt =>
+            weaponInteractionPrompt;
         public event Action UnarmedAttackPerformed;
 
         private void Awake()
@@ -97,6 +100,7 @@ namespace Deltatime.Player
             if (!health.IsAlive)
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 ClearStagedMeleeAttacks();
                 meleeAttackExecution?.CancelPendingAttacks();
                 return;
@@ -105,6 +109,7 @@ namespace Deltatime.Player
             if (!CombatEnabled)
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 ClearStagedMeleeAttacks();
                 meleeAttackExecution?.CancelPendingAttacks();
                 return;
@@ -113,23 +118,27 @@ namespace Deltatime.Player
             if (deadline.ReleasedThisFrame)
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 return;
             }
 
             if (deadline.IsActive)
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 UpdateDeadlineActions();
                 return;
             }
 
             if (!worldTime.IsHardFrozen)
             {
+                RefreshWeaponInteractionPrompt();
                 UpdateWeaponInteraction();
             }
             else
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
             }
 
             bool shouldUseWeapon = PlayerAttackDecision.ShouldUseWeapon(
@@ -172,6 +181,7 @@ namespace Deltatime.Player
             if (!value)
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 ClearStagedMeleeAttacks();
                 meleeAttackExecution?.CancelPendingAttacks();
             }
@@ -227,6 +237,7 @@ namespace Deltatime.Player
 
         private void HandleDeadlineReleased()
         {
+            ClearWeaponInteractionPrompt();
             if (weapon == null || deadline == null)
             {
                 ClearStagedMeleeAttacks();
@@ -429,6 +440,7 @@ namespace Deltatime.Player
                     TryCollectNearestGroundWeapon())
                 {
                     catchBufferRemaining = 0f;
+                    ClearWeaponInteractionPrompt();
                     return;
                 }
 
@@ -444,12 +456,56 @@ namespace Deltatime.Player
             if (TryCatchNearestAirborneWeapon())
             {
                 catchBufferRemaining = 0f;
+                ClearWeaponInteractionPrompt();
                 return;
             }
 
             catchBufferRemaining = Mathf.Max(
                 0f,
                 catchBufferRemaining - UnityEngine.Time.unscaledDeltaTime);
+        }
+
+        private void RefreshWeaponInteractionPrompt()
+        {
+            int airborneCount = Physics.OverlapSphereNonAlloc(
+                transform.position,
+                airborneCatchRadius,
+                interactionResults,
+                pickupLayers,
+                QueryTriggerInteraction.Collide);
+            InterceptableWeapon airborneWeapon =
+                PlayerWeaponInteractionSelector.FindNearestAirborne(
+                    interactionResults,
+                    airborneCount,
+                    transform.position);
+            if (airborneWeapon != null)
+            {
+                weaponInteractionPrompt =
+                    PlayerWeaponInteractionPrompt.Catch;
+                return;
+            }
+
+            int groundCount = Physics.OverlapSphereNonAlloc(
+                transform.position,
+                pickupRadius,
+                interactionResults,
+                pickupLayers,
+                QueryTriggerInteraction.Collide);
+            WeaponPickup groundWeapon =
+                PlayerWeaponInteractionSelector.FindNearestGround(
+                    interactionResults,
+                    groundCount,
+                    transform.position);
+            weaponInteractionPrompt =
+                PlayerWeaponInteractionPromptPolicy.Resolve(
+                    false,
+                    groundWeapon != null,
+                    weapon != null && weapon.HasWeapon);
+        }
+
+        private void ClearWeaponInteractionPrompt()
+        {
+            weaponInteractionPrompt = PlayerWeaponInteractionPrompt.None;
         }
 
         private bool TryCatchNearestAirborneWeapon()
@@ -509,6 +565,7 @@ namespace Deltatime.Player
 
         private void OnDisable()
         {
+            ClearWeaponInteractionPrompt();
             ClearStagedMeleeAttacks();
             if (deadline != null)
             {

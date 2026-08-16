@@ -17,7 +17,11 @@ namespace Deltatime.Tutorial
         private GUIStyle instructionStyle;
         private GUIStyle statusStyle;
         private GUIStyle completeStyle;
+        private GUIStyle interactionPromptStyle;
+        private GUIStyle interactionKeyStyle;
         private Texture2D panelTexture;
+        private Texture2D whiteTexture;
+        private PlayerCombat playerCombat;
 
         private void Awake()
         {
@@ -29,6 +33,8 @@ namespace Deltatime.Tutorial
                     this);
                 enabled = false;
             }
+
+            ResolvePlayerCombat();
         }
 
         private void OnGUI()
@@ -82,6 +88,7 @@ namespace Deltatime.Tutorial
                 new Rect(lessonPanel.x + 22f, lessonPanel.y + 104f, 676f, 28f),
                 director.ProgressText + "    |    R: 다시 시작",
                 statusStyle);
+            DrawWeaponInteractionPrompt(lessonPanel);
         }
 
         public void Configure(
@@ -94,6 +101,7 @@ namespace Deltatime.Tutorial
             worldTime = timeSource;
             weapon = playerWeapon;
             deadline = deadlineController;
+            ResolvePlayerCombat();
         }
 
         private void EnsureStyles()
@@ -109,6 +117,7 @@ namespace Deltatime.Tutorial
             };
             panelTexture.SetPixel(0, 0, new Color(0.015f, 0.025f, 0.045f, 0.9f));
             panelTexture.Apply();
+            whiteTexture = Texture2D.whiteTexture;
 
             KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
             Font regularFont = fontSettings == null ? null : fontSettings.RegularFont;
@@ -145,6 +154,100 @@ namespace Deltatime.Tutorial
                 fontSize = 30,
                 alignment = TextAnchor.MiddleCenter
             };
+            interactionPromptStyle = new GUIStyle(titleStyle)
+            {
+                fontSize = 18,
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = Color.white }
+            };
+            interactionKeyStyle = new GUIStyle(interactionPromptStyle)
+            {
+                fontSize = 16,
+                alignment = TextAnchor.MiddleCenter
+            };
+        }
+
+        private void DrawWeaponInteractionPrompt(Rect lessonPanel)
+        {
+            ResolvePlayerCombat();
+            string action = GetWeaponInteractionAction();
+            if (string.IsNullOrEmpty(action))
+            {
+                return;
+            }
+
+            const float screenMargin = 18f;
+            const float height = 46f;
+            float width = Mathf.Min(246f, Screen.width - screenMargin * 2f);
+            Rect panel = new Rect(
+                (Screen.width - width) * 0.5f,
+                Mathf.Max(screenMargin, lessonPanel.y - height - 20f),
+                width,
+                height);
+            Color accent = new Color(0.2f, 1f, 1f, 0.86f);
+            GUI.DrawTexture(panel, panelTexture);
+            DrawOutline(panel, accent, 1f);
+
+            Rect key = new Rect(panel.x + 10f, panel.y + 9f, 30f, 28f);
+            DrawSolidRect(key, new Color(0.005f, 0.015f, 0.03f, 0.96f));
+            DrawOutline(key, accent, 1f);
+            GUI.Label(key, "E", interactionKeyStyle);
+            GUI.Label(
+                new Rect(
+                    key.xMax + 12f,
+                    panel.y,
+                    panel.xMax - key.xMax - 22f,
+                    panel.height),
+                action,
+                interactionPromptStyle);
+        }
+
+        private string GetWeaponInteractionAction()
+        {
+            if (playerCombat == null)
+            {
+                return null;
+            }
+
+            switch (playerCombat.WeaponInteractionPrompt)
+            {
+                case PlayerWeaponInteractionPrompt.PickUp:
+                    return "무기 줍기";
+                case PlayerWeaponInteractionPrompt.Swap:
+                    return "무기 교체";
+                case PlayerWeaponInteractionPrompt.Catch:
+                    return "무기 캐치";
+                default:
+                    return null;
+            }
+        }
+
+        private void ResolvePlayerCombat()
+        {
+            if (playerCombat == null && weapon != null)
+            {
+                playerCombat = weapon.GetComponent<PlayerCombat>();
+            }
+        }
+
+        private void DrawSolidRect(Rect rect, Color color)
+        {
+            Color previous = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, whiteTexture);
+            GUI.color = previous;
+        }
+
+        private void DrawOutline(Rect rect, Color color, float thickness)
+        {
+            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            DrawSolidRect(
+                new Rect(rect.x, rect.yMax - thickness, rect.width, thickness),
+                color);
+            DrawSolidRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            DrawSolidRect(
+                new Rect(rect.xMax - thickness, rect.y, thickness, rect.height),
+                color);
         }
 
         private void OnDestroy()

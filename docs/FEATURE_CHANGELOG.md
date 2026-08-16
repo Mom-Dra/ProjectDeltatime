@@ -7,6 +7,16 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-17 - 무기 상호작용 E 프롬프트
+
+- 변경 유형: 상호작용 UI 추가, 플레이어 전투 상태 노출, EditMode 회귀 테스트
+- 변경 내용: **구현 완료**. 플레이어가 기존 범위에서 무기를 실제로 획득·교체·공중 캐치할 수 있는 동안에만 하단 중앙에 어두운 패널, 청록 테두리, `E` 키캡과 행동 문구를 표시한다. 공중 캐치는 바닥 픽업보다 우선하며, 바닥 무기는 빈손이면 `무기 줍기`, 장비 중이면 `무기 교체`, 공중 무기는 `무기 캐치`를 사용한다. 일반 `GameHud`는 하단 조작 안내보다 16px 위, `TutorialHud`는 하단 진행 패널보다 20px 위에 배치한다. 사망, 전투 비활성, 하드 프리즈, `DEADLINE` 활성·해제 프레임, 리플레이·클리어·사망 상태에는 프롬프트가 없다. 기존 `E` 바인딩, 바닥 `1.25m`·공중 `1.15m` 상호작용 범위, 캐치 버퍼, 무기 획득·교환 동작은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 무기 상호작용 상태, 일반/튜토리얼 IMGUI HUD, DEADLINE·하드 프리즈 피드백, 무기 획득·교환·공중 캐치 안내
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombatSubsystems.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/CoreBehaviorTests.cs`, `Docs/PROJECT_DESIGN_DOCUMENT.md`, `Docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: `Docs/PROJECT_DESIGN_DOCUMENT.md`를 1.8.5로 갱신해 상호작용 우선순위·표시 조건·하단 배치·검증 상태를 분석 기준, 무기, UI/HUD, UI 정보 구조에 반영했다.
+- 테스트 결과: Unity 6000.1.13f1 배치 컴파일이 `Tundra build success`로 통과했고, EditMode `PlayerWeaponInteractionPrompt_UsesActionPriority`는 5/5 통과했다. Tutorial PlayMode 스모크는 시작 전 기존 Synty 프리팹 수 `216/262` 불일치로 중단됐고, Stage2 PlayMode 스모크는 기존 투척 설정/착지 거리와 리플레이 뼈 포즈 검증 실패로 중단됐다. 두 실패 로그에는 이번 프롬프트 관련 컴파일·초기화 오류가 없다. `.NET` 빌드는 Unity 생성 `Temp/obj` NuGet 자산 부재로 실패했으므로 이 경로의 결과는 확인 불가다.
+- 남은 작업: **확인 불가**. 실제 16:9 Game View에서 세 문구의 대비·간격·하단 HUD 비겹침, 플레이 입력 중 즉시 표시·숨김은 수동으로 확인해야 한다. Tutorial/Stage2 기존 스모크 사전 조건과 회귀 실패는 별도 해결 뒤 재실행이 필요하다.
+
 ## 2026-08-17 - 리플레이 HUD 정보 표기 정리
 
 - 변경 유형: 리플레이 HUD 정보 밀도 축소 및 정렬 보정

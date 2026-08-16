@@ -41,6 +41,8 @@ namespace Deltatime.UI
         private GUIStyle messageStyle;
         private GUIStyle overlayMessageStyle;
         private GUIStyle controlsStyle;
+        private GUIStyle interactionPromptStyle;
+        private GUIStyle interactionKeyStyle;
         private GUIStyle replayTitleStyle;
         private GUIStyle replayMetaStyle;
         private GUIStyle replayTimeStyle;
@@ -52,6 +54,7 @@ namespace Deltatime.UI
         private Texture2D panelTexture;
         private Texture2D circleTexture;
         private string replayStageLabel;
+        private PlayerCombat playerCombat;
 
         private void Awake()
         {
@@ -68,6 +71,8 @@ namespace Deltatime.UI
                 Debug.LogError($"{nameof(GameHud)} is missing required references.", this);
                 enabled = false;
             }
+
+            ResolvePlayerCombat();
         }
 
         private void OnGUI()
@@ -199,6 +204,7 @@ namespace Deltatime.UI
             }
 
             DrawDeadlineFeedback();
+            DrawWeaponInteractionPrompt();
 
             string controls;
             if (replay.IsReplaying)
@@ -731,6 +737,7 @@ namespace Deltatime.UI
             deadline = deadlineController;
             weapon = weaponController;
             replay = replayController;
+            ResolvePlayerCombat();
         }
 
         private void EnsureStyles()
@@ -783,6 +790,19 @@ namespace Deltatime.UI
                 fontSize = 14,
                 normal = { textColor = new Color(textColor.r, textColor.g, textColor.b, 0.85f) },
                 alignment = TextAnchor.LowerCenter
+            };
+
+            interactionPromptStyle = new GUIStyle(statusStyle)
+            {
+                fontSize = 18,
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = Color.white }
+            };
+
+            interactionKeyStyle = new GUIStyle(interactionPromptStyle)
+            {
+                fontSize = 16,
+                alignment = TextAnchor.MiddleCenter
             };
 
             replayTitleStyle = new GUIStyle(statusStyle)
@@ -897,6 +917,77 @@ namespace Deltatime.UI
                     panel.height - 16f),
                 text,
                 overlayMessageStyle);
+        }
+
+        private void DrawWeaponInteractionPrompt()
+        {
+            if (stage == null ||
+                stage.CurrentState != StageController.StageState.Active)
+            {
+                return;
+            }
+
+            ResolvePlayerCombat();
+            string action = GetWeaponInteractionAction();
+            if (string.IsNullOrEmpty(action))
+            {
+                return;
+            }
+
+            const float height = 46f;
+            const float bottomOffset = 80f;
+            const float screenMargin = 18f;
+            float width = Mathf.Min(246f, Screen.width - screenMargin * 2f);
+            Rect panel = new Rect(
+                (Screen.width - width) * 0.5f,
+                Mathf.Max(
+                    screenMargin,
+                    Screen.height - bottomOffset - height),
+                width,
+                height);
+            GUI.DrawTexture(panel, panelTexture);
+            DrawOutline(panel, WithAlpha(accentColor, 0.82f), 1f);
+
+            Rect key = new Rect(panel.x + 10f, panel.y + 9f, 30f, 28f);
+            DrawSolidRect(key, new Color(0.005f, 0.015f, 0.03f, 0.96f));
+            DrawOutline(key, WithAlpha(accentColor, 0.85f), 1f);
+            GUI.Label(key, "E", interactionKeyStyle);
+            GUI.Label(
+                new Rect(
+                    key.xMax + 12f,
+                    panel.y,
+                    panel.xMax - key.xMax - 22f,
+                    panel.height),
+                action,
+                interactionPromptStyle);
+        }
+
+        private string GetWeaponInteractionAction()
+        {
+            if (playerCombat == null)
+            {
+                return null;
+            }
+
+            switch (playerCombat.WeaponInteractionPrompt)
+            {
+                case PlayerWeaponInteractionPrompt.PickUp:
+                    return "무기 줍기";
+                case PlayerWeaponInteractionPrompt.Swap:
+                    return "무기 교체";
+                case PlayerWeaponInteractionPrompt.Catch:
+                    return "무기 캐치";
+                default:
+                    return null;
+            }
+        }
+
+        private void ResolvePlayerCombat()
+        {
+            if (playerCombat == null && weapon != null)
+            {
+                playerCombat = weapon.GetComponent<PlayerCombat>();
+            }
         }
 
         private static Rect CreateTopCenterOverlay(float preferredWidth, float height)
