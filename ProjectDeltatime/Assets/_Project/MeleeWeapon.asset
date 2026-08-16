@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MeleeWeapon
   m_EditorClassIdentifier: 
   kind: 1
-  displayName: 근접 무기
+  displayName: "\uADFC\uC811 \uBB34\uAE30"
   animationStyle: 3
   ammunitionCapacity: 0
   fireInterval: 0.72
@@ -33,6 +33,7 @@ MonoBehaviour:
   heldVisualScale: {x: 0.14, y: 0.14, z: 1.05}
   worldVisualScale: {x: 0.24, y: 0.16, z: 1.05}
   visualColor: {r: 0.9, g: 0.42, b: 0.08, a: 1}
+  hudIcon: {fileID: 21300000, guid: c5c8b6bf4e4833e498a7b81e51e395ea, type: 3}
   heldVisualPrefab: {fileID: 1517063078158682979, guid: 2de0c56278d6f0a42a9616734a8a5f4e, type: 3}
   worldVisualPrefab: {fileID: 1517063078158682979, guid: 2de0c56278d6f0a42a9616734a8a5f4e, type: 3}
   heldModelLocalPosition: {x: 0.019, y: 0.021, z: 0.093}

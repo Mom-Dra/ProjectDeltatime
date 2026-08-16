@@ -132,6 +132,7 @@ namespace Deltatime.EditorTools
         [MenuItem("Tools/Prototype/Build Tutorial")]
         public static void BuildTutorial()
         {
+            HudAssetBuilder.BuildCyberHudAssets();
             Require(
                 AssetDatabase.LoadAssetAtPath<SceneAsset>(Stage1ScenePath) != null,
                 "Stage1 scene is missing; Tutorial requires its serialized gameplay base.");
@@ -1962,6 +1963,7 @@ namespace Deltatime.EditorTools
 
         private static void ValidateTutorialScene(Scene scene)
         {
+            HudAssetBuilder.ValidateCyberHudAssets();
             TutorialDirector director = FindSceneComponent<TutorialDirector>(scene);
             TutorialHud hud = FindSceneComponent<TutorialHud>(scene);
             TutorialTimeProbe[] probes = FindSceneComponents<TutorialTimeProbe>(scene);

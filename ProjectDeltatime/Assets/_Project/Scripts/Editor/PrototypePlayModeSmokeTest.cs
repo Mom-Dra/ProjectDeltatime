@@ -1016,6 +1016,8 @@ namespace Deltatime.EditorTools
             Require(player != null && player.IsAlive, "The player did not initialize alive.");
             Require(weapon != null && weapon.HasWeapon, "The player did not initialize with a weapon.");
             Require(hud != null && hud.enabled, "GameHud did not initialize.");
+            Require(hud != null && hud.HasRequiredVisualAssets,
+                "GameHud cyber visual assets are missing.");
             Require(replay != null && replay.enabled, "Stage replay did not initialize.");
             Require(
                 replay != null && Mathf.Approximately(replay.CaptureRate, 20f),

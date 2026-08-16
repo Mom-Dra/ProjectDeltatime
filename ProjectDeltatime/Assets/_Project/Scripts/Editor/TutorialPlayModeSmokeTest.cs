@@ -119,11 +119,15 @@ namespace Deltatime.EditorTools
                         Deltatime.InputSystem.PlayerInputReader>();
                 PlayerHealth player =
                     UnityEngine.Object.FindFirstObjectByType<PlayerHealth>();
+                TutorialHud hud =
+                    UnityEngine.Object.FindFirstObjectByType<TutorialHud>();
 
                 Require(director != null && probe != null &&
                         worldTime != null && activity != null &&
-                        input != null && player != null,
+                        input != null && player != null && hud != null,
                     "Tutorial runtime initialization is incomplete.");
+                Require(hud.enabled && hud.HasRequiredVisualAssets,
+                    "Tutorial cyber HUD did not initialize with its visual assets.");
                 Require(Mathf.Approximately(UnityEngine.Time.timeScale, 1f),
                     "Tutorial changed global Time.timeScale.");
                 if (!gateLayoutValidated)

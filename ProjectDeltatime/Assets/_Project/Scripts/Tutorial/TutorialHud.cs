@@ -13,11 +13,18 @@ namespace Deltatime.Tutorial
         [SerializeField] private WeaponController weapon;
         [SerializeField] private DeadlineController deadline;
 
+        private CyberHudRenderer hudRenderer;
         private GUIStyle titleStyle;
         private GUIStyle instructionStyle;
         private GUIStyle statusStyle;
         private GUIStyle completeStyle;
-        private Texture2D panelTexture;
+        private float styledScale = -1f;
+
+        public bool HasRequiredVisualAssets =>
+            GetRenderer().HasRequiredIcons &&
+            (weapon == null ||
+             weapon.Definition == null ||
+             weapon.Definition.HudIcon != null);
 
         private void Awake()
         {
@@ -33,53 +40,60 @@ namespace Deltatime.Tutorial
 
         private void OnGUI()
         {
-            EnsureStyles();
-
-            string weaponName = weapon.Definition == null
-                ? "빈손"
-                : weapon.Definition.DisplayName;
-            string ammunition = weapon.Definition != null &&
-                                weapon.Definition.IsFirearm
-                ? $"  {weapon.Ammunition}/{weapon.Definition.AmmunitionCapacity}"
-                : string.Empty;
-
-            Rect statusPanel = new Rect(18f, 18f, 285f, 116f);
-            GUI.DrawTexture(statusPanel, panelTexture);
-            GUI.Label(
-                new Rect(32f, 28f, 255f, 98f),
-                $"월드  {worldTime.CurrentTimeScale:0.00}x\n" +
-                $"무기  {weaponName}{ammunition}\n" +
-                $"DEADLINE  {deadline.ChargesRemaining}/{deadline.MaxCharges}",
-                statusStyle);
+            CyberHudLayout layout = GetRenderer().DrawPersistentHud(
+                "TUTORIAL",
+                director.PlayerHealth,
+                deadline,
+                weapon,
+                worldTime.CurrentTimeScale,
+                false);
+            EnsureStyles(layout.Scale);
 
             if (director.Completed)
             {
+                float width = Mathf.Min(560f * layout.Scale, layout.SafeArea.width);
+                float height = Mathf.Min(190f * layout.Scale, layout.SafeArea.height);
                 Rect completePanel = new Rect(
-                    (Screen.width - 560f) * 0.5f,
-                    (Screen.height - 190f) * 0.5f,
-                    560f,
-                    190f);
-                GUI.DrawTexture(completePanel, panelTexture);
-                GUI.Label(completePanel, "튜토리얼 완료\n잠시 후 스테이지 1로 이동합니다", completeStyle);
+                    layout.SafeArea.center.x - width * 0.5f,
+                    layout.SafeArea.center.y - height * 0.5f,
+                    width,
+                    height);
+                GetRenderer().DrawPanel(
+                    completePanel,
+                    layout.Scale,
+                    CyberHudPalette.Amber);
+                GUI.Label(
+                    completePanel,
+                    "튜토리얼 완료\n잠시 후 스테이지 1로 이동합니다",
+                    completeStyle);
                 return;
             }
 
-            Rect lessonPanel = new Rect(
-                (Screen.width - 720f) * 0.5f,
-                Screen.height - 174f,
-                720f,
-                148f);
-            GUI.DrawTexture(lessonPanel, panelTexture);
+            Rect lessonPanel = layout.TutorialPanel;
+            GetRenderer().DrawPanel(lessonPanel, layout.Scale);
+            float padding = 22f * layout.Scale;
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 12f, 676f, 36f),
+                new Rect(
+                    lessonPanel.x + padding,
+                    lessonPanel.y + 12f * layout.Scale,
+                    lessonPanel.width - padding * 2f,
+                    36f * layout.Scale),
                 director.StepTitle,
                 titleStyle);
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 52f, 676f, 48f),
+                new Rect(
+                    lessonPanel.x + padding,
+                    lessonPanel.y + 50f * layout.Scale,
+                    lessonPanel.width - padding * 2f,
+                    52f * layout.Scale),
                 director.Instruction,
                 instructionStyle);
             GUI.Label(
-                new Rect(lessonPanel.x + 22f, lessonPanel.y + 104f, 676f, 28f),
+                new Rect(
+                    lessonPanel.x + padding,
+                    lessonPanel.y + 108f * layout.Scale,
+                    lessonPanel.width - padding * 2f,
+                    28f * layout.Scale),
                 director.ProgressText + "    |    R: 다시 시작",
                 statusStyle);
         }
@@ -96,63 +110,65 @@ namespace Deltatime.Tutorial
             deadline = deadlineController;
         }
 
-        private void EnsureStyles()
+        private CyberHudRenderer GetRenderer()
         {
-            if (titleStyle != null)
+            return hudRenderer ??= new CyberHudRenderer();
+        }
+
+        private void EnsureStyles(float scale)
+        {
+            if (titleStyle != null && Mathf.Abs(styledScale - scale) < 0.001f)
             {
                 return;
             }
 
-            panelTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
-            {
-                name = "Tutorial HUD Panel"
-            };
-            panelTexture.SetPixel(0, 0, new Color(0.015f, 0.025f, 0.045f, 0.9f));
-            panelTexture.Apply();
-
+            styledScale = scale;
             KoreanUiFontSettings fontSettings = KoreanUiFontSettings.Load();
-            Font regularFont = fontSettings == null ? null : fontSettings.RegularFont;
-            Font boldFont = fontSettings == null ? null : fontSettings.BoldFont;
-            if (regularFont == null || boldFont == null)
-            {
-                Debug.LogError(
-                    "Korean UI font settings are missing. Run Tools/UI/Apply Korean Localization.",
-                    this);
-            }
+            Font regularFont = fontSettings == null
+                ? null
+                : fontSettings.RegularFont;
+            Font boldFont = fontSettings == null
+                ? null
+                : fontSettings.BoldFont;
 
             titleStyle = new GUIStyle(GUI.skin.label)
             {
                 font = boldFont,
-                fontSize = 20,
+                fontSize = Mathf.Max(14, Mathf.RoundToInt(20f * scale)),
                 fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.2f, 1f, 1f, 1f) }
+                normal = { textColor = CyberHudPalette.Accent }
             };
             instructionStyle = new GUIStyle(GUI.skin.label)
             {
                 font = regularFont,
-                fontSize = 18,
+                fontSize = Mathf.Max(12, Mathf.RoundToInt(18f * scale)),
                 wordWrap = true,
-                normal = { textColor = new Color(0.92f, 0.96f, 1f, 1f) }
+                normal = { textColor = CyberHudPalette.Text }
             };
             statusStyle = new GUIStyle(GUI.skin.label)
             {
                 font = regularFont,
-                fontSize = 15,
-                normal = { textColor = new Color(0.75f, 0.88f, 0.96f, 1f) }
+                fontSize = Mathf.Max(11, Mathf.RoundToInt(15f * scale)),
+                normal =
+                {
+                    textColor = new Color(
+                        CyberHudPalette.Frame.r,
+                        CyberHudPalette.Frame.g,
+                        CyberHudPalette.Frame.b,
+                        0.9f)
+                }
             };
             completeStyle = new GUIStyle(titleStyle)
             {
-                fontSize = 30,
-                alignment = TextAnchor.MiddleCenter
+                fontSize = Mathf.Max(20, Mathf.RoundToInt(30f * scale)),
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = CyberHudPalette.Amber }
             };
         }
 
         private void OnDestroy()
         {
-            if (panelTexture != null)
-            {
-                Destroy(panelTexture);
-            }
+            hudRenderer?.Dispose();
         }
     }
 }

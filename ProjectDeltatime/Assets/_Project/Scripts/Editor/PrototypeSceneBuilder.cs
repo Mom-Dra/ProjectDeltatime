@@ -150,6 +150,7 @@ namespace Deltatime.EditorTools
                 EnsureAutomaticRifleDefinition();
             WeaponDefinition shotgun = EnsureShotgunDefinition();
             WeaponDefinition meleeWeapon = EnsureMeleeWeaponDefinition();
+            HudAssetBuilder.BuildCyberHudAssets();
             EnsureProjectilePrefab(lineMaterial);
             EnsurePickupPrefab(pickupMaterial, pickupOutlineMaterial);
             EnsureThrownWeaponPrefab(pickupMaterial, lineMaterial);
@@ -642,6 +643,7 @@ namespace Deltatime.EditorTools
         [MenuItem("Tools/Prototype/Validate Stage 1 + Stage 2")]
         public static void ValidateSavedPrototypeRoom()
         {
+            HudAssetBuilder.ValidateCyberHudAssets();
             Scene stage1 = EditorSceneManager.OpenScene(
                 Stage1ScenePath,
                 OpenSceneMode.Single);

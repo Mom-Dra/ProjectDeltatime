@@ -57,6 +57,9 @@ namespace Deltatime.Combat
         [SerializeField] private Color visualColor =
             new Color(0.5f, 0.55f, 0.62f, 1f);
 
+        [Header("HUD")]
+        [SerializeField] private Sprite hudIcon;
+
         [Header("Model Visuals")]
         [SerializeField] private GameObject heldVisualPrefab;
         [SerializeField] private GameObject worldVisualPrefab;
@@ -94,6 +97,7 @@ namespace Deltatime.Combat
         public Vector3 HeldVisualScale => heldVisualScale;
         public Vector3 WorldVisualScale => worldVisualScale;
         public Color VisualColor => visualColor;
+        public Sprite HudIcon => hudIcon;
         public GameObject HeldVisualPrefab => heldVisualPrefab;
         public GameObject WorldVisualPrefab => worldVisualPrefab;
         public Vector3 HeldModelLocalPosition => heldModelLocalPosition;

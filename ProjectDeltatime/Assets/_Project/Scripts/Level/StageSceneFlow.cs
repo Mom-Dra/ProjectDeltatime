@@ -17,6 +17,14 @@ namespace Deltatime.Level
             "Stage5"
         };
 
+        private static readonly string[] DisplayStageNames =
+        {
+            "Stage1",
+            "Stage2",
+            "Stage5",
+            "Stage6"
+        };
+
         public static bool TryGetNextDestination(
             string currentSceneName,
             out string destinationSceneName)
@@ -48,6 +56,25 @@ namespace Deltatime.Level
                 }
             }
 
+            return false;
+        }
+
+        internal static bool TryGetDisplayStageNumber(
+            string sceneName,
+            out int stageNumber)
+        {
+            for (int i = 0; i < DisplayStageNames.Length; i++)
+            {
+                if (DisplayStageNames[i] != sceneName)
+                {
+                    continue;
+                }
+
+                stageNumber = i + 1;
+                return true;
+            }
+
+            stageNumber = 0;
             return false;
         }
     }

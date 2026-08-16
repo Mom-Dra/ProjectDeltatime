@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-17 - In-Game HUD 외곽 프레임 제거
+
+- 변경 유형: UI 시각 정리, 공용 OnGUI 렌더링·레이아웃 검증 갱신
+- 변경 내용: **구현 완료**. 본편과 Tutorial의 인게임 HUD에서 화면 네 모서리 브래킷, 화면 가장자리 중간 눈금과 이를 연결하던 외곽 프레임을 제거했다. 정보 패널의 절단 모서리·청흑색 바탕·가는 청록 윤곽과 모든 상태/조작/수업 정보는 유지한다. 따라서 화면 프레임형 각진 UI는 별도로 구현한 리플레이 UI에만 남고, 인게임 HUD는 독립형 상태 패널만 표시한다.
+- 영향을 받은 시스템: 본편·Tutorial HUD 공용 OnGUI 렌더링, Safe Area 레이아웃, HUD EditMode 배치 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/CyberHudPresentation.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/HudPresentationTests.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.9.2로 갱신해 외곽 프레임은 리플레이 전용이며 인게임 HUD에서 사용하지 않는 현재 표현 규칙을 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 `HudAssetBuilder.BuildAndValidateFromCommandLine`으로 컴파일·HUD 아이콘 연결 검증을 통과했고, `HudPresentationTests` EditMode 21/21이 통과했다. `HudVisualCapture`로 Stage1·Tutorial의 1920×1080/1280×720 캡처 4건을 새로 생성·검증했으며, 실제 이미지에서 화면 가장자리 브래킷과 외곽 프레임이 제거되고 독립형 정보 패널이 안전 영역 안에 유지됨을 확인했다. Prototype/Tutorial 전체 스모크는 외곽 프레임 시각 변경과 직접 관계가 없어 재실행하지 않았다.
+- 남은 작업: **확인 불가**. Stage5·Stage6 및 앰버 완료/주의 상태의 별도 Game View 캡처는 이전 HUD 변경 범위부터 미실행이다.
+
+## 2026-08-17 - 리플레이 톤 In-Game HUD 및 아이콘 재설계
+
+- 변경 유형: 기능 수정, UI 시각 통합, 반응형 레이아웃, ImageGen 에셋 교체, 에디터 검증·테스트·캡처 도구 갱신
+- 변경 내용: **구현 완료**. 본편 `GameHud`와 `TutorialHud`의 공용 OnGUI HUD를 리플레이 장면과 같은 어두운 산업형 전술 인터페이스로 재설계했다. `Screen.safeArea` 기반 분절형 코너 프레임, 절단 모서리 청흑색 패널, 가는 청록 선, Noto Sans KR, 실제 윤곽 키캡을 적용한다. 청록은 기본·활성 상태에, 앰버는 클리어·튜토리얼 완료·저체력·탄약/충전 소진 같은 완료/주의 상태에만 사용한다. 스테이지, 체력, `DEADLINE`, 무기/탄약, 시계 다이얼과 라이브·리플레이 배율의 위치·데이터 및 중앙 안내와 수업 흐름은 유지했고, 리플레이 전용 타임라인·`RECORDED VIEW`·`NORMAL`은 추가하지 않았다. 기존 아이콘 8종은 ImageGen으로 다시 제작해 투명 배경의 암회색/회백색 기술 실루엣과 제한된 청록 표시만 남겼으며, HUD 렌더 단계에서 낮은 명도의 회백색으로 틴트한다. 게임플레이, 입력, 무기 교체, 밸런스와 `Time.timeScale`은 변경하지 않았다.
+- 영향을 받은 시스템: 본편·Tutorial HUD, 공용 OnGUI 렌더링, 진행 순번 표기, 플레이어 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 월드 시간, Safe Area/해상도 레이아웃, HUD 아이콘 임포트·연결, Prototype/Tutorial 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/UI/CyberHudPresentation.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameHud.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial/TutorialHud.cs`, `ProjectDeltatime/Assets/_Project/Art/UI/HudIcons`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/HudAssetBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/HudVisualCapture.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/HudPresentationTests.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.9.1로 갱신해 산업형 전술 HUD의 프레임·패널·상태 색상·아이콘 규칙, 적용 범위와 실제 검증 상태를 기록했다.
+- 테스트 결과: **부분 구현**. Unity 6000.1.13f1 배치 아이콘 임포트·컴파일·PNG 알파·Sprite/밉맵/256px/Clamp/Bilinear·`HudIconSet`/네 무기 연결 검증이 통과했다. HUD EditMode 21/21과 Stage1·Tutorial 1920×1080/1280×720 캡처 4건의 실제 PNG 크기·필수 아이콘 연결 검증이 통과했으며, 네 캡처를 직접 확인해 아이콘 식별성, 글자 잘림, 패널 비중첩, 어두운 배경 대비를 확인했다. Prototype 전체 스모크는 기존 투척 속도/거리/기절 수치·6m 착지·리플레이 본 포즈 3건으로 실패했고, Tutorial 전체 스모크는 기존 Synty 프리팹 수 216/262에서 Play Mode 전에 실패했다. 신규 HUD/아이콘 오류는 보고되지 않았다.
+- 남은 작업: **계획 필요**. 기존 Prototype/Tutorial 스모크 기준선을 현재 저장 콘텐츠와 맞출지 별도 기능 범위에서 결정해야 한다. Stage5·Stage6 스모크와 앰버 완료/주의 상태의 별도 캡처는 이번 변경 후 **미실행/확인 불가**다. 색약/접근성, 로컬라이징, 게임패드·입력 장치별 아이콘과 Canvas/UI Toolkit 전환 여부도 제품 UI 단계에서 결정해야 한다.
+
 ## 2026-08-15 - 바닥 무기 아웃라인 리플레이 잔류 수정
 
 - 변경 유형: 버그 수정, 리플레이 시각 등록, PlayMode 회귀 테스트 갱신

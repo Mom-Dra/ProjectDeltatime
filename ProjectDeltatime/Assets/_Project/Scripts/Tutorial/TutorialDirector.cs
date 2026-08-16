@@ -88,6 +88,7 @@ namespace Deltatime.Tutorial
         public bool Completed => CurrentStep == TutorialStep.Complete;
         public bool DeadlineSucceeded => deadlineScenario.Succeeded;
         public bool PlayerDead => playerHealth != null && !playerHealth.IsAlive;
+        internal PlayerHealth PlayerHealth => playerHealth;
 
         public string StepTitle
         {

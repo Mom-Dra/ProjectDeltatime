@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Pistol
   m_EditorClassIdentifier: 
   kind: 0
-  displayName: 권총
+  displayName: "\uAD8C\uCD1D"
   animationStyle: 1
   ammunitionCapacity: 8
   fireInterval: 0.24
@@ -33,6 +33,7 @@ MonoBehaviour:
   heldVisualScale: {x: 0.18, y: 0.16, z: 0.78}
   worldVisualScale: {x: 0.82, y: 0.16, z: 0.26}
   visualColor: {r: 0.5, g: 0.55, b: 0.62, a: 1}
+  hudIcon: {fileID: 21300000, guid: 7752eb843c89c224a87bf78cc3ff8424, type: 3}
   heldVisualPrefab: {fileID: 7153845922303118929, guid: 9c9ac4dfc1131e74c8d29dfa5516d22f, type: 3}
   worldVisualPrefab: {fileID: 7153845922303118929, guid: 9c9ac4dfc1131e74c8d29dfa5516d22f, type: 3}
   heldModelLocalPosition: {x: 0.08, y: 0.03, z: -0.039}
