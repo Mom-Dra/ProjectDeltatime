@@ -7,6 +7,36 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-18 - 총구 높이 기준 바닥·천장 수평 발사
+
+- 변경 유형: 총기 조준 버그 수정, 발사 원점 높이 보정, PlayMode 회귀 테스트 보강
+- 변경 내용: **구현 완료**. 이전 바닥·천장 보정은 `FireAimPoint`의 Y를 플레이어 Rigidbody 높이로 고정해, 실제 총구가 그보다 위·아래일 때 여전히 투사체가 바닥 또는 천장을 향하는 문제가 있었다. `PlayerAim`은 수평 표면 또는 Collider 없는 폴백인지 기록하고, `GetFireDirectionFrom(origin)`가 그 경우에만 목표 Y를 전달받은 발사 원점의 `origin.y`로 맞춘다. 따라서 바닥 클릭은 총구 높이와 무관하게 수평이며, 적 등 `IDamageable` Collider와 수직·경사 벽은 실제 접점에 대한 기존 3D 조준을 유지한다.
+- 영향을 받은 시스템: 플레이어 일반·`DEADLINE` 총기 발사, 총구 보정값이 있는 모든 권총·자동소총·샷건, 바닥·천장·Collider 없음 클릭, 고저차 적 명중, Stage5 컷어웨이 조준, PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/ElevationFireAimTests.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.9.6으로 갱신해 수평 표면·폴백의 목표 Y가 플레이어 루트가 아닌 실제 총구 원점이라는 최종 규칙과 회귀 결과를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 PlayMode `ElevationFireAimTests` 3/3이 총구 Y와 플레이어 Y가 다른 수평 바닥 클릭·Collider 없음 폴백의 정확히 0인 Y 방향, 위·아래 `IDamageable` target의 3D 방향·명중, 숨은 전경 Collider 건너뛰기, 적 총기 상·하 방향을 통과했다.
+- 남은 작업: **확인 불가**. 실제 Stage5 Game View에서 바닥·천장·벽 클릭과 단상 위·아래 적 명중의 조준 감각은 수동 확인이 필요하다. Stage5 전체 스모크의 기존 weapon pickup 수 1개/기대 2개 불일치는 별도 범위다.
+
+## 2026-08-18 - 바닥·천장 클릭 총기 수평 보정
+
+- 변경 유형: 총기 조준 정책 보정, 바닥 오발 방지, PlayMode 회귀 테스트 확장
+- 변경 내용: **구현 완료**. `PlayerAim`은 가장 가까운 유효 Collider가 적 등 `IDamageable`이거나 표면 법선의 절대 Y가 `0.7` 미만인 벽/경사면이면 실제 3D 접점을 계속 사용한다. 법선의 절대 Y가 `0.7` 이상인 수평 바닥·천장 접점은 클릭 X/Z와 플레이어 Rigidbody의 현재 Y를 결합한다. 따라서 바로 앞 바닥 클릭은 총구를 아래로 꺾지 않으며, 높은/낮은 적 Collider와 벽의 실제 고저차 조준은 유지한다. `ShadowsOnly` 컷어웨이 제외, 자기 Collider 제외, Collider 없는 클릭의 수평 평면 폴백과 캐릭터·무기 모델 yaw 규칙은 변경하지 않았다.
+- 영향을 받은 시스템: 플레이어 총기 조준점·발사 방향, 바닥·천장·벽 Collider 클릭, 고저차 적 명중, `DEADLINE` 총기 발사, Stage5 컷어웨이 조준, PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/ElevationFireAimTests.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.9.5로 갱신해 적·벽의 실제 접점 3D 조준과 바닥·천장 X/Z 수평 보정의 구분, 법선 임계값 `0.7`, 유지되는 제외·폴백 규칙을 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 PlayMode `ElevationFireAimTests` 3/3이 위·아래 `IDamageable` target의 3D 방향·명중, 숨은 전경 Collider 건너뛰기, 수평 바닥 클릭의 X/Z 보존·Y 보정·수평 총구 방향, Collider 없는 클릭 폴백, 적 총기 상·하 방향을 통과했다. Unity 스크립트 컴파일도 성공했으며 기존 `MainMenuButtonFeedback.cs`의 중복 `TMPro` using 경고만 보고됐다.
+- 남은 작업: **확인 불가**. 실제 Stage5 Game View에서 바닥·천장·벽을 각각 클릭했을 때의 조준 감각과 단상 위·아래 적 명중은 수동 확인이 필요하다. Stage5 전체 스모크의 기존 weapon pickup 수 1개/기대 2개 불일치는 별도 범위다.
+
+## 2026-08-17 - 고저차 대응 3D 투사체 조준
+
+- 변경 유형: 총기 조준 리팩터링, 고저차 명중 보정, PlayMode 회귀 테스트·Stage5 검증 갱신
+- 변경 내용: **구현 완료**. `PlayerAim`에 실제 총기용 `FireAimPoint`와 `GetFireDirectionFrom(origin)`을 추가했다. 마우스 카메라 Ray의 가장 가까운 활성 비트리거 Collider 실제 접점을 선택하되 플레이어 자신의 Collider와 Renderer가 `ShadowsOnly`인 전경 컷어웨이 Collider는 건너뛰고, 유효 Collider가 없으면 기존 플레이어 Y 수평 평면으로 폴백한다. 기존 `AimPoint`·`AimDirection`·`GetPlanarDirectionFrom`은 캐릭터 yaw, 근접, 투척, 카메라·HUD용 수평 조준으로 유지한다. 플레이어 일반·`DEADLINE` 총기 발사와 적 총기 발사는 총구에서 실제 목표 높이를 포함하는 3D 방향을 사용하며, 적 경고선도 같은 3D 선분을 표시한다. 반동과 캐릭터/무기 모델의 yaw 정렬은 수평 동작을 유지하고, 중력·곡사·유도·선행 조준·모델 pitch는 추가하지 않았다.
+- 영향을 받은 시스템: 플레이어 포인터 조준, 권총·자동소총·샷건 일반/`DEADLINE` 발사, 적 총기 점사·경고선, 투사체 SphereCast 명중, Stage5 컷어웨이 검증, PlayMode 회귀 검사
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/ElevationFireAimTests.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.9.4로 갱신해 수평 조준과 3D 총기 발사의 분리, `ShadowsOnly` 컷어웨이 예외, 폴백, 적 발사·경고선, 범위 제외 항목과 검증 상태를 기록했다.
+- 테스트 결과: **부분 구현**. Unity 6000.1.13f1 배치 PlayMode `ElevationFireAimTests` 3/3이 위·아래 target 3D 투사체 명중, visible Collider 높이·hidden foreground 건너뛰기·수평 평면 폴백, 적 총기 상·하 방향을 통과했다. Stage6 PlayMode 스모크는 NavMesh complete paths 5/5로 통과했다. Stage5 PlayMode 스모크는 새 조준 검증 전에 기존 씬의 weapon pickup 수 1개/기대 2개 불일치로 실패했다. `dotnet build ProjectDeltatime.sln`은 이번 변경과 무관한 `Assets/TutorialInfo/Scripts/Readme.cs` 누락 참조로 실패했다.
+- 남은 작업: **확인 불가**. 실제 Stage5의 단상 위·아래에서 마우스로 적·바닥·벽을 클릭했을 때의 명중감과, yaw만 유지하는 무기 모델 시각은 수동 Game View로 확인해야 한다. Stage5 전체 스모크는 기존 pickup 수 기준을 현재 저장 씬에 맞출지 별도 범위에서 결정해야 한다.
+
 ## 2026-08-17 - Replay UI와 In-Game Cyber HUD 통합
 
 - 변경 유형: 브랜치 통합, 상태별 HUD 렌더링, 공용 상호작용 안내, 문서 재정리

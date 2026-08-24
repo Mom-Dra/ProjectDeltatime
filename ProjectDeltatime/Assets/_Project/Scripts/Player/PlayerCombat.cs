@@ -154,7 +154,7 @@ namespace Deltatime.Player
                     weapon.Definition.IsFirearm)
                 {
                     movement.QueueRecoil(
-                        -GetWeaponOriginAimDirection(),
+                        -GetWeaponFireDirection(),
                         weapon.Definition.PlayerRecoilDistance);
                 }
                 if (weaponUseSucceeded || firearmAttempted)
@@ -306,7 +306,7 @@ namespace Deltatime.Player
                     meleeAttackExecution)
                 : weapon.TryFire(
                     CombatFaction.Player,
-                    GetWeaponOriginAimDirection(),
+                    GetWeaponFireDirection(),
                     clock,
                     worldTime,
                     out firearmAttempted);
@@ -321,7 +321,7 @@ namespace Deltatime.Player
 
             if (weapon.Definition.IsFirearm)
             {
-                Vector3 fireDirection = GetWeaponOriginAimDirection();
+                Vector3 fireDirection = GetWeaponFireDirection();
                 bool stagedFire = weapon.TryStageFire(
                     CombatFaction.Player,
                     fireDirection,
@@ -357,6 +357,16 @@ namespace Deltatime.Player
             }
 
             return aim.GetPlanarDirectionFrom(weapon.Muzzle.position);
+        }
+
+        private Vector3 GetWeaponFireDirection()
+        {
+            if (weapon == null || weapon.Muzzle == null)
+            {
+                return aim.GetFireDirectionFrom(transform.position);
+            }
+
+            return aim.GetFireDirectionFrom(weapon.Muzzle.position);
         }
 
         private void ClearStagedMeleeAttacks()

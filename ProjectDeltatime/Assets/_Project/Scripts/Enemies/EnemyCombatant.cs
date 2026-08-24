@@ -434,10 +434,9 @@ namespace Deltatime.Enemies
             }
 
             UpdateWarningLine(weapon.Muzzle.position);
-            Vector3 direction =
-                perception.Target.position -
-                weapon.Muzzle.position;
-            direction.y = 0f;
+            Vector3 direction = GetFirearmDirection(
+                weapon.Muzzle.position,
+                perception.Target.position);
             if (direction.sqrMagnitude <= 0.000001f)
             {
                 return;
@@ -853,6 +852,16 @@ namespace Deltatime.Enemies
             return direction.sqrMagnitude > 0.000001f &&
                    Vector3.Angle(transform.forward, direction) <=
                    toleranceDegrees;
+        }
+
+        internal static Vector3 GetFirearmDirection(
+            Vector3 origin,
+            Vector3 target)
+        {
+            Vector3 direction = target - origin;
+            return direction.sqrMagnitude > 0.000001f
+                ? direction.normalized
+                : Vector3.zero;
         }
 
         private void HandleEquipmentChanged()

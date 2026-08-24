@@ -492,14 +492,14 @@ namespace Deltatime.EditorTools
             Require(actorPlane.Raycast(pointerRay, out float expectedDistance),
                 "Stage5 aim validation ray did not reach the actor plane.");
 
-            GameObject blockerRoot = new GameObject("Stage5 Aim Foreground Probe")
-            {
-                hideFlags = HideFlags.HideAndDontSave,
-                layer = TestLayer
-            };
-            BoxCollider blocker = blockerRoot.AddComponent<BoxCollider>();
-            blocker.size = Vector3.one;
+            GameObject blockerRoot = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blockerRoot.name = "Stage5 Aim Foreground Probe";
+            blockerRoot.hideFlags = HideFlags.HideAndDontSave;
+            blockerRoot.layer = TestLayer;
+            BoxCollider blocker = blockerRoot.GetComponent<BoxCollider>();
+            Renderer blockerRenderer = blockerRoot.GetComponent<Renderer>();
             blockerRoot.transform.position = pointerRay.GetPoint(expectedDistance * 0.5f);
+            blockerRenderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
 
             try
             {
@@ -513,20 +513,19 @@ namespace Deltatime.EditorTools
                     blockerHit.collider == blocker,
                     "Stage5 aim foreground probe did not intercept the camera ray.");
 
-                System.Reflection.MethodInfo resolveAimPoint =
+                System.Reflection.MethodInfo resolveFireAimPoint =
                     typeof(PlayerAim).GetMethod(
-                        "TryResolveAimPoint",
+                        "ResolveFireAimPoint",
                         System.Reflection.BindingFlags.Instance |
                         System.Reflection.BindingFlags.NonPublic);
-                Require(resolveAimPoint != null,
-                    "Stage5 player aim resolver is missing.");
-                object[] arguments = { pointerRay, Vector3.zero };
-                bool resolved = (bool)resolveAimPoint.Invoke(aim, arguments);
-                Vector3 resolvedPoint = (Vector3)arguments[1];
+                Require(resolveFireAimPoint != null,
+                    "Stage5 firearm aim resolver is missing.");
+                Vector3 resolvedPoint = (Vector3)resolveFireAimPoint.Invoke(
+                    aim,
+                    new object[] { pointerRay });
                 Vector3 expectedPoint = pointerRay.GetPoint(expectedDistance);
-                Require(resolved &&
-                        (resolvedPoint - expectedPoint).sqrMagnitude < 0.0001f,
-                    "Stage5 player aim was deflected by a foreground collider.");
+                Require((resolvedPoint - expectedPoint).sqrMagnitude < 0.0001f,
+                    "Stage5 firearm aim was deflected by a hidden foreground collider.");
             }
             finally
             {
