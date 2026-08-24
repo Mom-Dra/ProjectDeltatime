@@ -4,14 +4,14 @@
 
 - 저장소 루트는 이 파일이 있는 디렉터리다.
 - 실제 Unity 프로젝트 루트는 `ProjectDeltatime/`이다.
-- 기획 문서는 저장소 루트의 `Docs/PROJECT_DESIGN_DOCUMENT.md`, 기능 변경 기록은 `Docs/FEATURE_CHANGELOG.md`다.
+- 기획 문서는 저장소 루트의 `mdFile/PROJECT_DESIGN_DOCUMENT.md`, 기능 변경 기록은 `mdFile/FEATURE_CHANGELOG.md`다.
 
 ## 필수 문서 갱신 규칙
 
 - Unity 프로젝트의 기능을 추가, 수정, 삭제할 때 관련 기획서도 함께 검토한다.
 - 사용자가 명시적으로 문서 갱신을 제외하지 않는 한, 기능 구현 작업의 마지막 단계에서 문서를 갱신한다.
-- 기능 변경이 기획서에 영향을 주면 `Docs/PROJECT_DESIGN_DOCUMENT.md`를 갱신한다.
-- 모든 기능 변경은 `Docs/FEATURE_CHANGELOG.md`에 기록한다.
+- 기능 변경이 기획서에 영향을 주면 `mdFile/PROJECT_DESIGN_DOCUMENT.md`를 갱신한다.
+- 모든 기능 변경은 `mdFile/FEATURE_CHANGELOG.md`에 기록한다.
 - 문서에는 기능의 구현 상태를 `구현 완료`, `부분 구현`, `미구현`, `계획 필요`, `확인 불가` 중 하나로 반드시 표시한다.
 - 코드나 에셋에서 확인할 수 없는 내용은 사실처럼 작성하지 않는다. 불가피한 해석은 `추정`이라고 명시한다.
 - 주요 기능 설명에는 근거가 되는 저장소 기준 파일 경로를 기록한다.
@@ -37,7 +37,7 @@
 
 ## 기능 변경 기록 형식
 
-`Docs/FEATURE_CHANGELOG.md`에 다음 항목을 작성한다.
+`mdFile/FEATURE_CHANGELOG.md`에 다음 항목을 작성한다.
 
 - 날짜와 기능명
 - 변경 유형

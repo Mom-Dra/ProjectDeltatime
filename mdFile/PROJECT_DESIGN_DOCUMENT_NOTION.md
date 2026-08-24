@@ -624,7 +624,7 @@ Builder는 씬·프리팹·머티리얼·무기 데이터·빌드 설정을 재�
 
 ## 원문 및 변경 기록
 
-- 원문 기획서: `docs/PROJECT_DESIGN_DOCUMENT.md`
-- 기능 변경 기록: `docs/FEATURE_CHANGELOG.md`
+- 원문 기획서: `mdFile/PROJECT_DESIGN_DOCUMENT.md`
+- 기능 변경 기록: `mdFile/FEATURE_CHANGELOG.md`
 
 이 Notion용 문서는 원문 기획서의 최신 구현 기준선을 복사·정리한 입력본이다. 변경 이력과 세부 근거가 필요하면 원문 기획서와 기능 변경 기록을 함께 확인한다.
