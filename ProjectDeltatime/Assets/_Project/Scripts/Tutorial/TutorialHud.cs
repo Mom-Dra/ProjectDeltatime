@@ -1,4 +1,5 @@
 using Deltatime.Combat;
+using Deltatime.InputSystem;
 using Deltatime.Player;
 using Deltatime.TimeSystem;
 using Deltatime.UI;
@@ -97,7 +98,7 @@ namespace Deltatime.Tutorial
                     lessonPanel.y + 108f * layout.Scale,
                     lessonPanel.width - padding * 2f,
                     28f * layout.Scale),
-                director.ProgressText + "    |    R: 다시 시작",
+                director.ProgressText + $"    |    {InputBindingDisplay.Get("Restart")}: 다시 시작",
                 statusStyle);
 
             ResolvePlayerCombat();

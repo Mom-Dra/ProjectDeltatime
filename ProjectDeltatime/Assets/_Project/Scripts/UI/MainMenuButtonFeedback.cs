@@ -1,76 +1,56 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using TMPro;
+using UnityEngine.UI;
 
 namespace Deltatime.UI
 {
-    /// <summary>
-    /// Presents hover and press feedback for the text-only Play action.
-    /// </summary>
-    public sealed class MainMenuButtonFeedback : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler,
-        IPointerDownHandler, IPointerUpHandler
+    public sealed class MainMenuButtonFeedback : MonoBehaviour,
+        IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler,
+        IPointerUpHandler, ISelectHandler, IDeselectHandler
     {
         [SerializeField] private TextMeshProUGUI label;
-        [SerializeField, Min(1f)] private float hoverScale = 1.08f;
-        [SerializeField] private Color pressedColor = new Color(224f / 255f, 28f / 255f, 28f / 255f, 1f);
+        [SerializeField] private TextMeshProUGUI pointer;
+        [SerializeField] private Image highlight;
+        [SerializeField] private Color idleColor = new Color(0.56f, 0.56f, 0.58f, 1f);
+        [SerializeField] private Color activeColor = Color.white;
+        [SerializeField] private Color pressedColor = new Color(0.88f, 0.11f, 0.11f, 1f);
 
-        private bool isPointerOver;
-        private bool isPointerDown;
+        private bool pointerOver;
+        private bool pointerDown;
+        private bool selected;
 
         public TextMeshProUGUI Label => label;
-        public float HoverScale => hoverScale;
-        public Color PressedColor => pressedColor;
 
-        public void Configure(TextMeshProUGUI targetLabel, float targetHoverScale, Color targetPressedColor)
+        public void Configure(
+            TextMeshProUGUI targetLabel,
+            TextMeshProUGUI targetPointer,
+            Image targetHighlight)
         {
             label = targetLabel;
-            hoverScale = Mathf.Max(1f, targetHoverScale);
-            pressedColor = targetPressedColor;
+            pointer = targetPointer;
+            highlight = targetHighlight;
             ApplyVisualState();
         }
 
-        private void OnEnable()
-        {
-            ApplyVisualState();
-        }
-
-        public void OnPointerEnter(PointerEventData eventData)
-        {
-            isPointerOver = true;
-            ApplyVisualState();
-        }
-
-        public void OnPointerExit(PointerEventData eventData)
-        {
-            isPointerOver = false;
-            isPointerDown = false;
-            ApplyVisualState();
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
-        {
-            isPointerDown = true;
-            ApplyVisualState();
-        }
-
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            isPointerDown = false;
-            ApplyVisualState();
-        }
+        private void OnEnable() => ApplyVisualState();
+        public void OnPointerEnter(PointerEventData eventData) { pointerOver = true; ApplyVisualState(); }
+        public void OnPointerExit(PointerEventData eventData) { pointerOver = false; pointerDown = false; ApplyVisualState(); }
+        public void OnPointerDown(PointerEventData eventData) { pointerDown = true; ApplyVisualState(); }
+        public void OnPointerUp(PointerEventData eventData) { pointerDown = false; ApplyVisualState(); }
+        public void OnSelect(BaseEventData eventData) { selected = true; ApplyVisualState(); }
+        public void OnDeselect(BaseEventData eventData) { selected = false; ApplyVisualState(); }
 
         private void ApplyVisualState()
         {
-            if (label == null)
+            bool active = selected || pointerOver;
+            if (label != null)
             {
-                return;
+                label.color = pointerDown && active ? pressedColor : active ? activeColor : idleColor;
             }
 
-            label.rectTransform.localScale = isPointerOver
-                ? Vector3.one * hoverScale
-                : Vector3.one;
-            label.color = isPointerDown && isPointerOver ? pressedColor : Color.white;
+            pointer?.gameObject.SetActive(active);
+            highlight?.gameObject.SetActive(active);
         }
     }
 }

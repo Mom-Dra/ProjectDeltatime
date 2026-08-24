@@ -1,5 +1,6 @@
 using Deltatime.InputSystem;
 using Deltatime.Level;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -12,10 +13,21 @@ namespace Deltatime.UI
     {
         private PlayerControls controls;
         private bool isLoadingMainScene;
+        [SerializeField] private TextMeshProUGUI returnInstruction;
+
+        public void Configure(TextMeshProUGUI instruction)
+        {
+            returnInstruction = instruction;
+        }
 
         private void Awake()
         {
-            controls = new PlayerControls();
+            controls = PlayerControlsFactory.Create();
+            if (returnInstruction != null)
+            {
+                returnInstruction.text =
+                    $"Press {InputBindingDisplay.Get("NextStage")} to return to Main Menu";
+            }
         }
 
         private void OnEnable()

@@ -23,7 +23,7 @@ namespace Deltatime.InputSystem
 
         private void Awake()
         {
-            controls = new PlayerControls();
+            controls = PlayerControlsFactory.Create();
 
             if (worldTimeActivity == null)
             {

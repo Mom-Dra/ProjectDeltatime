@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Deltatime.Combat;
 using Deltatime.Level;
+using Deltatime.InputSystem;
 using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
@@ -12,29 +13,6 @@ namespace Deltatime.UI
 {
     public sealed class GameHud : MonoBehaviour
     {
-        private static readonly HudControlHint[] LiveControlHints =
-        {
-            new HudControlHint("WASD", "이동"),
-            new HudControlHint("MOUSE", "조준"),
-            new HudControlHint("LMB", "공격 / 자동소총 연사"),
-            new HudControlHint("RMB", "투척"),
-            new HudControlHint("Q", "DEADLINE"),
-            new HudControlHint("SPACE", "대시"),
-            new HudControlHint("E", "잡기 / 획득 / 교체"),
-            new HudControlHint("R", "다시 시작")
-        };
-
-        private static readonly HudControlHint[] AdvanceControlHints =
-        {
-            new HudControlHint("R", "다시 시작"),
-            new HudControlHint("N", "다음 스테이지")
-        };
-
-        private static readonly HudControlHint[] RestartControlHints =
-        {
-            new HudControlHint("R", "다시 시작")
-        };
-
         [SerializeField] private StageController stage;
         [SerializeField] private WorldTimeController worldTime;
         [SerializeField] private PlayerHealth playerHealth;
@@ -308,7 +286,7 @@ namespace Deltatime.UI
             hintX = DrawReplayKeyHint(
                 hintX,
                 bar.y + 92f,
-                "R",
+                InputBindingDisplay.Get("Restart"),
                 "RESTART",
                 restartWidth);
             if (stage.CanAdvanceToNextStage)
@@ -320,7 +298,7 @@ namespace Deltatime.UI
                 DrawReplayKeyHint(
                     dividerX + dividerWidth + dividerMargin,
                     bar.y + 92f,
-                    "N",
+                    InputBindingDisplay.Get("NextStage"),
                     "NEXT STAGE",
                     nextWidth);
             }
@@ -800,13 +778,16 @@ namespace Deltatime.UI
             switch (stage.CurrentState)
             {
                 case StageController.StageState.Cleared:
-                    return "구역 클리어\nN: 다음 스테이지\nR: 다시 시작";
+                    return $"구역 클리어\n{InputBindingDisplay.Get("NextStage")}: 다음 스테이지\n" +
+                           $"{InputBindingDisplay.Get("Restart")}: 다시 시작";
                 case StageController.StageState.Replaying:
-                    return "스테이지 클리어\n리플레이 재생 중\nN: 다음 스테이지\nR: 다시 시작";
+                    return $"스테이지 클리어\n리플레이 재생 중\n" +
+                           $"{InputBindingDisplay.Get("NextStage")}: 다음 스테이지\n" +
+                           $"{InputBindingDisplay.Get("Restart")}: 다시 시작";
                 case StageController.StageState.PlayerDead:
                     return replay.IsReplaying
-                        ? "사망했습니다\n리플레이 재생 중\nR: 다시 시작"
-                        : "사망했습니다\nR: 다시 시작";
+                        ? $"사망했습니다\n리플레이 재생 중\n{InputBindingDisplay.Get("Restart")}: 다시 시작"
+                        : $"사망했습니다\n{InputBindingDisplay.Get("Restart")}: 다시 시작";
                 default:
                     return null;
             }
@@ -817,16 +798,43 @@ namespace Deltatime.UI
             if (replay.IsReplaying)
             {
                 return stage.CanAdvanceToNextStage
-                    ? AdvanceControlHints
-                    : RestartControlHints;
+                    ? CreateAdvanceControlHints()
+                    : CreateRestartControlHints();
             }
 
             if (stage.CanAdvanceToNextStage)
             {
-                return AdvanceControlHints;
+                return CreateAdvanceControlHints();
             }
 
-            return LiveControlHints;
+            return new[]
+            {
+                new HudControlHint(InputBindingDisplay.GetMovement(), "이동"),
+                new HudControlHint("MOUSE", "조준"),
+                new HudControlHint(InputBindingDisplay.Get("Fire"), "공격 / 자동소총 연사"),
+                new HudControlHint(InputBindingDisplay.Get("Throw"), "투척"),
+                new HudControlHint(InputBindingDisplay.Get("Deadline"), "DEADLINE"),
+                new HudControlHint(InputBindingDisplay.Get("Dash"), "대시"),
+                new HudControlHint(InputBindingDisplay.Get("Interact"), "잡기 / 획득 / 교체"),
+                new HudControlHint(InputBindingDisplay.Get("Restart"), "다시 시작")
+            };
+        }
+
+        private static HudControlHint[] CreateAdvanceControlHints()
+        {
+            return new[]
+            {
+                new HudControlHint(InputBindingDisplay.Get("Restart"), "다시 시작"),
+                new HudControlHint(InputBindingDisplay.Get("NextStage"), "다음 스테이지")
+            };
+        }
+
+        private static HudControlHint[] CreateRestartControlHints()
+        {
+            return new[]
+            {
+                new HudControlHint(InputBindingDisplay.Get("Restart"), "다시 시작")
+            };
         }
 
         private void ResolvePlayerCombat()

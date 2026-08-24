@@ -1,5 +1,6 @@
 using System;
 using Deltatime.UI;
+using Deltatime.InputSystem;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -71,6 +72,16 @@ namespace Deltatime.EditorTools
             Debug.Log("Ending scene built successfully.");
         }
 
+        public static void BuildAndValidateFromCommandLine()
+        {
+            SceneBuildCommand.Run(() =>
+            {
+                BuildEndingScene();
+                ValidateEndingScene();
+                Debug.Log("Ending scene build and validation completed.");
+            });
+        }
+
         [MenuItem("Tools/Ending/Validate Ending Scene")]
         public static void ValidateEndingScene()
         {
@@ -89,8 +100,12 @@ namespace Deltatime.EditorTools
                 FindRequiredComponent<TextMeshProUGUI>(
                     scene,
                     "EndingInstruction").text ==
-                "Press N to return to Main Menu",
-                "EndingScene must explain the N-key return.");
+                $"Press {InputBindingDisplay.Get("NextStage")} to return to Main Menu",
+                "EndingScene must explain the current Next Stage binding.");
+            Require(FindObject(scene, "MenuRoot") == null &&
+                    FindObject(scene, "OptionPanel") == null &&
+                    FindObject(scene, "CreditsPanel") == null,
+                "EndingScene must remove all main-menu interaction hierarchies.");
             GameBuildSceneCatalog.Validate();
         }
 
@@ -104,13 +119,17 @@ namespace Deltatime.EditorTools
                 UnityEngine.Object.DestroyImmediate(menuController);
             }
 
+            DestroyChild(canvas.transform, "MenuRoot");
+            DestroyChild(canvas.transform, "OptionPanel");
+            DestroyChild(canvas.transform, "CreditsPanel");
+
             Button[] buttons = canvas.GetComponentsInChildren<Button>(true);
             for (int i = 0; i < buttons.Length; i++)
             {
                 UnityEngine.Object.DestroyImmediate(buttons[i].gameObject);
             }
 
-            GetOrAddComponent<EndingSceneController>(canvas.gameObject);
+            EndingSceneController controller = GetOrAddComponent<EndingSceneController>(canvas.gameObject);
             RectTransform canvasTransform = canvas.GetComponent<RectTransform>();
             ConfigureLabel(
                 canvasTransform,
@@ -119,16 +138,18 @@ namespace Deltatime.EditorTools
                 EndingTitleSize,
                 EndingTitlePosition,
                 56f);
-            ConfigureLabel(
+            TextMeshProUGUI instruction = ConfigureLabel(
                 canvasTransform,
                 "EndingInstruction",
-                "Press N to return to Main Menu",
+                $"Press {InputBindingDisplay.Get("NextStage")} to return to Main Menu",
                 EndingInstructionSize,
                 EndingInstructionPosition,
                 28f);
+            controller.Configure(instruction);
+            EditorUtility.SetDirty(controller);
         }
 
-        private static void ConfigureLabel(
+        private static TextMeshProUGUI ConfigureLabel(
             RectTransform canvasTransform,
             string objectName,
             string text,
@@ -168,6 +189,26 @@ namespace Deltatime.EditorTools
             label.enableWordWrapping = false;
             label.overflowMode = TextOverflowModes.Overflow;
             labelTransform.SetAsLastSibling();
+            return label;
+        }
+
+        private static void DestroyChild(Transform parent, string name)
+        {
+            Transform child = parent.Find(name);
+            if (child != null) UnityEngine.Object.DestroyImmediate(child.gameObject);
+        }
+
+        private static GameObject FindObject(Scene scene, string name)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < transforms.Length; i++)
+                {
+                    if (transforms[i].name == name) return transforms[i].gameObject;
+                }
+            }
+            return null;
         }
 
         private static T FindRequiredComponent<T>(Scene scene, string objectName)

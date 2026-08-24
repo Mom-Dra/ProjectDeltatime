@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Deltatime.Combat;
 using Deltatime.Player;
+using Deltatime.Settings;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -32,6 +33,9 @@ namespace Deltatime.Audio
         private float bgmWeightB;
         private float currentDuckMultiplier = 1f;
         private float targetDuckMultiplier = 1f;
+        private float userMasterVolume = 1f;
+        private float userBgmVolume = 1f;
+        private float userSfxVolume = 1f;
         private int nextSpatialSource;
         private bool deadlineActive;
         private AudioClip requestedBgmClip;
@@ -48,6 +52,9 @@ namespace Deltatime.Audio
         public int UiClickPlayCount => uiClickPlayCount;
         public int MeleeSwingPlayCount => meleeSwingPlayCount;
         public int MeleeImpactPlayCount => meleeImpactPlayCount;
+        public float UserMasterVolume => userMasterVolume;
+        public float UserBgmVolume => userBgmVolume;
+        public float UserSfxVolume => userSfxVolume;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -68,8 +75,16 @@ namespace Deltatime.Audio
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            GameSettingsSnapshot settings = GameSettingsService.Current;
+            userMasterVolume = settings.MasterVolume;
+            userBgmVolume = settings.BgmVolume;
+            userSfxVolume = settings.SfxVolume;
             library = Resources.Load<SoundLibrary>(LibraryResourceName);
             CreateAudioSources();
+            ApplyUserVolumes(
+                userMasterVolume,
+                userBgmVolume,
+                userSfxVolume);
             SceneManager.sceneLoaded += HandleSceneLoaded;
             HandleSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
 
@@ -172,6 +187,25 @@ namespace Deltatime.Audio
             PlayGlobal(library.UiClickClip, 0.72f);
         }
 
+        public void ApplyUserVolumes(float master, float bgm, float sfx)
+        {
+            userMasterVolume = Mathf.Clamp01(master);
+            userBgmVolume = Mathf.Clamp01(bgm);
+            userSfxVolume = Mathf.Clamp01(sfx);
+            ApplyBgmVolumes();
+
+            if (globalSfxSource != null)
+            {
+                globalSfxSource.volume = userMasterVolume * userSfxVolume;
+            }
+
+            if (deadlineWarpSource != null)
+            {
+                deadlineWarpSource.volume =
+                    0.68f * userMasterVolume * userSfxVolume;
+            }
+        }
+
         public void PlayDeadlineEnter()
         {
             if (deadlineActive || library == null)
@@ -188,7 +222,8 @@ namespace Deltatime.Audio
             {
                 deadlineWarpSource.clip = warpClip;
                 deadlineWarpSource.loop = false;
-                deadlineWarpSource.volume = 0.68f;
+                deadlineWarpSource.volume =
+                    0.68f * userMasterVolume * userSfxVolume;
                 deadlineWarpSource.Play();
             }
         }
@@ -325,12 +360,14 @@ namespace Deltatime.Audio
         {
             if (bgmSourceA != null)
             {
-                bgmSourceA.volume = GetBgmVolume(bgmSourceA.clip) * bgmWeightA * currentDuckMultiplier;
+                bgmSourceA.volume = GetBgmVolume(bgmSourceA.clip) * bgmWeightA *
+                    currentDuckMultiplier * userMasterVolume * userBgmVolume;
             }
 
             if (bgmSourceB != null)
             {
-                bgmSourceB.volume = GetBgmVolume(bgmSourceB.clip) * bgmWeightB * currentDuckMultiplier;
+                bgmSourceB.volume = GetBgmVolume(bgmSourceB.clip) * bgmWeightB *
+                    currentDuckMultiplier * userMasterVolume * userBgmVolume;
             }
         }
 
@@ -427,7 +464,8 @@ namespace Deltatime.Audio
 
             source.transform.position = position;
             source.clip = clip;
-            source.volume = GlobalSfxVolume * Mathf.Clamp01(volumeScale);
+            source.volume = GlobalSfxVolume * Mathf.Clamp01(volumeScale) *
+                userMasterVolume * userSfxVolume;
             source.pitch = Random.Range(minimumPitch, maximumPitch);
             source.maxDistance = maximumDistance;
             source.Play();

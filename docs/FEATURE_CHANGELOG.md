@@ -7,6 +7,26 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-24 - MainScene 가로형 로고·메뉴·설정 리디자인
+
+- 변경 유형: MainScene 이미지·Unity UI 전면 교체, 그래픽·입력·오디오 설정 및 Credits 추가, 런타임 키 안내·사운드 배율 연동
+- 변경 내용: **구현 완료**. ImageGen 내장 모드로 왼쪽 40% 메뉴 여백과 오른쪽 주인공·붉은 탄환·청록 총구/시작 연기를 갖는 `mainMenuBackground.png`, 투명 단일 행 회백/적색 `DELTA TIME` 가로형 `titleLogoWide.png`를 제작했다. MainScene은 두 새 Sprite를 사용하고 기존 `background.png`·`titleLogo.png`는 복구용으로만 보존한다. `START/OPTION/CREDITS/EXIT` 실제 Button, 선택 적색 바·경계·포인터, 마우스·키보드 탐색, 저장된 Next Stage 단축 시작과 모달 중 차단을 연결했다. OPTION은 해상도·창 모드·Quality·VSync, 이동 4방향과 Fire/Throw/Dash/Deadline/Interact/Restart/Next Stage 재바인딩, Master/BGM/SFX 슬라이더를 제공한다. 설정은 초안의 APPLY/CANCEL/RESET DEFAULTS 흐름과 PlayerPrefs 저장을 사용하고, Escape 취소·중복 거부·장치 제한을 적용한다. `PlayerControlsFactory`는 모든 런타임 입력 인스턴스에 저장 JSON을 적용하며 HUD·Tutorial·상호작용 키캡·Ending 안내도 현재 키를 표시한다. `SoundManager`는 기존 믹스에 사용자 3채널 배율을 곱한다. 영문 Credits와 EndingScene의 메뉴/모달 제거도 반영했다.
+- 영향을 받은 시스템: MainScene/EndingScene 이미지와 Canvas, Build Settings 시작 흐름, Unity UI 탐색·모달, Screen/Quality/VSync, Input System 바인딩 오버라이드, PlayerPrefs, SoundManager BGM/SFX 믹스, GameHud·Tutorial·Ending 키 안내, 한글화 빌더, 정적·EditMode·PlayMode·Game View 캡처 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Image/mainMenuBackground.png`, `ProjectDeltatime/Assets/_Project/Image/titleLogoWide.png`, `ProjectDeltatime/Assets/_Project/Scenes/MainScene.unity`, `ProjectDeltatime/Assets/_Project/Scenes/EndingScene.unity`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/MainMenuOptionsController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/UI/GameSettingsService.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Input/PlayerControlsFactory.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/MainSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/EndingSceneBuilder.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md`를 1.10.0으로 갱신해 새 이미지, 네 버튼, Option 초안/저장/재바인딩 정책, Credits, 동적 키 안내, SoundManager 배율, Ending 호환성과 최신 검증 상태를 기록했다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 `MainSceneBuilder.BuildAndValidateFromCommandLine` 1·2회차가 새 에셋 임포터, 참조, 네 Button 콜백, 세 Option 페이지, Credits, Build Settings와 반응형 안전 범위를 통과했다. `MainMenuSettingsEditModeTest`가 초안 격리, 기본값, 무효 해상도·Quality·VSync·볼륨 보정, 바인딩 JSON 왕복, 중복 키와 Escape/장치 제한을 통과했다. `MainMenuPlayModeSmokeTest`가 임시 Next Stage=`K` 저장값의 Main/Ending 표시, Option/Credits 열기·닫기, 모달 중 START 차단, SoundManager 0.8/0.6/0.4 배율과 Tutorial 전환을 통과하고 원 설정을 복원했다. Main/GRAPHICS/KEYS/AUDIO/CREDITS를 1920×1080, 1280×720, 2560×1080, 1024×768에서 캡처한 20개 PNG의 크기 검증이 통과했고 직접 확인한 기준·4:3·울트라와이드 캡처에서 로고 잘림, 메뉴·주인공 겹침, 모달 잘림이 없었다. 로그: `ProjectDeltatime/MainMenuBuild1.log`, `ProjectDeltatime/MainMenuBuild2Retry.log`, `ProjectDeltatime/MainMenuSettingsEditMode.log`, `ProjectDeltatime/MainMenuPlayModeSmoke.log`, `ProjectDeltatime/MainMenuVisualCaptureAllTabs.log`.
+- 남은 작업: **확인 불가**. Windows 외 OS 및 실제 standalone 빌드에서의 해상도/Fullscreen 전환과 플레이어가 직접 수행하는 전체 키·마우스 리바인딩의 체감 검증은 필요하다. 소셜 아이콘은 연결 URL이 없어 요청 범위대로 추가하지 않았다.
+
+## 2026-08-24 - MonoSingleton 공용 베이스 클래스 추가
+
+- 변경 유형: 런타임 공용 유틸리티 클래스 신규 추가
+- 변경 내용: **구현 완료**. 제네릭 `MonoSingleton<T>` 베이스 클래스를 `Deltatime.Core` 네임스페이스에 추가했다. 지연 접근 `Instance` 프로퍼티는 `FindFirstObjectByType`(비활성 포함)으로 기존 인스턴스를 찾고 없으면 자식 없는 신규 GameObject를 생성해 컴포넌트를 붙인다. `Awake`에서 중복 인스턴스를 파괴하고 `HasInstance`로 파괴 전 접근을 판별하며, `OnApplicationQuit` 이후에는 재생성하지 않는다. `PersistAcrossScenes` 가상 프로퍼티(기본 `true`)로 `DontDestroyOnLoad` 적용을 선택할 수 있고 부모가 있는 오브젝트에는 적용하지 않는다. 현재 이 클래스를 상속하는 시스템은 없으며 기존 `SoundManager` 등 수동 싱글턴은 유지된다.
+- 영향을 받은 시스템: 신규 공용 기반만 추가했으며 기존 런타임 동작과 씬·프리팹·에셋은 변경하지 않았다.
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Core/MonoSingleton.cs`, `docs/PROJECT_DESIGN_DOCUMENT.md`, `docs/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `docs/PROJECT_DESIGN_DOCUMENT.md` 14장 리팩터링 이후 기술 구조에 공용 베이스 클래스 항목을 추가했다.
+- 테스트 결과: **미실행**. CLI 환경에서 Unity 에디터 배치 컴파일을 실행하지 못했다. 스크립트 `.meta`도 다음 에디터 포커스에서 자동 생성된다. 최초 에디터 진입 시 컴파일 성공 여부 확인이 필요하다.
+- 남은 작업: **계획 필요**. Unity 에디터 컴파일 검증, 필요 시 `SoundManager` 등 기존 수동 싱글턴의 단계적 채택 검토.
+
 ## 2026-08-18 - 총구 높이 기준 바닥·천장 수평 발사
 
 - 변경 유형: 총기 조준 버그 수정, 발사 원점 높이 보정, PlayMode 회귀 테스트 보강

@@ -128,8 +128,8 @@ namespace Deltatime.Tutorial
                 if (PlayerDead)
                 {
                     return CurrentStep == TutorialStep.Deadline
-                        ? "DEADLINE에서 쓰러졌습니다. R을 누르면 DEADLINE부터 다시 시작합니다."
-                        : "쓰러졌습니다. R을 눌러 튜토리얼을 다시 시작하세요.";
+                        ? $"DEADLINE에서 쓰러졌습니다. {InputBindingDisplay.Get("Restart")}을 누르면 DEADLINE부터 다시 시작합니다."
+                        : $"쓰러졌습니다. {InputBindingDisplay.Get("Restart")}을 눌러 튜토리얼을 다시 시작하세요.";
                 }
 
                 switch (CurrentStep)
@@ -138,22 +138,22 @@ namespace Deltatime.Tutorial
                         return TutorialGuidancePolicy.NeedsMovementProof(
                             movingProof,
                             movementProofDuration)
-                            ? "WASD로 이동하세요. 행동하면 월드 시간이 빨라집니다."
+                            ? $"{InputBindingDisplay.GetMovement()}로 이동하세요. 행동하면 월드 시간이 빨라집니다."
                             : "이제 멈추세요. 정지하면 월드가 0.02배로 느려집니다.";
                     case TutorialStep.AimAndDash:
                         return TutorialGuidancePolicy.NeedsAimProof(
                             accumulatedAimDegrees,
                             aimProofDegrees)
                             ? "마우스를 움직여 조준 방향을 크게 돌리세요."
-                            : "WASD 방향키를 누른 채 Space로 표식 구간을 대시하세요.";
+                            : $"{InputBindingDisplay.GetMovement()} 방향키를 누른 채 {InputBindingDisplay.Get("Dash")}로 표식 구간을 대시하세요.";
                     case TutorialStep.Melee:
-                        return "E로 근접 무기를 줍고, 표적을 향해 LMB - 좌 클릭으로 공격하세요.";
+                        return $"{InputBindingDisplay.Get("Interact")}로 근접 무기를 줍고, 표적을 향해 {InputBindingDisplay.Get("Fire")}로 공격하세요.";
                     case TutorialStep.Pistol:
-                        return "E로 권총을 교체하고, 마우스로 조준한 뒤 LMB - 좌 클릭으로 사격하세요.";
+                        return $"{InputBindingDisplay.Get("Interact")}로 권총을 교체하고, 마우스로 조준한 뒤 {InputBindingDisplay.Get("Fire")}로 사격하세요.";
                     case TutorialStep.ThrowAndRecover:
                         return !throwRecovery.OutcomeObserved
-                            ? "LMB - 좌 클릭 사격이 아니라 RMB - 우 클릭으로 권총을 던져 적을 기절시키고 무장을 해제하세요."
-                            : "성공! 공중의 적 무기를 E로 잡으면 바로 DEADLINE으로 진행합니다.";
+                            ? $"{InputBindingDisplay.Get("Fire")} 사격이 아니라 {InputBindingDisplay.Get("Throw")}로 권총을 던져 적을 기절시키고 무장을 해제하세요."
+                            : $"성공! 공중의 적 무기를 {InputBindingDisplay.Get("Interact")}로 잡으면 바로 DEADLINE으로 진행합니다.";
                     case TutorialStep.DeadlineApproach:
                         return "권총을 장비했습니다. 북쪽 포위전 중앙으로 이동하세요.";
                     case TutorialStep.Deadline:
@@ -164,15 +164,15 @@ namespace Deltatime.Tutorial
 
                         if (!deadlineScenario.ActivationObserved)
                         {
-                            return "Q: DEADLINE — 월드를 완전히 정지시키세요.";
+                            return $"{InputBindingDisplay.Get("Deadline")}: DEADLINE — 월드를 완전히 정지시키세요.";
                         }
 
                         if (!deadlineScenario.TwoCausesObserved)
                         {
-                            return "마우스로 앞의 두 적을 조준하고 LMB - 좌 클릭 두 번으로 원인 2개를 배치하세요.";
+                            return $"마우스로 앞의 두 적을 조준하고 {InputBindingDisplay.Get("Fire")} 두 번으로 원인 2개를 배치하세요.";
                         }
 
-                        return "WASD로 이동하여 원인과 월드를 실행하고 북쪽으로 탈출하세요.";
+                        return $"{InputBindingDisplay.GetMovement()}로 이동하여 원인과 월드를 실행하고 북쪽으로 탈출하세요.";
                     default:
                         return "튜토리얼 완료 — 잠시 후 스테이지 1로 이동합니다.";
                 }
@@ -186,8 +186,8 @@ namespace Deltatime.Tutorial
                 if (PlayerDead)
                 {
                     return CurrentStep == TutorialStep.Deadline
-                        ? "R: DEADLINE부터 재시작"
-                        : "R: 튜토리얼 재시작";
+                        ? $"{InputBindingDisplay.Get("Restart")}: DEADLINE부터 재시작"
+                        : $"{InputBindingDisplay.Get("Restart")}: 튜토리얼 재시작";
                 }
 
                 switch (CurrentStep)

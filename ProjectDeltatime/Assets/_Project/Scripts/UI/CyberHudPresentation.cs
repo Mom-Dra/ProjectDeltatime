@@ -1,4 +1,5 @@
 using Deltatime.Combat;
+using Deltatime.InputSystem;
 using Deltatime.Level;
 using Deltatime.Player;
 using UnityEngine;
@@ -429,7 +430,7 @@ namespace Deltatime.UI
                 30f * scale,
                 28f * scale);
             DrawKeyCap(key, scale);
-            GUI.Label(key, "E", controlKeyStyle);
+            GUI.Label(key, InputBindingDisplay.Get("Interact"), controlKeyStyle);
             GUI.Label(
                 new Rect(
                     key.xMax + 12f * scale,

@@ -7,6 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TextCore.LowLevel;
+using UnityEngine.UI;
 
 namespace Deltatime.EditorTools
 {
@@ -143,13 +144,15 @@ namespace Deltatime.EditorTools
         private static void ApplyMainMenu(KoreanUiFontSettings fontSettings)
         {
             Scene scene = EditorSceneManager.OpenScene(MainScenePath, OpenSceneMode.Single);
-            TextMeshProUGUI playLabel = FindRequiredComponent<TextMeshProUGUI>(
-                scene,
-                "PlayLabel");
-            playLabel.text = GameStartText;
-            playLabel.font = fontSettings.TextMeshProFont;
-            playLabel.fontStyle = FontStyles.Bold;
-            EditorUtility.SetDirty(playLabel);
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                TextMeshProUGUI[] labels = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    labels[i].font = fontSettings.TextMeshProFont;
+                    EditorUtility.SetDirty(labels[i]);
+                }
+            }
             SaveScene(scene, MainScenePath);
         }
 
@@ -192,12 +195,11 @@ namespace Deltatime.EditorTools
         private static void ValidateMainMenu(KoreanUiFontSettings fontSettings)
         {
             Scene scene = EditorSceneManager.OpenScene(MainScenePath, OpenSceneMode.Single);
-            TextMeshProUGUI playLabel = FindRequiredComponent<TextMeshProUGUI>(
-                scene,
-                "PlayLabel");
-            Require(playLabel.text == GameStartText &&
-                    playLabel.font == fontSettings.TextMeshProFont,
-                "Main menu PlayLabel must use the Korean game-start text and TMP font.");
+            Button startButton = FindRequiredComponent<Button>(scene, "StartButton");
+            TextMeshProUGUI startLabel = startButton.transform.Find("Label")
+                .GetComponent<TextMeshProUGUI>();
+            Require(startLabel.text == "START" && startLabel.font == fontSettings.TextMeshProFont,
+                "Main menu START label must remain English and use the shared TMP font.");
         }
 
         private static void ValidateTutorialFloorLabels(
