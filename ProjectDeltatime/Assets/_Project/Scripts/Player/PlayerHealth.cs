@@ -17,6 +17,7 @@ namespace Deltatime.Player
 
         public event Action Died;
         public event Action<int, int> HealthChanged;
+        public event Action<DamageHit, bool> Damaged;
 
         public CombatFaction Faction => CombatFaction.Player;
         public int MaximumHealth => maximumHealth;
@@ -48,6 +49,7 @@ namespace Deltatime.Player
 
             CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
             HealthChanged?.Invoke(CurrentHealth, MaximumHealth);
+            Damaged?.Invoke(hit, !IsAlive);
             if (IsAlive)
             {
                 return;

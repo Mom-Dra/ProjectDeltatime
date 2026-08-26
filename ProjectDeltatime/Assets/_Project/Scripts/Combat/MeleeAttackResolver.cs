@@ -1,5 +1,8 @@
 using Deltatime.Audio;
 using Deltatime.Core;
+using Deltatime.Enemies;
+using Deltatime.Player;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -104,12 +107,36 @@ namespace Deltatime.Combat
                 hitDirection = attackDirection;
             }
 
+            CombatFaction targetFaction = nearestDamageable.Faction;
+            Vector3 normalizedHitDirection = hitDirection.normalized;
+            bool appliedDamage =
+                !(nearestDamageable is PlayerHealth player &&
+                    player.IsInvulnerable) &&
+                !(nearestDamageable is EnemyHealth enemy &&
+                    !enemy.DamageEnabled);
             nearestDamageable.ReceiveHit(new DamageHit(
                 damage,
                 hitPoint,
-                hitDirection.normalized,
+                normalizedHitDirection,
                 source));
-            SoundManager.Instance?.PlayMeleeImpact(impactKind, hitPoint);
+            WeaponDefinition definition =
+                source.GetComponentInParent<WeaponController>()?.Definition;
+            CombatFeedbackController.ReportImpact(
+                definition,
+                sourceFaction,
+                targetFaction,
+                hitPoint,
+                normalizedHitDirection,
+                appliedDamage,
+                impactKind);
+            if (appliedDamage)
+            {
+                SoundManager.Instance?.PlayMeleeImpact(
+                    impactKind,
+                    hitPoint,
+                    sourceFaction,
+                    targetFaction);
+            }
             return true;
         }
 

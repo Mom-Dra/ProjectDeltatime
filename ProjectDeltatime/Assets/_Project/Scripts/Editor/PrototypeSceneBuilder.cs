@@ -2006,6 +2006,12 @@ namespace Deltatime.EditorTools
                 0f,
                 0f,
                 CharacterAnimationStyle.Pistol);
+            definition.ConfigureCombatFeedback(
+                0.045f,
+                0.12f,
+                0.09f,
+                0.015f,
+                0.18f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -2039,6 +2045,12 @@ namespace Deltatime.EditorTools
                 211,
                 0f,
                 0f);
+            definition.ConfigureCombatFeedback(
+                0.025f,
+                0.08f,
+                0.055f,
+                0f,
+                0.2f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -2069,6 +2081,12 @@ namespace Deltatime.EditorTools
                 307,
                 0f,
                 14f);
+            definition.ConfigureCombatFeedback(
+                0.11f,
+                0.32f,
+                0.15f,
+                0.045f,
+                0.28f);
             EditorUtility.SetDirty(definition);
             return definition;
         }
@@ -2093,6 +2111,12 @@ namespace Deltatime.EditorTools
                 3,
                 1.45f,
                 35f);
+            definition.ConfigureCombatFeedback(
+                0.08f,
+                0.24f,
+                0.12f,
+                0.05f,
+                0f);
             EditorUtility.SetDirty(definition);
             return definition;
         }

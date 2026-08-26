@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Deltatime.Combat;
+using Deltatime.Core;
 using Deltatime.Player;
 using Deltatime.Settings;
 using UnityEngine;
@@ -116,18 +117,28 @@ namespace Deltatime.Audio
             Instance = null;
         }
 
-        public void PlayWeaponFire(WeaponDefinition definition, Vector3 position)
+        public void PlayWeaponFire(
+            WeaponDefinition definition,
+            Vector3 position,
+            CombatFaction sourceFaction = CombatFaction.Neutral)
         {
+            bool playerRelated = sourceFaction == CombatFaction.Player;
             PlaySpatial(
                 library == null ? null : library.GetWeaponFireClip(definition),
                 position,
                 1f,
                 0.96f,
                 1.04f,
-                34f);
+                34f,
+                playerRelated ? 0.25f : 1f,
+                playerRelated ? 10f : 2f);
         }
 
-        public void PlayMeleeImpact(MeleeImpactKind impactKind, Vector3 position)
+        public void PlayMeleeImpact(
+            MeleeImpactKind impactKind,
+            Vector3 position,
+            CombatFaction sourceFaction = CombatFaction.Neutral,
+            CombatFaction targetFaction = CombatFaction.Neutral)
         {
             AudioClip clip = library == null
                 ? null
@@ -138,16 +149,23 @@ namespace Deltatime.Audio
             }
 
             meleeImpactPlayCount++;
+            bool playerRelated =
+                sourceFaction == CombatFaction.Player ||
+                targetFaction == CombatFaction.Player;
             PlaySpatial(
                 clip,
                 position,
                 impactKind == MeleeImpactKind.Bat ? 1f : 0.88f,
                 0.96f,
                 1.04f,
-                22f);
+                22f,
+                playerRelated ? 0.25f : 1f,
+                playerRelated ? 10f : 2f);
         }
 
-        public void PlayMeleeSwing(Vector3 position)
+        public void PlayMeleeSwing(
+            Vector3 position,
+            CombatFaction sourceFaction = CombatFaction.Neutral)
         {
             AudioClip clip = library == null ? null : library.GetBatSwingClip();
             if (clip == null)
@@ -156,24 +174,32 @@ namespace Deltatime.Audio
             }
 
             meleeSwingPlayCount++;
+            bool playerRelated = sourceFaction == CombatFaction.Player;
             PlaySpatial(
                 clip,
                 position,
                 0.72f,
                 0.94f,
                 1.06f,
-                18f);
+                18f,
+                playerRelated ? 0.25f : 1f,
+                playerRelated ? 10f : 2f);
         }
 
-        public void PlayWeaponThrow(Vector3 position)
+        public void PlayWeaponThrow(
+            Vector3 position,
+            CombatFaction sourceFaction = CombatFaction.Neutral)
         {
+            bool playerRelated = sourceFaction == CombatFaction.Player;
             PlaySpatial(
                 library == null ? null : library.WeaponThrowClip,
                 position,
                 0.82f,
                 0.97f,
                 1.03f,
-                20f);
+                20f,
+                playerRelated ? 0.25f : 1f,
+                playerRelated ? 10f : 2f);
         }
 
         public void PlayUiClick()
@@ -437,7 +463,9 @@ namespace Deltatime.Audio
             float volumeScale,
             float minimumPitch,
             float maximumPitch,
-            float maximumDistance)
+            float maximumDistance,
+            float spatialBlend,
+            float minimumDistance)
         {
             if (clip == null || spatialSources.Count == 0)
             {
@@ -467,6 +495,10 @@ namespace Deltatime.Audio
             source.volume = GlobalSfxVolume * Mathf.Clamp01(volumeScale) *
                 userMasterVolume * userSfxVolume;
             source.pitch = Random.Range(minimumPitch, maximumPitch);
+            source.spatialBlend = Mathf.Clamp01(spatialBlend);
+            source.dopplerLevel = source.spatialBlend > 0.25f ? 0.15f : 0f;
+            source.rolloffMode = AudioRolloffMode.Logarithmic;
+            source.minDistance = Mathf.Max(0.01f, minimumDistance);
             source.maxDistance = maximumDistance;
             source.Play();
         }

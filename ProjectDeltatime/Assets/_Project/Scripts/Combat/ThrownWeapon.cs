@@ -1,7 +1,6 @@
 using Deltatime.Core;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
-using Deltatime.Utilities;
 using Deltatime.Visuals;
 using UnityEngine;
 
@@ -63,7 +62,7 @@ namespace Deltatime.Combat
                 maximumTravelDistance - travelledDistance);
             if (remainingDistance <= 0.0001f)
             {
-                Settle(transform.position);
+                Settle(transform.position, null);
                 return;
             }
 
@@ -86,7 +85,7 @@ namespace Deltatime.Combat
                         source));
                 }
 
-                Settle(impact.point);
+                Settle(impact.point, target);
                 return;
             }
 
@@ -97,7 +96,7 @@ namespace Deltatime.Combat
 
             if (travelledDistance >= maximumTravelDistance - 0.0001f)
             {
-                Settle(transform.position);
+                Settle(transform.position, null);
             }
         }
 
@@ -210,7 +209,7 @@ namespace Deltatime.Combat
             return nearestDistance < float.PositiveInfinity;
         }
 
-        private void Settle(Vector3 position)
+        private void Settle(Vector3 position, IDamageable target)
         {
             if (resolved)
             {
@@ -225,7 +224,15 @@ namespace Deltatime.Combat
                 pickupPosition,
                 Quaternion.identity);
             pickup.Initialize(definition, ammunition);
-            HitFlash.Create(position, trailColor);
+            bool appliedStun = target is IStunnable stunnable &&
+                stunnable.IsStunned;
+            CombatFeedbackController.ReportImpact(
+                definition,
+                faction,
+                target == null ? CombatFaction.Neutral : target.Faction,
+                position,
+                direction,
+                appliedStun);
             Destroy(gameObject);
         }
 

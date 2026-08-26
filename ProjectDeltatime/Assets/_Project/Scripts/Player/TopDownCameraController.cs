@@ -15,6 +15,9 @@ namespace Deltatime.Player
         [SerializeField, Min(0.01f)] private float followSharpness = 8f;
         [SerializeField, Min(0.01f)] private float rotationSharpness = 12f;
         [SerializeField, Min(0f)] private float lookHeight = 0.55f;
+        [SerializeField, Min(0f)] private float impulseMultiplier = 1f;
+        [SerializeField, Min(0f)] private float maximumPositionImpulse = 0.16f;
+        [SerializeField, Min(0f)] private float maximumRotationImpulse = 0.5f;
         [SerializeField] private bool constrainToBounds;
         [SerializeField] private Bounds cameraBounds =
             new Bounds(Vector3.zero, new Vector3(20f, 0f, 20f));
@@ -27,6 +30,17 @@ namespace Deltatime.Player
 
         private Camera gameplayCamera;
         private bool initialized;
+        private bool basePoseInitialized;
+        private Vector3 smoothedBasePosition;
+        private Quaternion smoothedBaseRotation;
+        private float impulseTimeRemaining;
+        private float impulseDuration;
+        private float impulsePositionAmplitude;
+        private float impulseRotationAmplitude;
+        private int impulseSequence;
+
+        public bool IsImpulseActive => impulseTimeRemaining > 0f;
+        public int ImpulsePlayCount { get; private set; }
 
         private void Awake()
         {
@@ -53,23 +67,34 @@ namespace Deltatime.Player
 
             Vector3 focus = CalculateDesiredFocus();
             Vector3 desiredPosition = focus + cameraOffset;
+            Vector3 lookPoint = focus + (Vector3.up * lookHeight);
+            Quaternion desiredRotation = Quaternion.LookRotation(
+                lookPoint - desiredPosition,
+                Vector3.up);
+            if (!basePoseInitialized)
+            {
+                smoothedBasePosition = desiredPosition;
+                smoothedBaseRotation = desiredRotation;
+                basePoseInitialized = true;
+            }
+
             float positionBlend =
                 1f - Mathf.Exp(-followSharpness * UnityEngine.Time.unscaledDeltaTime);
-            transform.position = Vector3.Lerp(
-                transform.position,
+            smoothedBasePosition = Vector3.Lerp(
+                smoothedBasePosition,
                 desiredPosition,
                 positionBlend);
 
-            Vector3 lookPoint = focus + (Vector3.up * lookHeight);
-            Quaternion desiredRotation = Quaternion.LookRotation(
-                lookPoint - transform.position,
+            desiredRotation = Quaternion.LookRotation(
+                lookPoint - smoothedBasePosition,
                 Vector3.up);
             float rotationBlend =
                 1f - Mathf.Exp(-rotationSharpness * UnityEngine.Time.unscaledDeltaTime);
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
+            smoothedBaseRotation = Quaternion.Slerp(
+                smoothedBaseRotation,
                 desiredRotation,
                 rotationBlend);
+            ApplyImpulse();
         }
 
         public void Configure(
@@ -91,9 +116,92 @@ namespace Deltatime.Player
             }
 
             Vector3 focus = CalculateDesiredFocus();
-            transform.position = focus + cameraOffset;
-            transform.LookAt(focus + (Vector3.up * lookHeight), Vector3.up);
+            smoothedBasePosition = focus + cameraOffset;
+            smoothedBaseRotation = Quaternion.LookRotation(
+                focus + (Vector3.up * lookHeight) - smoothedBasePosition,
+                Vector3.up);
+            transform.SetPositionAndRotation(
+                smoothedBasePosition,
+                smoothedBaseRotation);
+            basePoseInitialized = true;
             initialized = true;
+        }
+
+        public void AddImpulse(
+            float positionAmplitude,
+            float rotationAmplitude,
+            float duration)
+        {
+            float scaledPosition = Mathf.Max(0f, positionAmplitude) *
+                impulseMultiplier;
+            float scaledRotation = Mathf.Max(0f, rotationAmplitude) *
+                impulseMultiplier;
+            float safeDuration = Mathf.Max(0f, duration);
+            if (safeDuration <= 0f ||
+                (scaledPosition <= 0f && scaledRotation <= 0f))
+            {
+                return;
+            }
+
+            if (impulseTimeRemaining <= 0f)
+            {
+                impulsePositionAmplitude = 0f;
+                impulseRotationAmplitude = 0f;
+                impulseDuration = 0f;
+            }
+
+            impulsePositionAmplitude = Mathf.Clamp(
+                Mathf.Max(impulsePositionAmplitude, scaledPosition),
+                0f,
+                maximumPositionImpulse);
+            impulseRotationAmplitude = Mathf.Clamp(
+                Mathf.Max(impulseRotationAmplitude, scaledRotation),
+                0f,
+                maximumRotationImpulse);
+            impulseDuration = Mathf.Max(impulseDuration, safeDuration);
+            impulseTimeRemaining = Mathf.Max(
+                impulseTimeRemaining,
+                safeDuration);
+            impulseSequence++;
+            ImpulsePlayCount++;
+        }
+
+        private void ApplyImpulse()
+        {
+            if (impulseTimeRemaining <= 0f || impulseDuration <= 0f)
+            {
+                transform.SetPositionAndRotation(
+                    smoothedBasePosition,
+                    smoothedBaseRotation);
+                impulsePositionAmplitude = 0f;
+                impulseRotationAmplitude = 0f;
+                impulseDuration = 0f;
+                impulseTimeRemaining = 0f;
+                return;
+            }
+
+            float envelope = Mathf.Clamp01(
+                impulseTimeRemaining / impulseDuration);
+            envelope *= envelope;
+            float phase = UnityEngine.Time.unscaledTime * 37f +
+                impulseSequence * 1.618f;
+            float horizontal = Mathf.Sin(phase * 1.17f);
+            float vertical = Mathf.Sin(phase * 1.73f + 1.2f);
+            float roll = Mathf.Sin(phase * 1.31f + 0.7f);
+            Vector3 localOffset = new Vector3(
+                horizontal,
+                vertical * 0.55f,
+                0f) * (impulsePositionAmplitude * envelope);
+            Quaternion localRotation = Quaternion.Euler(
+                vertical * impulseRotationAmplitude * envelope * 0.25f,
+                horizontal * impulseRotationAmplitude * envelope * 0.2f,
+                roll * impulseRotationAmplitude * envelope);
+            transform.SetPositionAndRotation(
+                smoothedBasePosition + smoothedBaseRotation * localOffset,
+                smoothedBaseRotation * localRotation);
+            impulseTimeRemaining = Mathf.Max(
+                0f,
+                impulseTimeRemaining - UnityEngine.Time.unscaledDeltaTime);
         }
 
         private Vector3 CalculateDesiredFocus()
@@ -321,6 +429,16 @@ namespace Deltatime.Player
                     this);
                 enabled = false;
             }
+        }
+
+        private void OnValidate()
+        {
+            aimLeadDistance = Mathf.Max(0f, aimLeadDistance);
+            followSharpness = Mathf.Max(0.01f, followSharpness);
+            rotationSharpness = Mathf.Max(0.01f, rotationSharpness);
+            impulseMultiplier = Mathf.Max(0f, impulseMultiplier);
+            maximumPositionImpulse = Mathf.Max(0f, maximumPositionImpulse);
+            maximumRotationImpulse = Mathf.Max(0f, maximumRotationImpulse);
         }
     }
 }

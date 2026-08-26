@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Deltatime.Player;
+using Deltatime.Visuals;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
@@ -80,6 +81,7 @@ namespace Deltatime.TimeSystem
         private GameObject mapFillRoot;
         private Light[] mapFillLights;
         private DeadlineVisualFeedback deadlineVisualFeedback;
+        private CombatFeedbackController combatFeedbackController;
         private readonly List<ScreenMaterialOverride> screenMaterialOverrides =
             new List<ScreenMaterialOverride>();
         private bool screenScrollConfigured;
@@ -106,6 +108,7 @@ namespace Deltatime.TimeSystem
 
             ConfigureTutorialScreenScroll();
             EnsureDeadlineVisualFeedback();
+            EnsureCombatFeedback();
         }
 
         private void OnEnable()
@@ -190,6 +193,7 @@ namespace Deltatime.TimeSystem
             if (Application.isPlaying)
             {
                 EnsureDeadlineVisualFeedback();
+                EnsureCombatFeedback();
             }
         }
 
@@ -211,6 +215,27 @@ namespace Deltatime.TimeSystem
             DeadlineController deadline =
                 UnityEngine.Object.FindFirstObjectByType<DeadlineController>();
             deadlineVisualFeedback.Configure(deadline);
+        }
+
+        private void EnsureCombatFeedback()
+        {
+            if (!Application.isPlaying || gameplayCamera == null)
+            {
+                return;
+            }
+
+            combatFeedbackController =
+                gameplayCamera.GetComponent<CombatFeedbackController>();
+            if (combatFeedbackController == null)
+            {
+                combatFeedbackController = gameplayCamera.gameObject.AddComponent<
+                    CombatFeedbackController>();
+            }
+
+            combatFeedbackController.Configure(
+                worldTime,
+                gameplayCamera.GetComponent<TopDownCameraController>(),
+                FindFirstObjectByType<PlayerHealth>());
         }
 
         private void ResolveDirectionalKeyLight()

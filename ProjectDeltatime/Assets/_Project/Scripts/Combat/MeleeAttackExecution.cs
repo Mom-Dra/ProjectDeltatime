@@ -127,7 +127,9 @@ namespace Deltatime.Combat
             hasCurrentAttack = true;
             if (request.ImpactKind == MeleeImpactKind.Bat)
             {
-                SoundManager.Instance?.PlayMeleeSwing(request.Source.transform.position);
+                SoundManager.Instance?.PlayMeleeSwing(
+                    request.Source.transform.position,
+                    request.Faction);
             }
 
             if (animationController == null)

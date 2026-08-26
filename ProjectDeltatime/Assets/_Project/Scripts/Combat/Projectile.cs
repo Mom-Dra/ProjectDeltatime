@@ -1,7 +1,9 @@
 using Deltatime.Core;
+using Deltatime.Enemies;
+using Deltatime.Player;
 using Deltatime.Replay;
 using Deltatime.TimeSystem;
-using Deltatime.Utilities;
+using Deltatime.Visuals;
 using UnityEngine;
 
 namespace Deltatime.Combat
@@ -28,6 +30,7 @@ namespace Deltatime.Combat
         private float worldLifetime;
         private float travelledDistance;
         private int damage;
+        private WeaponDefinition definition;
         private bool initialized;
         private bool resolved;
         public CombatFaction Faction => faction;
@@ -99,7 +102,8 @@ namespace Deltatime.Combat
             float travelSpeed,
             int hitDamage,
             float castRadius,
-            float maxTravelDistance)
+            float maxTravelDistance,
+            WeaponDefinition impactDefinition = null)
         {
             worldTime = timeSource;
             faction = ownerFaction;
@@ -109,6 +113,7 @@ namespace Deltatime.Combat
                 : Vector3.forward;
             speed = travelSpeed;
             damage = hitDamage;
+            definition = impactDefinition;
             radius = castRadius;
             maximumTravelDistance = Mathf.Max(0f, maxTravelDistance);
             trailStart = transform.position;
@@ -189,13 +194,24 @@ namespace Deltatime.Combat
             }
 
             resolved = true;
+            CombatFaction targetFaction = target == null
+                ? CombatFaction.Neutral
+                : target.Faction;
+            bool appliedDamage = target != null &&
+                !(target is PlayerHealth player && player.IsInvulnerable) &&
+                !(target is EnemyHealth enemy && !enemy.DamageEnabled);
             if (target != null)
             {
                 target.ReceiveHit(new DamageHit(damage, point, direction, source));
             }
 
-            Color flashColor = faction == CombatFaction.Player ? playerColor : enemyColor;
-            HitFlash.Create(point, flashColor);
+            CombatFeedbackController.ReportImpact(
+                definition,
+                faction,
+                targetFaction,
+                point,
+                direction,
+                appliedDamage);
             Destroy(gameObject);
         }
 

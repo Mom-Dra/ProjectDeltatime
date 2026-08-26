@@ -26,6 +26,11 @@ MonoBehaviour:
   spreadJitterAngle: 1.5
   spreadSeed: 211
   playerRecoilDistance: 0
+  cameraImpulsePosition: 0.025
+  cameraImpulseRotation: 0.08
+  cameraImpulseDuration: 0.055
+  impactHitStopDuration: 0
+  muzzleFlashSize: 0.2
   maximumProjectileDistance: 0
   enemyBurstShotCount: 4
   meleeRange: 1.45

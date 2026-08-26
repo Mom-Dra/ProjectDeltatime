@@ -160,7 +160,7 @@ namespace Deltatime.EditorTools
                 WeaponDefinition pistol = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
                     "Assets/_Project/Pistol.asset");
                 Require(pistol != null, "Pistol definition is missing.");
-                manager.PlayWeaponFire(pistol, Vector3.zero);
+                ValidateCombatSpatialization(manager, pistol);
                 manager.PlayMeleeImpact(MeleeImpactKind.Punch, Vector3.zero);
                 manager.PlayMeleeImpact(MeleeImpactKind.Bat, Vector3.zero);
                 ValidateBatSwingFeedback(manager);
@@ -282,6 +282,53 @@ namespace Deltatime.EditorTools
 
                 UnityEngine.Object.Destroy(source);
             }
+        }
+
+        private static void ValidateCombatSpatialization(
+            SoundManager manager,
+            WeaponDefinition pistol)
+        {
+            Vector3 playerPosition = new Vector3(31f, 0f, 31f);
+            Vector3 enemyPosition = new Vector3(-31f, 0f, -31f);
+            manager.PlayWeaponFire(
+                pistol,
+                playerPosition,
+                CombatFaction.Player);
+            AudioSource playerSource = FindSourceAt(manager, playerPosition);
+            Require(
+                playerSource != null &&
+                Mathf.Approximately(playerSource.spatialBlend, 0.25f) &&
+                Mathf.Approximately(playerSource.minDistance, 10f),
+                "Player combat audio did not use spatialBlend 0.25 and minDistance 10m.");
+
+            manager.PlayWeaponFire(
+                pistol,
+                enemyPosition,
+                CombatFaction.Enemy);
+            AudioSource enemySource = FindSourceAt(manager, enemyPosition);
+            Require(
+                enemySource != null &&
+                Mathf.Approximately(enemySource.spatialBlend, 1f) &&
+                Mathf.Approximately(enemySource.minDistance, 2f),
+                "Enemy combat audio did not restore spatialBlend 1 and minDistance 2m.");
+        }
+
+        private static AudioSource FindSourceAt(
+            SoundManager manager,
+            Vector3 position)
+        {
+            AudioSource[] sources =
+                manager.GetComponentsInChildren<AudioSource>(true);
+            for (int i = 0; i < sources.Length; i++)
+            {
+                if ((sources[i].transform.position - position).sqrMagnitude <
+                    0.0001f)
+                {
+                    return sources[i];
+                }
+            }
+
+            return null;
         }
 
         private static void ValidateStageBgmVolume(SoundManager manager)

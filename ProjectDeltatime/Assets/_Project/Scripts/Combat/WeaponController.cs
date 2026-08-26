@@ -127,7 +127,14 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
-            SoundManager.Instance?.PlayWeaponFire(Definition, Muzzle.position);
+            CombatFeedbackController.ReportWeaponFired(
+                Definition,
+                faction,
+                Muzzle);
+            SoundManager.Instance?.PlayWeaponFire(
+                Definition,
+                Muzzle.position,
+                faction);
             UsePerformed?.Invoke();
             return true;
         }
@@ -166,7 +173,9 @@ namespace Deltatime.Combat
             }
 
             nextUseTime = clock + Definition.UseInterval;
-            SoundManager.Instance?.PlayMeleeSwing(source.transform.position);
+            SoundManager.Instance?.PlayMeleeSwing(
+                source.transform.position,
+                faction);
             MeleeAttackResolver.TryHitNearest(
                 source,
                 faction,
@@ -201,7 +210,14 @@ namespace Deltatime.Combat
                 direction,
                 worldTime,
                 ConsumeShotSequence());
-            SoundManager.Instance?.PlayWeaponFire(Definition, Muzzle.position);
+            CombatFeedbackController.ReportWeaponFired(
+                Definition,
+                faction,
+                Muzzle);
+            SoundManager.Instance?.PlayWeaponFire(
+                Definition,
+                Muzzle.position,
+                faction);
             UsePerformed?.Invoke();
             return true;
         }
@@ -321,7 +337,7 @@ namespace Deltatime.Combat
                 faction,
                 gameObject,
                 direction);
-            SoundManager.Instance?.PlayWeaponThrow(muzzle.position);
+            SoundManager.Instance?.PlayWeaponThrow(muzzle.position, faction);
             return true;
         }
 
@@ -432,7 +448,8 @@ namespace Deltatime.Combat
                     Definition.ProjectileSpeed,
                     Definition.Damage,
                     Definition.ProjectileRadius,
-                    Definition.MaximumProjectileDistance);
+                    Definition.MaximumProjectileDistance,
+                    Definition);
             }
         }
 

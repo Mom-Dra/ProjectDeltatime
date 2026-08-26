@@ -39,6 +39,13 @@ namespace Deltatime.Combat
         [Header("Player Recoil")]
         [SerializeField, Min(0f)] private float playerRecoilDistance;
 
+        [Header("Combat Feedback")]
+        [SerializeField, Min(0f)] private float cameraImpulsePosition;
+        [SerializeField, Min(0f)] private float cameraImpulseRotation;
+        [SerializeField, Min(0f)] private float cameraImpulseDuration;
+        [SerializeField, Min(0f)] private float impactHitStopDuration;
+        [SerializeField, Min(0f)] private float muzzleFlashSize;
+
         [Header("Projectile Range")]
         [SerializeField, Min(0f)] private float maximumProjectileDistance;
 
@@ -90,6 +97,11 @@ namespace Deltatime.Combat
         public float SpreadJitterAngle => spreadJitterAngle;
         public int SpreadSeed => spreadSeed;
         public float PlayerRecoilDistance => playerRecoilDistance;
+        public float CameraImpulsePosition => cameraImpulsePosition;
+        public float CameraImpulseRotation => cameraImpulseRotation;
+        public float CameraImpulseDuration => cameraImpulseDuration;
+        public float ImpactHitStopDuration => impactHitStopDuration;
+        public float MuzzleFlashSize => muzzleFlashSize;
         public float MaximumProjectileDistance => maximumProjectileDistance;
         public int EnemyBurstShotCount => enemyBurstShotCount;
         public float MeleeRange => meleeRange;
@@ -238,6 +250,20 @@ namespace Deltatime.Combat
             heldMuzzleLocalPosition = localPosition;
             heldMuzzleLocalEulerAngles = localEulerAngles;
             hasHeldMuzzleCalibration = true;
+        }
+
+        public void ConfigureCombatFeedback(
+            float positionImpulse,
+            float rotationImpulse,
+            float impulseDuration,
+            float hitStopDuration,
+            float flashSize)
+        {
+            cameraImpulsePosition = Mathf.Max(0f, positionImpulse);
+            cameraImpulseRotation = Mathf.Max(0f, rotationImpulse);
+            cameraImpulseDuration = Mathf.Max(0f, impulseDuration);
+            impactHitStopDuration = Mathf.Max(0f, hitStopDuration);
+            muzzleFlashSize = Mathf.Max(0f, flashSize);
         }
 
         public void MarkModelVisualsCalibrated()

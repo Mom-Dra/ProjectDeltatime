@@ -24,6 +24,8 @@ namespace Deltatime.Level
         [SerializeField] private StageReplayController replay;
 
         private readonly HashSet<EnemyHealth> livingEnemies = new HashSet<EnemyHealth>();
+        private bool replayPending;
+        private float replayDelayRemaining;
 
         public StageState CurrentState { get; private set; } = StageState.Active;
         public int RemainingEnemyCount => livingEnemies.Count;
@@ -51,6 +53,16 @@ namespace Deltatime.Level
             if (CurrentState == StageState.Active)
             {
                 RealPlayTime += UnityEngine.Time.unscaledDeltaTime;
+            }
+
+            if (replayPending)
+            {
+                replayDelayRemaining -= UnityEngine.Time.unscaledDeltaTime;
+                if (replayDelayRemaining <= 0f)
+                {
+                    replayPending = false;
+                    RequestReplayAfterClear();
+                }
             }
 
             if (input != null && input.RestartPressed)
@@ -84,6 +96,11 @@ namespace Deltatime.Level
 
         public void NotifyEnemyDied(EnemyHealth enemy)
         {
+            NotifyEnemyDied(enemy, 0f);
+        }
+
+        public void NotifyEnemyDied(EnemyHealth enemy, float replayDelay)
+        {
             livingEnemies.Remove(enemy);
             if (CurrentState != StageState.Active)
             {
@@ -102,10 +119,22 @@ namespace Deltatime.Level
                     playerCombat.SetCombatEnabled(false);
                 }
 
-                if (replay != null && replay.RequestReplay())
+                replayDelayRemaining = Mathf.Max(0f, replayDelay);
+                replayPending = replayDelayRemaining > 0f;
+                if (!replayPending)
                 {
-                    CurrentState = StageState.Replaying;
+                    RequestReplayAfterClear();
                 }
+            }
+        }
+
+        private void RequestReplayAfterClear()
+        {
+            if (CurrentState == StageState.Cleared &&
+                replay != null &&
+                replay.RequestReplay())
+            {
+                CurrentState = StageState.Replaying;
             }
         }
 
@@ -161,6 +190,7 @@ namespace Deltatime.Level
             }
 
             CurrentState = StageState.PlayerDead;
+            replayPending = false;
             replay?.RecordTimelineEvent(
                 StageReplayController.ReplayTimelineEventKind.Dead);
             if (playerCombat != null)
