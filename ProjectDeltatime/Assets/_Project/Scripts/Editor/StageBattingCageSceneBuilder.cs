@@ -68,6 +68,13 @@ namespace Deltatime.EditorTools
         private const int VisionObstacleLayer = 8;
         private const int EnemyCount = 6;
         private const int DeadlineCharges = 2;
+        private const float FloorTileSize = 2.5f;
+        private const float FenceSegmentLength = 2.6678f;
+        private const float FenceHalfDepth = 0.254f;
+        private const float NorthSouthFenceLine = 9.8f;
+        private const float EastWestFenceLine = 10.8f;
+        private static readonly Vector3 FenceBodyCenterLocal =
+            new Vector3(-1.2409f, 0f, -0.0072f);
 
         private static readonly string[] EnemyNames =
         {
@@ -433,18 +440,18 @@ namespace Deltatime.EditorTools
         private static void BuildFloor(Transform parent)
         {
             int number = 1;
-            for (int x = 0; x < 7; x++)
+            for (int x = 0; x < 9; x++)
             {
-                for (int z = 0; z < 6; z++)
+                for (int z = 0; z < 8; z++)
                 {
                     CreateNightclubAsset(
                         FloorPath,
                         $"Cage Floor {number++:00}",
                         parent,
                         new Vector3(
-                            (x - 3f) * 3f,
+                            (x - 3.5f) * FloorTileSize,
                             0f,
-                            (z - 2.5f) * 3f),
+                            (z - 4f) * FloorTileSize),
                         0f,
                         Vector3.one);
                 }
@@ -453,44 +460,69 @@ namespace Deltatime.EditorTools
 
         private static void BuildFence(Transform parent)
         {
+            float northSouthSpan = 2f * (EastWestFenceLine + FenceHalfDepth);
+            float eastWestSpan = 2f * (NorthSouthFenceLine - FenceHalfDepth);
             int number = 1;
-            for (int x = 0; x < 7; x++)
+            for (int i = 0; i < 8; i++)
             {
-                float position = (x - 3f) * 3f;
-                CreateNightclubAsset(
-                    FencePath,
+                float position =
+                    FenceRunCenter(-northSouthSpan * 0.5f, northSouthSpan, 8, i);
+                PlaceFence(
                     $"North Wire Fence {number:00}",
                     parent,
-                    new Vector3(position, 0f, 9.8f),
-                    0f,
-                    Vector3.one);
-                CreateNightclubAsset(
-                    FencePath,
+                    new Vector3(position, 0f, NorthSouthFenceLine),
+                    0f);
+                PlaceFence(
                     $"South Wire Fence {number++:00}",
                     parent,
-                    new Vector3(position, 0f, -9.8f),
-                    180f,
-                    Vector3.one);
+                    new Vector3(position, 0f, -NorthSouthFenceLine),
+                    180f);
             }
 
-            for (int z = 0; z < 6; z++)
+            for (int i = 0; i < 7; i++)
             {
-                float position = (z - 2.5f) * 3f;
-                CreateNightclubAsset(
-                    FencePath,
+                float position =
+                    FenceRunCenter(-eastWestSpan * 0.5f, eastWestSpan, 7, i);
+                PlaceFence(
                     $"West Wire Fence {number:00}",
                     parent,
-                    new Vector3(-10.8f, 0f, position),
-                    90f,
-                    Vector3.one);
-                CreateNightclubAsset(
-                    FencePath,
+                    new Vector3(-EastWestFenceLine, 0f, position),
+                    90f);
+                PlaceFence(
                     $"East Wire Fence {number++:00}",
                     parent,
-                    new Vector3(10.8f, 0f, position),
-                    -90f,
-                    Vector3.one);
+                    new Vector3(EastWestFenceLine, 0f, position),
+                    -90f);
             }
+        }
+
+        private static float FenceRunCenter(
+            float spanStart,
+            float spanLength,
+            int count,
+            int index)
+        {
+            float gap = (spanLength - count * FenceSegmentLength) / (count - 1);
+            return spanStart +
+                   FenceSegmentLength * 0.5f +
+                   index * (FenceSegmentLength + gap);
+        }
+
+        private static void PlaceFence(
+            string instanceName,
+            Transform parent,
+            Vector3 bodyCenter,
+            float yaw)
+        {
+            Quaternion rotation = Quaternion.Euler(0f, yaw, 0f);
+            Vector3 position = bodyCenter - rotation * FenceBodyCenterLocal;
+            CreateNightclubAsset(
+                FencePath,
+                instanceName,
+                parent,
+                position,
+                yaw,
+                Vector3.one);
         }
 
         private static void BuildPillars(Transform parent)
@@ -520,24 +552,25 @@ namespace Deltatime.EditorTools
                 CagePath,
                 "West Practice Cage",
                 parent,
-                new Vector3(-8.6f, 0f, 7.1f),
+                new Vector3(-7.5f, 0f, 7.5f),
                 0f,
                 Vector3.one);
             CreateNightclubAsset(
                 CagePath,
                 "East Practice Cage",
                 parent,
-                new Vector3(8.6f, 0f, -7.1f),
+                new Vector3(7.5f, 0f, -7.5f),
                 180f,
                 Vector3.one);
 
             Vector3[] bagPositions =
             {
-                new Vector3(-8.4f, 0f, -8.2f),
-                new Vector3(8.4f, 0f, 8.2f),
-                new Vector3(-9.2f, 0f, 4.8f),
-                new Vector3(9.2f, 0f, -4.8f)
+                new Vector3(-7.5f, 0f, -7.5f),
+                new Vector3(7.5f, 0f, 7.5f),
+                new Vector3(-10f, 0f, -2.5f),
+                new Vector3(10f, 0f, 2.5f)
             };
+            float[] bagYaws = { 45f, 225f, 135f, 315f };
             for (int i = 0; i < bagPositions.Length; i++)
             {
                 CreateNightclubAsset(
@@ -545,7 +578,7 @@ namespace Deltatime.EditorTools
                     $"Sports Bag {i + 1}",
                     parent,
                     bagPositions[i],
-                    i * 55f,
+                    bagYaws[i],
                     Vector3.one);
             }
 
@@ -553,23 +586,23 @@ namespace Deltatime.EditorTools
                 SpeakerPath,
                 "North West Arena Speaker",
                 parent,
-                new Vector3(-9.3f, 0f, 8.4f),
+                new Vector3(-10f, 0f, 7.5f),
                 135f,
                 Vector3.one);
             CreateNightclubAsset(
                 SpeakerPath,
                 "South East Arena Speaker",
                 parent,
-                new Vector3(9.3f, 0f, -8.4f),
+                new Vector3(10f, 0f, -7.5f),
                 -45f,
                 Vector3.one);
 
             Vector3[] lightPositions =
             {
-                new Vector3(-7.5f, 3.5f, -8.5f),
-                new Vector3(7.5f, 3.5f, -8.5f),
-                new Vector3(-7.5f, 3.5f, 8.5f),
-                new Vector3(7.5f, 3.5f, 8.5f)
+                new Vector3(-7.5f, 3.5f, -5f),
+                new Vector3(7.5f, 3.5f, -5f),
+                new Vector3(-7.5f, 3.5f, 5f),
+                new Vector3(7.5f, 3.5f, 5f)
             };
             for (int i = 0; i < lightPositions.Length; i++)
             {

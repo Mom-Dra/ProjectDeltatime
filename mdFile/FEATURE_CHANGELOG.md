@@ -7,6 +7,17 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-26 - StageBattingCage 바닥·펜스·소품 배치 정렬
+
+- 변경 유형: 스테이지 환경 배치 정리(바닥 무봉임 타일링, 펜스 피벗 보산 정렬, 소품 그리드 스냅)
+- 변경 내용: **구현 완료**. `StageBattingCageSceneBuilder`의 배치 상수를 프리팹 실제 치수에 맞췄다. `SM_Bld_Floor_Combined_01`은 2.5m 타일(피벗이 모서리, BoxCollider 2.5×0.1×2.5)이므로 기존 3m 간격 7×6 배치(0.5m 틈 발생)를 2.5m 간격 9×8=72장으로 바꿔 x −11.25~+11.25, z −10~+10을 틈 없이 완전히 덮고 y=0으로 평평하게 유지한다. `SM_Prop_Fence_Wire_01`은 몸체 길이 약 2.668m에 피벗이 한쪽 끝(로컬 몸체 중심 x ≈ −1.241)이라 90도 회전 시 지그재그가 생겼으므로, 몸체 중심 기준 배치 헬퍼 `PlaceFence`와 균등 분포 헬퍼 `FenceRunCenter`를 추가해 남/북 8패널(z=±9.8), 서/동 7패널(x=±10.8)을 충돌 경계 안면과 정확히 일치시키고 균일 이음새로 모서리가 닫힌 직사각형을 만들었다. 댄싱 케이지 2·스포츠 가방 4·스피커 2·무대 조명 4도 2.5m 그리드 좌표로 스냅하고 45도 단위 회전과 원점 대칭(점대칭) 배치를 유지한다. 적 6기·플레이어 스폰, 충돌 블로커, NavMesh 베이크 방식, 초기 시야 검증 대상은 변경하지 않았다.
+- 영향을 받은 시스템: StageBattingCage 환경 아키텍처(바닥 42→72장, 펜스 26→30판), 시각 전용 프리팹 배치. 게임플레이·내비게이션·물리는 무변경(프리팹 콜라이더는 `CharacterSceneSetup.DisableColliders`로 비활성화)
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/StageBattingCageSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/StageBattingCage.unity`, `ProjectDeltatime/Assets/_Project/Art/Generated/StageBattingCagePreview.png`, `mdFile/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **해당 없음**. `mdFile/PROJECT_DESIGN_DOCUMENT.md`에는 StageBattingCage 레이아웃(타일·펜스 좌표)을 다루는 항목이 없어 확인했고 문서 수정은 하지 않았다. 좌표 수준 배치는 본 변경 기록으로 추적한다.
+- 테스트 결과: **구현 완료**. Unity 6000.1.13f1 배치 `BuildAndValidateFromCommandLine`이 씬 재생성과 정적 검증(적 6/6, 픽업 0, 캐릭터 비주얼 7, 비전 블로커 7, Synty 인스턴스 117개 ≥ 75, 포인트 라이트 4, NavMesh 완전 경로, 초기 시야 스태거)을 통과했다. `CapturePreviewFromCommandLine`으로 프리뷰를 다시 촬영해 바닥 틈 제거와 펜스 4면 직선 정렬·모서리 마감을 육안 확인했다. `StageBattingCagePlayModeSmokeTest.RunFromCommandLine`도 통과했다(6방향 근접 적, 월드 시간, 리플레이, Stage5 전환). 로그: `ProjectDeltatime/StageBattingCageBuild.log`, `ProjectDeltatime/StageBattingCagePreview.log`, `ProjectDeltatime/StageBattingCageSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 Game View에서 카메라 각도별 바닥 질감 반복과 펜스 이음새 가독성을 사용자가 최종 확인해야 한다. 소품 세부 좌표는 취향에 따라 조정 여지가 있다.
+
+
 ## 2026-08-26 - 전투 타격감 1차 개선 — 절제된 강함
 
 - 변경 유형: 전투 카메라·월드 히트스톱·절차형 VFX·피격 화면·적 사망 반응 추가, 전투음 거리 감쇠 보정, 회귀 테스트 확장
