@@ -66,7 +66,6 @@ namespace Deltatime.EditorTools
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_Impact.mp3"),
                 Load<AudioClip>("Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Enter_TimeWarp.mp3"),
                 LoadClips(
-                    "Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Release.mp3",
                     "Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Release2.mp3"));
 
             EditorUtility.SetDirty(library);

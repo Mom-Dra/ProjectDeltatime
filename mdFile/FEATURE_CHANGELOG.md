@@ -7,6 +7,16 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-26 - DEADLINE 해제음 단일화
+
+- 변경 유형: DEADLINE 효과음 선택 정책 수정, SoundLibrary 직렬화·재생성 경로·스모크 검증 갱신
+- 변경 내용: **구현 완료**. `DeltatimeSoundLibrary.asset`의 `deadlineReleaseClips`와 `SoundLibraryBuilder`가 `SFX_Deadline_Release2.mp3` 하나만 등록하도록 변경했다. `SoundLibrary.GetDeadlineReleaseClip()`과 `SoundManager.PlayDeadlineRelease()` 공개 인터페이스, 진입 충격·단발 시간 왜곡·BGM 덕킹 해제·재생 음량은 유지한다. 기존 `SFX_Deadline_Release.mp3`와 `.meta`는 삭제하지 않고 복구용 미사용 에셋으로 보존한다.
+- 영향을 받은 시스템: Tutorial·전체 Stage의 DEADLINE 성공·실패 공통 해제음, SoundLibrary 리소스, 오디오 빌더, SoundManager PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Deadline/README.md`, `mdFile/PROJECT_DESIGN_DOCUMENT.md`, `mdFile/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `mdFile/PROJECT_DESIGN_DOCUMENT.md`를 1.10.5로 갱신해 `Release2` 단일 해제음, 기존 에셋 보존, 유지되는 오디오 정책과 검증 결과를 기록했다.
+- 테스트 결과: **구현 완료**. 정적 검증에서 저장된 SoundLibrary와 빌더가 `SFX_Deadline_Release2.mp3`만 참조함을 확인했다. Unity 6000.1.13f1 배치 컴파일과 SoundLibrary 재생성·검증이 통과했고, SoundManager PlayMode 스모크는 `Release2` 선택, `DEADLINE` 진입·해제 상태 및 MainScene→Tutorial→Stage1→EndingScene BGM 회귀를 통과했다. 로그: `ProjectDeltatime/DeadlineReleaseSingleBuild.log`, `ProjectDeltatime/DeadlineReleaseSingleSoundSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 스피커·헤드폰에서 해제마다 `Release2`만 한 번 들리는지와 체감 음량은 사용자 청감 검증이 필요하다. `SFX_Deadline_Release2.mp3`의 원본 페이지와 라이선스도 배포 전에 확인해야 한다.
+
 ## 2026-08-26 - Tutorial Rework 외벽·전광판·환풍기 겹침 보정
 
 - 변경 유형: 후보 환경 시각 단순화, 후보 전용 월드 시간 앵커 배치, 전광판 런타임 호환 및 비중첩 정적 검증 추가

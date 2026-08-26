@@ -44,5 +44,4 @@ MonoBehaviour:
   deadlineEnterImpactClip: {fileID: 8300000, guid: 555ee7e7aba6119478b27cbbc4d8e091, type: 3}
   deadlineTimeWarpClip: {fileID: 8300000, guid: 30fb3aae43abdf24e8540ca0075a101a, type: 3}
   deadlineReleaseClips:
-  - {fileID: 8300000, guid: fa8394c5efa4fc0499927b5675469b27, type: 3}
   - {fileID: 8300000, guid: 857be76e07b6e1640acc8f8f8f9db670, type: 3}

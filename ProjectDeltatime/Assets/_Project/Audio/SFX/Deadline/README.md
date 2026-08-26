@@ -8,8 +8,7 @@
 | --- | --- | --- | --- |
 | DEADLINE 진입 충격 | `SFX_Deadline_Enter_Impact.mp3` | `black_kumizhi-low-thumpy-kick-reverb-hit-494833.mp3` | Q 입력으로 `DeadlineController.IsActive`가 `false → true`가 되는 즉시 |
 | DEADLINE 시간 왜곡 | `SFX_Deadline_Enter_TimeWarp.mp3` | `chrysalyn-cinematic-whoosh-transition-impact-562431.mp3` | 진입 충격과 동시에, 약 -8 dB 낮게 겹쳐 재생 |
-| DEADLINE 해제 | `SFX_Deadline_Release.mp3` | `dragon-studio-futuristic-transition-499653.mp3` | `DeadlineController.Released` 시점 |
-| DEADLINE 해제 변형 | `SFX_Deadline_Release2.mp3` | 로컬 추가 파일, 원본 확인 필요 | `DeadlineController.Released` 시점에 기본 해제음과 무작위 선택 |
+| DEADLINE 해제 | `SFX_Deadline_Release2.mp3` | 로컬 추가 파일, 원본 확인 필요 | `DeadlineController.Released` 시점에 단독으로 한 번 재생 |
 
 ## Unity 재생 기준
 
@@ -20,7 +19,7 @@
 
 ## 구현 연결 지점
 
-`ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`의 `Activated`·`Released` 이벤트를 `SoundManager`가 씬 로드 때 자동 구독한다. 진입 시 충격음과 단발 시간 왜곡음을 시작하고, 해제 시 시간 왜곡 재생이 남아 있으면 멈춘 뒤 해제 변형 한 개를 재생한다.
+`ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`의 `Activated`·`Released` 이벤트를 `SoundManager`가 씬 로드 때 자동 구독한다. 진입 시 충격음과 단발 시간 왜곡음을 시작하고, 해제 시 시간 왜곡 재생이 남아 있으면 멈춘 뒤 `SFX_Deadline_Release2.mp3`를 한 번 재생한다. 기존 `SFX_Deadline_Release.mp3`는 복구용 미사용 에셋으로 보존한다.
 
 ## 출처 및 라이선스
 

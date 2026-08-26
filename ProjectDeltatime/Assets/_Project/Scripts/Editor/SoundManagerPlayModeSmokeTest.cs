@@ -16,6 +16,8 @@ namespace Deltatime.EditorTools
         private const string ScenePath = "Assets/_Project/Scenes/MainScene.unity";
         private const string StageSceneName = "Stage1";
         private const string EndingSceneName = "EndingScene";
+        private const string DeadlineReleaseClipPath =
+            "Assets/_Project/Audio/SFX/Deadline/SFX_Deadline_Release2.mp3";
         private const double BgmCrossfadeSettleDuration = 0.35d;
         private const string RunningKey = "Deltatime.SoundSmoke.Running";
         private const string FailedKey = "Deltatime.SoundSmoke.Failed";
@@ -146,6 +148,14 @@ namespace Deltatime.EditorTools
                 Require(
                     manager.CurrentBgmClip == manager.Library.MainMenuBgm,
                     "MainScene did not select the main-menu BGM.");
+                AudioClip expectedDeadlineReleaseClip =
+                    AssetDatabase.LoadAssetAtPath<AudioClip>(DeadlineReleaseClipPath);
+                Require(
+                    expectedDeadlineReleaseClip != null,
+                    "SFX_Deadline_Release2.mp3 is missing.");
+                Require(
+                    manager.Library.GetDeadlineReleaseClip() == expectedDeadlineReleaseClip,
+                    "DEADLINE release audio must use only SFX_Deadline_Release2.mp3.");
 
                 WeaponDefinition pistol = AssetDatabase.LoadAssetAtPath<WeaponDefinition>(
                     "Assets/_Project/Pistol.asset");

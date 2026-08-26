@@ -7,8 +7,13 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-26 (KST) |
-| 문서 버전 | 1.10.4 |
-| 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 캐릭터 회전·근접 공격·투척은 플레이어 현재 높이의 수평 조준을 유지하고, 플레이어·적 총기는 총구에서 실제 클릭 Collider 접점 또는 적 대상의 실제 높이까지 3D 직선 투사체를 발사한다. 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기도 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+| 문서 버전 | 1.10.5 |
+| 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 캐릭터 회전·근접 공격·투척은 플레이어 현재 높이의 수평 조준을 유지하고, 플레이어·적 총기는 총구에서 실제 클릭 Collider 접점 또는 적 대상의 실제 높이까지 3D 직선 투사체를 발사한다. 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기도 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·`SFX_Deadline_Release2.mp3` 단일 해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+
+### 1.0.10 2026-08-26 DEADLINE 해제음 단일화
+
+- `DEADLINE`의 성공·실패 공통 해제 시 `SFX_Deadline_Release2.mp3`만 2D 전역 효과음으로 한 번 재생한다. `SoundLibrary`와 `SoundManager` 공개 인터페이스, 진입 충격·단발 시간 왜곡·BGM 덕킹 해제·볼륨 정책은 유지하며, 기존 `SFX_Deadline_Release.mp3`는 복구용 미사용 에셋으로 보존한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundLibraryBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`.
+- Unity 6000.1.13f1 배치 컴파일과 SoundLibrary 재생성·검증, SoundManager PlayMode 스모크가 통과했다. 스모크는 `Release2` 선택, `DEADLINE` 진입·해제 상태 및 MainScene·Tutorial·Stage1·EndingScene BGM 회귀를 확인했다. 실제 스피커·헤드폰 청감은 **확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/SoundManagerPlayModeSmokeTest.cs`, `ProjectDeltatime/DeadlineReleaseSingleBuild.log`, `ProjectDeltatime/DeadlineReleaseSingleSoundSmoke.log`.
 
 ### 1.0.9 2026-08-26 Tutorial Rework 외벽·전광판·환풍기 간격 보정
 
@@ -1416,6 +1421,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-26 | 1.10.5 | DEADLINE 해제음을 `SFX_Deadline_Release2.mp3` 하나로 고정하고 기존 해제음 에셋 보존, 빌더·직렬화·PlayMode 검증 결과를 반영 | DEADLINE SFX, SoundLibrary, SoundManager, 오디오 스모크 |
 | 2026-08-26 | 1.10.4 | Tutorial Rework의 중복 외벽 모듈·전광판·벽 장식을 제거하고 후보 전용 환풍기 좌표와 Renderer Bounds 비중첩 검증을 반영 | Tutorial 후보 환경, WorldTimeVisualFeedback, 환풍기 배치, 정적·PlayMode·캡처 검증 |
 | 2026-08-26 | 1.10.3 | 기존 진행 계약을 유지한 Tutorial Rework 후보 씬, 전용 NavMesh, 프로필 기반 빌드·정적/PlayMode·3구간 시각 검증과 공식 전환 보류 상태를 반영 | Tutorial 후보 환경, Wayfinding, VisionObstacle, NavMesh, 씬 빌더·스모크·캡처 |
 | 2026-08-26 | 1.10.2 | `ReplayExcluded` 정적 환풍기 외함 안의 날개만 `ReplayIncluded`로 다시 기록해 정규화 리플레이 프록시 회전을 재현하고 환경음 정지 정책과 자동·캡처 검증을 반영 | ReplayIncluded, 환풍기 날개, Renderer 프록시, 3D 환경음, 씬 빌더·테스트·캡처 |
