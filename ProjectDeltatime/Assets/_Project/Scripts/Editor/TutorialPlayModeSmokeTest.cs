@@ -19,9 +19,12 @@ namespace Deltatime.EditorTools
     public static class TutorialPlayModeSmokeTest
     {
         private const string ScenePath = "Assets/_Project/Scenes/Tutorial.unity";
+        private const string ReworkScenePath =
+            "Assets/_Project/Scenes/TutorialRework/Tutorial.unity";
         private const string RunningKey = "Deltatime.TutorialSmoke.Running";
         private const string FailedKey = "Deltatime.TutorialSmoke.Failed";
         private const string FailureKey = "Deltatime.TutorialSmoke.Failure";
+        private const string ScenePathKey = "Deltatime.TutorialSmoke.ScenePath";
         private const string GateVisualRootName = "Training Shutter Visuals";
         private const string GateBarNamePrefix = "Gate Bar ";
         private const int GateBarCount = 17;
@@ -56,12 +59,31 @@ namespace Deltatime.EditorTools
 
         public static void RunFromCommandLine()
         {
+            StartSmoke(ScenePath, false);
+        }
+
+        public static void RunReworkFromCommandLine()
+        {
+            StartSmoke(ReworkScenePath, true);
+        }
+
+        private static void StartSmoke(string scenePath, bool reworked)
+        {
             if (SessionState.GetBool(RunningKey, false))
             {
                 return;
             }
 
-            TutorialSceneBuilder.ValidateSavedTutorial();
+            if (reworked)
+            {
+                TutorialSceneBuilder.ValidateSavedTutorialRework();
+            }
+            else
+            {
+                TutorialSceneBuilder.ValidateSavedTutorial();
+            }
+
+            SessionState.SetString(ScenePathKey, scenePath);
             SessionState.SetBool(RunningKey, true);
             SessionState.SetBool(FailedKey, false);
             SessionState.SetString(FailureKey, string.Empty);
@@ -69,7 +91,7 @@ namespace Deltatime.EditorTools
             phaseStartedAt = EditorApplication.timeSinceStartup;
             gateLayoutValidated = false;
             characterVisualsValidated = false;
-            Runner.OpenSceneAndEnterPlayMode(ScenePath);
+            Runner.OpenSceneAndEnterPlayMode(scenePath);
         }
 
         private static void Attach()
@@ -728,6 +750,7 @@ namespace Deltatime.EditorTools
             SessionState.SetBool(RunningKey, false);
             SessionState.EraseBool(FailedKey);
             SessionState.EraseString(FailureKey);
+            SessionState.EraseString(ScenePathKey);
 
             if (Application.isBatchMode)
             {

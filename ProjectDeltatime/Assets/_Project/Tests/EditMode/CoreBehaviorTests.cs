@@ -41,6 +41,58 @@ namespace Deltatime.Tests.EditMode
         }
 
         [Test]
+        public void ReplayHierarchyPolicy_UsesNearestMarkerAndIncludesOnTie()
+        {
+            GameObject root = new GameObject("Replay Excluded Root");
+            root.AddComponent<ReplayExcluded>();
+            GameObject excludedChild = new GameObject("Excluded Child");
+            excludedChild.transform.SetParent(root.transform, false);
+
+            GameObject includedBranch = new GameObject("Included Branch");
+            includedBranch.transform.SetParent(root.transform, false);
+            includedBranch.AddComponent<ReplayIncluded>();
+            GameObject includedChild = new GameObject("Included Child");
+            includedChild.transform.SetParent(includedBranch.transform, false);
+
+            GameObject innerExcluded = new GameObject("Inner Excluded");
+            innerExcluded.transform.SetParent(includedBranch.transform, false);
+            innerExcluded.AddComponent<ReplayExcluded>();
+            GameObject innerExcludedChild =
+                new GameObject("Inner Excluded Child");
+            innerExcludedChild.transform.SetParent(
+                innerExcluded.transform,
+                false);
+
+            GameObject tiedMarkers = new GameObject("Tied Markers");
+            tiedMarkers.transform.SetParent(innerExcluded.transform, false);
+            tiedMarkers.AddComponent<ReplayExcluded>();
+            tiedMarkers.AddComponent<ReplayIncluded>();
+
+            try
+            {
+                Assert.That(
+                    ReplayHierarchyPolicy.IsExcluded(
+                        excludedChild.transform),
+                    Is.True);
+                Assert.That(
+                    ReplayHierarchyPolicy.IsExcluded(
+                        includedChild.transform),
+                    Is.False);
+                Assert.That(
+                    ReplayHierarchyPolicy.IsExcluded(
+                        innerExcludedChild.transform),
+                    Is.True);
+                Assert.That(
+                    ReplayHierarchyPolicy.IsExcluded(tiedMarkers.transform),
+                    Is.False);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void ReplayRecordingBudget_PreservesDurationPrecedence()
         {
             Assert.That(
@@ -203,6 +255,45 @@ namespace Deltatime.Tests.EditMode
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void WorldTimeAmbientState_OrdersFullHalfAndIdleAudio()
+        {
+            WorldTimeAmbientAudioState full =
+                WorldTimeAmbientState.Evaluate(1f);
+            WorldTimeAmbientAudioState half =
+                WorldTimeAmbientState.Evaluate(0.5f);
+            WorldTimeAmbientAudioState idle =
+                WorldTimeAmbientState.Evaluate(0.02f);
+
+            Assert.That(full.Pitch, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(full.CutoffFrequency, Is.EqualTo(16000f).Within(0.01f));
+            Assert.That(full.VolumeFactor, Is.EqualTo(1f).Within(0.0001f));
+            Assert.That(half.Pitch, Is.LessThan(full.Pitch));
+            Assert.That(idle.Pitch, Is.LessThan(half.Pitch));
+            Assert.That(half.CutoffFrequency, Is.LessThan(full.CutoffFrequency));
+            Assert.That(idle.CutoffFrequency, Is.LessThan(half.CutoffFrequency));
+            Assert.That(half.VolumeFactor, Is.LessThan(full.VolumeFactor));
+            Assert.That(idle.VolumeFactor, Is.LessThan(half.VolumeFactor));
+        }
+
+        [Test]
+        public void WorldTimeAmbientState_ReachesSilenceWithinResponseDuration()
+        {
+            float audibleScale =
+                WorldTimeAmbientState.AdvanceAudibleTimeScale(
+                    1f,
+                    0f,
+                    0.15f,
+                    0.15f);
+            WorldTimeAmbientAudioState frozen =
+                WorldTimeAmbientState.Evaluate(audibleScale);
+
+            Assert.That(audibleScale, Is.Zero);
+            Assert.That(frozen.Pitch, Is.EqualTo(0.45f).Within(0.0001f));
+            Assert.That(frozen.CutoffFrequency, Is.EqualTo(500f).Within(0.01f));
+            Assert.That(frozen.VolumeFactor, Is.Zero);
         }
 
         [Test]

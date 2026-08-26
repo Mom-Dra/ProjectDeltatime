@@ -1164,7 +1164,7 @@ namespace Deltatime.Replay
             return candidate != null &&
                    !candidate.transform.IsChildOf(replayRoot) &&
                    !animationRendererIds.Contains(candidate.GetInstanceID()) &&
-                   candidate.GetComponentInParent<ReplayExcluded>() == null &&
+                   !ReplayHierarchyPolicy.IsExcluded(candidate) &&
                    CanRecord(candidate);
         }
 
@@ -2171,7 +2171,7 @@ namespace Deltatime.Replay
             }
             public bool IsReplayExcluded =>
                 source != null &&
-                source.GetComponentInParent<ReplayExcluded>() != null;
+                ReplayHierarchyPolicy.IsExcluded(source);
             public bool IsProxyActive =>
                 proxy != null &&
                 proxy.enabled &&

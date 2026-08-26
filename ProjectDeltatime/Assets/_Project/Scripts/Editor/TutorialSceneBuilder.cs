@@ -38,10 +38,15 @@ namespace Deltatime.EditorTools
         private const string Root = "Assets/_Project";
         private const string Scenes = Root + "/Scenes";
         private const string TutorialScenePath = Scenes + "/Tutorial.unity";
+        private const string TutorialReworkFolder = Scenes + "/TutorialRework";
+        private const string TutorialReworkScenePath =
+            TutorialReworkFolder + "/Tutorial.unity";
         private const string MainScenePath = Scenes + "/MainScene.unity";
         private const string Stage1ScenePath = Scenes + "/Stage1.unity";
         private const string NavigationDataPath =
             Scenes + "/TutorialNavigation.asset";
+        private const string TutorialReworkNavigationDataPath =
+            TutorialReworkFolder + "/TutorialNavigation.asset";
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
         private const string MeleeDefinitionPath = Root + "/MeleeWeapon.asset";
         private const string PickupPrefabPath = Root + "/Prefabs/WeaponPickup.prefab";
@@ -128,11 +133,60 @@ namespace Deltatime.EditorTools
         private const int ExpectedEnemyCount = 5;
         private const int ExpectedAnimatedActorCount = 6;
         private const int ExpectedSyntyPrefabCount = 262;
+        private const int TutorialReworkSyntyPrefabLimit = 120;
+        private const float TutorialReworkClearLaneHalfWidth = 3.4f;
+
+        private sealed class TutorialBuildProfile
+        {
+            public TutorialBuildProfile(
+                string scenePath,
+                string navigationDataPath,
+                bool useReworkedEnvironment,
+                bool configureBuildSettings)
+            {
+                ScenePath = scenePath;
+                NavigationDataPath = navigationDataPath;
+                UseReworkedEnvironment = useReworkedEnvironment;
+                ConfigureBuildSettings = configureBuildSettings;
+            }
+
+            public string ScenePath { get; }
+            public string NavigationDataPath { get; }
+            public bool UseReworkedEnvironment { get; }
+            public bool ConfigureBuildSettings { get; }
+        }
+
+        private static readonly TutorialBuildProfile LiveBuildProfile =
+            new TutorialBuildProfile(
+                TutorialScenePath,
+                NavigationDataPath,
+                false,
+                true);
+
+        private static readonly TutorialBuildProfile ReworkBuildProfile =
+            new TutorialBuildProfile(
+                TutorialReworkScenePath,
+                TutorialReworkNavigationDataPath,
+                true,
+                false);
 
         [MenuItem("Tools/Prototype/Build Tutorial")]
         public static void BuildTutorial()
         {
+            BuildTutorial(LiveBuildProfile);
+        }
+
+        [MenuItem("Tools/Tutorial Rework/Build Candidate")]
+        public static void BuildTutorialReworkCandidate()
+        {
+            BuildTutorial(ReworkBuildProfile);
+        }
+
+        private static void BuildTutorial(TutorialBuildProfile buildProfile)
+        {
             HudAssetBuilder.BuildCyberHudAssets();
+            EnsureAssetFolder(Path.GetDirectoryName(buildProfile.ScenePath)
+                ?.Replace('\\', '/'));
             Require(
                 AssetDatabase.LoadAssetAtPath<SceneAsset>(Stage1ScenePath) != null,
                 "Stage1 scene is missing; Tutorial requires its serialized gameplay base.");
@@ -153,10 +207,10 @@ namespace Deltatime.EditorTools
             Scene scene = EditorSceneManager.OpenScene(
                 Stage1ScenePath,
                 OpenSceneMode.Single);
-            if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
+            if (!EditorSceneManager.SaveScene(scene, buildProfile.ScenePath))
             {
                 throw new InvalidOperationException(
-                    $"Failed to create {TutorialScenePath} from Stage1.");
+                    $"Failed to create {buildProfile.ScenePath} from Stage1.");
             }
 
             RemovePrototypeContent(scene);
@@ -203,12 +257,32 @@ namespace Deltatime.EditorTools
             }
 
             ConfigureLighting(scene);
-            GameObject environment = CreateEnvironment(
-                floorMaterial,
-                wallMaterial,
-                coverMaterial,
-                accentMaterial);
+            GameObject environment = buildProfile.UseReworkedEnvironment
+                ? CreateReworkedEnvironment(
+                    floorMaterial,
+                    wallMaterial,
+                    coverMaterial,
+                    accentMaterial)
+                : CreateEnvironment(
+                    floorMaterial,
+                    wallMaterial,
+                    coverMaterial,
+                    accentMaterial);
             environment.AddComponent<ReplayExcluded>();
+            if (buildProfile.UseReworkedEnvironment)
+            {
+                WorldTimeAmbientSceneBuilder.ApplyTutorialReworkAnchors(
+                    scene,
+                    worldTime,
+                    environment.transform);
+            }
+            else
+            {
+                WorldTimeAmbientSceneBuilder.ApplyTutorialAnchors(
+                    scene,
+                    worldTime,
+                    environment.transform);
+            }
 
             TutorialGate timeGate = CreateGate(
                 environment.transform,
@@ -367,27 +441,39 @@ namespace Deltatime.EditorTools
             TutorialHud tutorialHud = tutorialHudObject.AddComponent<TutorialHud>();
             tutorialHud.Configure(director, worldTime, playerWeapon, deadline);
 
-            BuildTutorialNavigation(navigation, scene);
-            ConfigureBuildSettings();
+            BuildTutorialNavigation(
+                navigation,
+                scene,
+                buildProfile.NavigationDataPath);
+            if (buildProfile.ConfigureBuildSettings)
+            {
+                ConfigureBuildSettings();
+            }
 
             EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
+            if (!EditorSceneManager.SaveScene(scene, buildProfile.ScenePath))
             {
                 throw new InvalidOperationException(
-                    $"Failed to save completed {TutorialScenePath}.");
+                    $"Failed to save completed {buildProfile.ScenePath}.");
             }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            ValidateTutorialScene(scene);
+            ValidateTutorialScene(scene, buildProfile);
             Debug.Log(
-                "Tutorial built and validated successfully: movement/time, aim/dash, " +
+                $"Tutorial built and validated successfully at {buildProfile.ScenePath}: " +
+                "movement/time, aim/dash, " +
                 "melee, pistol, throw/disarm, and four-enemy DEADLINE escape.");
         }
 
         public static void BuildAndValidateFromCommandLine()
         {
             SceneBuildCommand.Run(BuildTutorial);
+        }
+
+        public static void BuildReworkAndValidateFromCommandLine()
+        {
+            SceneBuildCommand.Run(BuildTutorialReworkCandidate);
         }
 
         [MenuItem("Tools/Tutorial/Apply Environment Redesign")]
@@ -416,6 +502,10 @@ namespace Deltatime.EditorTools
                 wallMaterial,
                 coverMaterial,
                 accentMaterial);
+            WorldTimeAmbientSceneBuilder.ApplyTutorialAnchors(
+                scene,
+                FindSceneComponent<WorldTimeController>(scene),
+                environment.transform);
 
             TutorialGate[] gates = FindSceneComponents<TutorialGate>(scene);
             for (int i = 0; i < gates.Length; i++)
@@ -438,7 +528,7 @@ namespace Deltatime.EditorTools
             NavMeshSurface navigation = FindSceneComponent<NavMeshSurface>(scene);
             Require(navigation != null,
                 "Tutorial NavMeshSurface is missing from the saved scene.");
-            BuildTutorialNavigation(navigation, scene);
+            BuildTutorialNavigation(navigation, scene, NavigationDataPath);
 
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
@@ -449,7 +539,7 @@ namespace Deltatime.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            ValidateTutorialScene(scene);
+            ValidateTutorialScene(scene, LiveBuildProfile);
             Debug.Log(
                 "Tutorial environment redesign applied without rebuilding gameplay content.");
         }
@@ -498,8 +588,18 @@ namespace Deltatime.EditorTools
             Scene scene = EditorSceneManager.OpenScene(
                 TutorialScenePath,
                 OpenSceneMode.Single);
-            ValidateTutorialScene(scene);
+            ValidateTutorialScene(scene, LiveBuildProfile);
             Debug.Log("Tutorial static validation passed.");
+        }
+
+        [MenuItem("Tools/Tutorial Rework/Validate Candidate")]
+        public static void ValidateSavedTutorialRework()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                TutorialReworkScenePath,
+                OpenSceneMode.Single);
+            ValidateTutorialScene(scene, ReworkBuildProfile);
+            Debug.Log("Tutorial rework candidate static validation passed.");
         }
 
         public static void ValidateFromCommandLine()
@@ -507,12 +607,17 @@ namespace Deltatime.EditorTools
             ValidateSavedTutorial();
         }
 
+        public static void ValidateReworkFromCommandLine()
+        {
+            ValidateSavedTutorialRework();
+        }
+
         public static void CapturePreviewFromCommandLine()
         {
             Scene scene = EditorSceneManager.OpenScene(
                 TutorialScenePath,
                 OpenSceneMode.Single);
-            ValidateTutorialScene(scene);
+            ValidateTutorialScene(scene, LiveBuildProfile);
             Camera camera = FindSceneComponent<Camera>(scene);
             Require(camera != null, "Tutorial preview requires its gameplay camera.");
 
@@ -526,6 +631,38 @@ namespace Deltatime.EditorTools
             CapturePreviewSegment(camera, 47f, secondPath);
             Debug.Log(
                 $"Tutorial preview captured: {firstPath} and {secondPath}");
+        }
+
+        [MenuItem("Tools/Tutorial Rework/Capture Candidate Preview")]
+        public static void CaptureReworkPreviewFromCommandLine()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                TutorialReworkScenePath,
+                OpenSceneMode.Single);
+            ValidateTutorialScene(scene, ReworkBuildProfile);
+            Camera camera = FindSceneComponent<Camera>(scene);
+            Require(camera != null,
+                "Tutorial rework preview requires its gameplay camera.");
+
+            string projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
+            Require(!string.IsNullOrEmpty(projectRoot),
+                "Could not resolve the Unity project root for preview capture.");
+            string outputFolder = Path.Combine(
+                projectRoot,
+                "Logs",
+                "Validation",
+                "TutorialReworkCaptures");
+            Directory.CreateDirectory(outputFolder);
+
+            string southPath = Path.Combine(outputFolder, "TutorialRework-South.png");
+            string middlePath = Path.Combine(outputFolder, "TutorialRework-Middle.png");
+            string northPath = Path.Combine(outputFolder, "TutorialRework-North.png");
+            CapturePreviewSegment(camera, -25f, southPath);
+            CapturePreviewSegment(camera, 9f, middlePath);
+            CapturePreviewSegment(camera, 47f, northPath);
+            Debug.Log(
+                $"Tutorial rework previews captured: {southPath}, {middlePath}, " +
+                $"and {northPath}");
         }
 
         private static void CapturePreviewSegment(
@@ -707,6 +844,243 @@ namespace Deltatime.EditorTools
                 coverMaterial,
                 accentMaterial);
             return root;
+        }
+
+        private static GameObject CreateReworkedEnvironment(
+            Material floorMaterial,
+            Material wallMaterial,
+            Material coverMaterial,
+            Material accentMaterial)
+        {
+            RequireSyntyTutorialAssets();
+
+            GameObject root = new GameObject("Tutorial Environment");
+            Transform architecture = CreateEnvironmentSection(root.transform, "Architecture");
+            Transform wayfinding = CreateEnvironmentSection(root.transform, "Wayfinding");
+            Transform lighting = CreateEnvironmentSection(root.transform, "Lighting");
+            Transform boundaries = CreateEnvironmentSection(
+                root.transform,
+                "Gameplay Boundaries");
+            Transform[] bays = CreateReworkedBayRoots(root.transform);
+
+            CreatePrimitive(
+                boundaries,
+                "Tutorial Rework Floor",
+                PrimitiveType.Cube,
+                new Vector3(0f, -0.15f, 12.5f),
+                new Vector3(14f, 0.3f, 97f),
+                floorMaterial,
+                true,
+                0);
+            CreateWall(
+                boundaries,
+                "West Tutorial Wall",
+                new Vector3(-7f, 1.5f, 12.5f),
+                new Vector3(0.5f, 3f, 97f),
+                wallMaterial);
+            CreateWall(
+                boundaries,
+                "East Tutorial Wall",
+                new Vector3(7f, 1.5f, 12.5f),
+                new Vector3(0.5f, 3f, 97f),
+                wallMaterial);
+            CreateWall(
+                boundaries,
+                "South Tutorial Wall",
+                new Vector3(0f, 1.5f, -36f),
+                new Vector3(14.5f, 3f, 0.5f),
+                wallMaterial);
+            CreateWall(
+                boundaries,
+                "North Tutorial Wall",
+                new Vector3(0f, 1.5f, 61f),
+                new Vector3(14.5f, 3f, 0.5f),
+                wallMaterial);
+
+            CreateReworkedArchitecture(architecture);
+            CreateTrainingDeck(
+                wayfinding,
+                floorMaterial,
+                coverMaterial,
+                accentMaterial);
+            CreateReworkedLighting(lighting);
+            CreateReworkedBayDetails(
+                bays,
+                coverMaterial,
+                accentMaterial);
+            ConfigureProxyRenderers(root);
+            return root;
+        }
+
+        private static Transform CreateEnvironmentSection(
+            Transform parent,
+            string name)
+        {
+            GameObject section = new GameObject(name);
+            section.transform.SetParent(parent, false);
+            return section.transform;
+        }
+
+        private static Transform[] CreateReworkedBayRoots(Transform parent)
+        {
+            string[] names =
+            {
+                "Bay 01 - Time",
+                "Bay 02 - Aim and Dash",
+                "Bay 03 - Melee",
+                "Bay 04 - Pistol",
+                "Bay 05 - Throw",
+                "Bay 06 - Deadline",
+                "Bay 07 - Exit"
+            };
+            Transform[] bays = new Transform[names.Length];
+            for (int i = 0; i < names.Length; i++)
+            {
+                bays[i] = CreateEnvironmentSection(parent, names[i]);
+            }
+
+            return bays;
+        }
+
+        private static void CreateReworkedArchitecture(Transform architecture)
+        {
+            float[] gatePositions = { -25f, -13f, -1f, 13f, 34f, 57f };
+            for (int i = 0; i < gatePositions.Length; i++)
+            {
+                float z = gatePositions[i];
+                PlaceSyntyVisual(
+                    architecture,
+                    SyntyLargePillarPath,
+                    $"Gate {i + 1:00} West Pillar",
+                    new Vector3(-6.2f, 0f, z),
+                    Quaternion.identity,
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    architecture,
+                    SyntyLargePillarPath,
+                    $"Gate {i + 1:00} East Pillar",
+                    new Vector3(6.2f, 0f, z),
+                    Quaternion.identity,
+                    Vector3.one);
+                PlaceSyntyVisual(
+                    architecture,
+                    SyntyCeilingBeamPath,
+                    $"Gate {i + 1:00} Overhead Beam",
+                    new Vector3(0f, 2.72f, z),
+                    Quaternion.identity,
+                    new Vector3(3f, 1f, 1f));
+            }
+        }
+
+        private static void CreateReworkedLighting(Transform lighting)
+        {
+            float[] zoneCenters = { -30f, -19f, -7f, 6f, 23f, 47f, 59f };
+            Color routeLight = new Color(0.08f, 0.56f, 0.95f, 1f);
+            for (int i = 0; i < zoneCenters.Length; i++)
+            {
+                float z = zoneCenters[i];
+                CreatePointLight(
+                    lighting,
+                    $"Training Bay Light {i + 1:00}",
+                    new Vector3(0f, 2.75f, z),
+                    routeLight,
+                    i == 5 ? 0.9f : 0.72f,
+                    i == 5 ? 14f : 11f);
+            }
+        }
+
+        private static void CreateReworkedBayDetails(
+            Transform[] bays,
+            Material coverMaterial,
+            Material accentMaterial)
+        {
+            PlaceSyntyVisual(
+                bays[2],
+                SyntyBenchPath,
+                "Melee Equipment Bench West",
+                new Vector3(-5.35f, 0f, -7f),
+                Quaternion.Euler(0f, 90f, 0f),
+                Vector3.one);
+            PlaceSyntyVisual(
+                bays[2],
+                SyntyBenchPath,
+                "Melee Equipment Bench East",
+                new Vector3(5.35f, 0f, -7f),
+                Quaternion.Euler(0f, -90f, 0f),
+                Vector3.one);
+
+            CreateSymmetricSafetyRails(
+                bays[3],
+                "Pistol Range",
+                5.5f,
+                new Vector3(2.6f, 1f, 0.5f),
+                coverMaterial);
+            CreateSymmetricSafetyRails(
+                bays[4],
+                "Throw Safety",
+                23f,
+                new Vector3(2.1f, 0.9f, 0.35f),
+                coverMaterial);
+            CreateSymmetricSafetyRails(
+                bays[5],
+                "Deadline Safety",
+                47f,
+                new Vector3(2.1f, 0.9f, 0.35f),
+                coverMaterial);
+
+            PlaceSyntyVisual(
+                bays[6],
+                SyntyExitSignPath,
+                "Tutorial Exit Sign",
+                new Vector3(0f, 2.15f, 60.7f),
+                Quaternion.identity,
+                new Vector3(1.8f, 1.8f, 1.8f));
+
+            CreatePrimitive(
+                bays[4],
+                "Throw Lane West Accent",
+                PrimitiveType.Cube,
+                new Vector3(-4.15f, 0.05f, 23f),
+                new Vector3(0.14f, 0.04f, 8f),
+                accentMaterial,
+                false,
+                0);
+            CreatePrimitive(
+                bays[4],
+                "Throw Lane East Accent",
+                PrimitiveType.Cube,
+                new Vector3(4.15f, 0.05f, 23f),
+                new Vector3(0.14f, 0.04f, 8f),
+                accentMaterial,
+                false,
+                0);
+        }
+
+        private static void CreateSymmetricSafetyRails(
+            Transform parent,
+            string namePrefix,
+            float z,
+            Vector3 scale,
+            Material material)
+        {
+            CreatePrimitive(
+                parent,
+                namePrefix + " West Cover",
+                PrimitiveType.Cube,
+                new Vector3(-5.15f, scale.y * 0.5f, z),
+                scale,
+                material,
+                true,
+                VisionObstacleLayer);
+            CreatePrimitive(
+                parent,
+                namePrefix + " East Cover",
+                PrimitiveType.Cube,
+                new Vector3(5.15f, scale.y * 0.5f, z),
+                scale,
+                material,
+                true,
+                VisionObstacleLayer);
         }
 
         private static void ConfigureProxyRenderers(GameObject root)
@@ -1881,7 +2255,8 @@ namespace Deltatime.EditorTools
 
         private static void BuildTutorialNavigation(
             NavMeshSurface surface,
-            Scene scene)
+            Scene scene,
+            string navigationDataPath)
         {
             surface.RemoveData();
             SerializedObject surfaceSettings = new SerializedObject(surface);
@@ -1936,10 +2311,10 @@ namespace Deltatime.EditorTools
             NavMeshData bakedData = surface.navMeshData;
             bakedData.name = "TutorialNavigation";
             NavMeshData savedData = AssetDatabase.LoadAssetAtPath<NavMeshData>(
-                NavigationDataPath);
+                navigationDataPath);
             if (savedData == null)
             {
-                AssetDatabase.CreateAsset(bakedData, NavigationDataPath);
+                AssetDatabase.CreateAsset(bakedData, navigationDataPath);
             }
             else
             {
@@ -1961,7 +2336,9 @@ namespace Deltatime.EditorTools
             GameBuildSceneCatalog.Apply();
         }
 
-        private static void ValidateTutorialScene(Scene scene)
+        private static void ValidateTutorialScene(
+            Scene scene,
+            TutorialBuildProfile buildProfile)
         {
             HudAssetBuilder.ValidateCyberHudAssets();
             TutorialDirector director = FindSceneComponent<TutorialDirector>(scene);
@@ -2001,8 +2378,9 @@ namespace Deltatime.EditorTools
             SerializedProperty startingDefinition = playerWeaponSettings
                 ?.FindProperty("startingDefinition");
 
-            Require(scene.path == TutorialScenePath,
-                $"Validated scene path is {scene.path}, expected {TutorialScenePath}.");
+            Require(scene.path == buildProfile.ScenePath,
+                $"Validated scene path is {scene.path}, " +
+                $"expected {buildProfile.ScenePath}.");
             string directorError = "TutorialDirector is missing.";
             bool directorIsValid = director != null &&
                 director.ValidateConfiguration(out directorError);
@@ -2038,7 +2416,7 @@ namespace Deltatime.EditorTools
                 "Tutorial player must start unarmed.");
             Require(surface != null && surface.navMeshData != null &&
                     AssetDatabase.GetAssetPath(surface.navMeshData) ==
-                    NavigationDataPath,
+                    buildProfile.NavigationDataPath,
                 "Tutorial must use its dedicated TutorialNavigation.asset.");
             Require(gameHud == null,
                 "Legacy GameHud must be removed from Tutorial.");
@@ -2048,62 +2426,39 @@ namespace Deltatime.EditorTools
                 $"found {animationControllers.Length} animation drivers and " +
                 $"{characterVisuals.Length} character visuals.");
 
-            ValidateTutorialArtAndCharacters(scene, animationControllers);
+            ValidateTutorialArtAndCharacters(
+                scene,
+                animationControllers,
+                buildProfile.UseReworkedEnvironment);
             ValidateTutorialNavigationRoute(surface);
-            ValidateVisionObstaclePolicy(scene);
-            ValidateBuildSettings();
+            ValidateVisionObstaclePolicy(
+                scene,
+                buildProfile.UseReworkedEnvironment);
+            if (buildProfile.ConfigureBuildSettings)
+            {
+                ValidateBuildSettings();
+            }
+            WorldTimeAmbientSceneBuilder.ValidateScene(
+                scene,
+                3,
+                buildProfile.UseReworkedEnvironment);
         }
 
         private static void ValidateTutorialArtAndCharacters(
             Scene scene,
-            CharacterAnimationController[] animationControllers)
+            CharacterAnimationController[] animationControllers,
+            bool useReworkedEnvironment)
         {
             GameObject environment = FindSceneRoot(scene, "Tutorial Environment");
-            Transform visualRoot = environment == null
-                ? null
-                : environment.transform.Find(SyntyVisualRootName);
-            Require(visualRoot != null,
-                $"Tutorial is missing its {SyntyVisualRootName} root.");
-
-            int prefabCount = 0;
-            Transform[] visualTransforms =
-                visualRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < visualTransforms.Length; i++)
+            Require(environment != null, "Tutorial Environment root is missing.");
+            if (useReworkedEnvironment)
             {
-                if (PrefabUtility.IsAnyPrefabInstanceRoot(
-                        visualTransforms[i].gameObject))
-                {
-                    prefabCount++;
-                }
+                ValidateReworkedEnvironment(environment.transform);
             }
-
-            Require(prefabCount == ExpectedSyntyPrefabCount,
-                $"Tutorial contains {prefabCount} Synty prefab instances; " +
-                $"expected {ExpectedSyntyPrefabCount}.");
-            Require(visualRoot.Find("Pistol Range West Cover") != null &&
-                    visualRoot.Find("Pistol Range East Cover") != null &&
-                    visualRoot.Find("Tutorial Exit Sign") != null &&
-                    visualRoot.Find("Training Deck") != null &&
-                    visualRoot.Find("Gate 01 Overhead Beam") != null,
-                "Tutorial Synty landmarks are incomplete.");
-            Require(visualRoot.Find("West Wall 01") != null &&
-                    visualRoot.Find("East Wall 01") != null &&
-                    visualRoot.Find("West Upper Rail 01") != null &&
-                    visualRoot.Find("East Upper Rail 01") != null &&
-                    visualRoot.Find("West Wall Luminaire 01") != null &&
-                    visualRoot.Find("East Wall Luminaire 01") != null,
-                "Tutorial training-facility side-wall modules are incomplete.");
-
-            Transform westWall = environment.transform.Find("West Tutorial Wall");
-            Transform eastWall = environment.transform.Find("East Tutorial Wall");
-            Require(westWall != null && eastWall != null &&
-                    westWall.GetComponent<Collider>() != null &&
-                    eastWall.GetComponent<Collider>() != null &&
-                    westWall.GetComponent<Renderer>() != null &&
-                    eastWall.GetComponent<Renderer>() != null &&
-                    westWall.GetComponent<Renderer>().enabled &&
-                    eastWall.GetComponent<Renderer>().enabled,
-                "Tutorial side walls must retain their visible VisionObstacle boundaries.");
+            else
+            {
+                ValidateLegacyEnvironment(environment.transform);
+            }
 
             TutorialTargetDummy[] targets = FindSceneComponents<TutorialTargetDummy>(scene);
             for (int i = 0; i < targets.Length; i++)
@@ -2149,6 +2504,201 @@ namespace Deltatime.EditorTools
                             SkinnedMeshRenderer>(true).Length > 0,
                     $"Tutorial actor {controller.name} has no rendered Synty model.");
             }
+        }
+
+        private static void ValidateLegacyEnvironment(Transform environment)
+        {
+            Transform visualRoot = environment.Find(SyntyVisualRootName);
+            Require(visualRoot != null,
+                $"Tutorial is missing its {SyntyVisualRootName} root.");
+
+            int prefabCount = CountPrefabInstanceRoots(visualRoot);
+            Require(prefabCount == ExpectedSyntyPrefabCount,
+                $"Tutorial contains {prefabCount} Synty prefab instances; " +
+                $"expected {ExpectedSyntyPrefabCount}.");
+            Require(visualRoot.Find("Pistol Range West Cover") != null &&
+                    visualRoot.Find("Pistol Range East Cover") != null &&
+                    visualRoot.Find("Tutorial Exit Sign") != null &&
+                    visualRoot.Find("Training Deck") != null &&
+                    visualRoot.Find("Gate 01 Overhead Beam") != null,
+                "Tutorial Synty landmarks are incomplete.");
+            Require(visualRoot.Find("West Wall 01") != null &&
+                    visualRoot.Find("East Wall 01") != null &&
+                    visualRoot.Find("West Upper Rail 01") != null &&
+                    visualRoot.Find("East Upper Rail 01") != null &&
+                    visualRoot.Find("West Wall Luminaire 01") != null &&
+                    visualRoot.Find("East Wall Luminaire 01") != null,
+                "Tutorial training-facility side-wall modules are incomplete.");
+
+            Transform westWall = environment.Find("West Tutorial Wall");
+            Transform eastWall = environment.Find("East Tutorial Wall");
+            Require(westWall != null && eastWall != null &&
+                    westWall.GetComponent<Collider>() != null &&
+                    eastWall.GetComponent<Collider>() != null &&
+                    westWall.GetComponent<Renderer>() != null &&
+                    eastWall.GetComponent<Renderer>() != null &&
+                    westWall.GetComponent<Renderer>().enabled &&
+                    eastWall.GetComponent<Renderer>().enabled,
+                "Tutorial side walls must retain their visible VisionObstacle boundaries.");
+        }
+
+        private static void ValidateReworkedEnvironment(Transform environment)
+        {
+            string[] requiredSections =
+            {
+                "Architecture",
+                "Wayfinding",
+                "Lighting",
+                "Gameplay Boundaries",
+                "Bay 01 - Time",
+                "Bay 02 - Aim and Dash",
+                "Bay 03 - Melee",
+                "Bay 04 - Pistol",
+                "Bay 05 - Throw",
+                "Bay 06 - Deadline",
+                "Bay 07 - Exit",
+                "World Time Ambient Anchors"
+            };
+            for (int i = 0; i < requiredSections.Length; i++)
+            {
+                Require(environment.Find(requiredSections[i]) != null,
+                    $"Tutorial rework is missing section {requiredSections[i]}.");
+            }
+
+            Transform architecture = environment.Find("Architecture");
+            Require(
+                architecture != null &&
+                architecture.childCount == 18 &&
+                environment.Find("Architecture/Gate 01 West Pillar") != null &&
+                environment.Find("Architecture/Gate 01 East Pillar") != null &&
+                environment.Find("Architecture/Gate 01 Overhead Beam") != null &&
+                environment.Find("Wayfinding/Training Deck") != null &&
+                environment.Find("Lighting/Training Bay Light 01") != null &&
+                environment.Find(
+                    "Bay 03 - Melee/Melee Equipment Bench West") != null &&
+                environment.Find(
+                    "Bay 04 - Pistol/Pistol Range West Cover") != null &&
+                environment.Find(
+                    "Bay 05 - Throw/Throw Safety West Cover") != null &&
+                environment.Find(
+                    "Bay 06 - Deadline/Deadline Safety West Cover") != null &&
+                environment.Find("Bay 07 - Exit/Tutorial Exit Sign") != null,
+                "Tutorial rework functional landmarks are incomplete.");
+
+            Transform boundaries = environment.Find("Gameplay Boundaries");
+            Transform westWall = boundaries?.Find("West Tutorial Wall");
+            Transform eastWall = boundaries?.Find("East Tutorial Wall");
+            Transform southWall = boundaries?.Find("South Tutorial Wall");
+            Transform northWall = boundaries?.Find("North Tutorial Wall");
+            Transform[] perimeterWalls =
+            {
+                westWall,
+                eastWall,
+                southWall,
+                northWall
+            };
+            for (int wallIndex = 0;
+                wallIndex < perimeterWalls.Length;
+                wallIndex++)
+            {
+                Transform wall = perimeterWalls[wallIndex];
+                Require(wall != null &&
+                        wall.GetComponent<Collider>() != null &&
+                        wall.GetComponent<Renderer>()?.enabled == true,
+                    "Tutorial rework perimeter must contain four visible " +
+                    "VisionObstacle walls.");
+            }
+
+            int prefabCount = CountPrefabInstanceRoots(environment);
+            Require(prefabCount > 0 &&
+                    prefabCount <= TutorialReworkSyntyPrefabLimit,
+                $"Tutorial rework contains {prefabCount} Synty prefab instances; " +
+                $"the clean-layout limit is {TutorialReworkSyntyPrefabLimit}.");
+
+            Transform[] transforms = environment.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                string objectName = transforms[i].name;
+                Require(
+                    objectName.IndexOf("Display", StringComparison.OrdinalIgnoreCase) < 0 &&
+                    objectName.IndexOf("Screen", StringComparison.OrdinalIgnoreCase) < 0,
+                    $"Tutorial rework must not contain display props: {objectName}.");
+
+                if (!PrefabUtility.IsAnyPrefabInstanceRoot(
+                        transforms[i].gameObject))
+                {
+                    continue;
+                }
+
+                Collider[] colliders =
+                    transforms[i].GetComponentsInChildren<Collider>(true);
+                for (int j = 0; j < colliders.Length; j++)
+                {
+                    Require(!colliders[j].enabled,
+                        $"Tutorial rework decorative prefab collider is enabled: " +
+                        $"{transforms[i].name}/{colliders[j].name}.");
+                }
+            }
+
+            ValidateReworkedAmbientClearance(environment);
+        }
+
+        private static void ValidateReworkedAmbientClearance(
+            Transform environment)
+        {
+            WorldTimeAmbientAnchor[] anchors =
+                environment.GetComponentsInChildren<WorldTimeAmbientAnchor>(true);
+            Require(anchors.Length == 3,
+                $"Tutorial rework requires three ambient fans, found {anchors.Length}.");
+
+            Renderer[] environmentRenderers =
+                environment.GetComponentsInChildren<Renderer>(true);
+            for (int anchorIndex = 0; anchorIndex < anchors.Length; anchorIndex++)
+            {
+                Renderer[] anchorRenderers =
+                    anchors[anchorIndex].GetComponentsInChildren<Renderer>(true);
+                Require(anchorRenderers.Length > 0,
+                    $"{anchors[anchorIndex].name} has no visible renderer.");
+
+                Bounds fanBounds = anchorRenderers[0].bounds;
+                for (int rendererIndex = 1;
+                    rendererIndex < anchorRenderers.Length;
+                    rendererIndex++)
+                {
+                    fanBounds.Encapsulate(anchorRenderers[rendererIndex].bounds);
+                }
+
+                for (int rendererIndex = 0;
+                    rendererIndex < environmentRenderers.Length;
+                    rendererIndex++)
+                {
+                    Renderer other = environmentRenderers[rendererIndex];
+                    if (!other.enabled ||
+                        other.transform.IsChildOf(anchors[anchorIndex].transform) ||
+                        other.bounds.max.y <= 0.15f)
+                    {
+                        continue;
+                    }
+
+                    Require(!fanBounds.Intersects(other.bounds),
+                        $"{anchors[anchorIndex].name} overlaps {other.name}.");
+                }
+            }
+        }
+
+        private static int CountPrefabInstanceRoots(Transform root)
+        {
+            int count = 0;
+            Transform[] transforms = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                if (PrefabUtility.IsAnyPrefabInstanceRoot(transforms[i].gameObject))
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private static void ValidateTutorialGateVisual(TutorialGate gate)
@@ -2242,7 +2792,9 @@ namespace Deltatime.EditorTools
             }
         }
 
-        private static void ValidateVisionObstaclePolicy(Scene scene)
+        private static void ValidateVisionObstaclePolicy(
+            Scene scene,
+            bool useReworkedEnvironment)
         {
             GameObject environment = FindSceneRoot(scene, "Tutorial Environment");
             Require(environment != null, "Tutorial Environment root is missing.");
@@ -2258,6 +2810,36 @@ namespace Deltatime.EditorTools
 
             Require(obstacleCount >= 16,
                 $"Tutorial VisionObstacle geometry count is {obstacleCount}; expected at least 16.");
+
+            if (useReworkedEnvironment)
+            {
+                ValidateReworkedCentralLane(colliders);
+            }
+        }
+
+        private static void ValidateReworkedCentralLane(Collider[] colliders)
+        {
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider collider = colliders[i];
+                if (collider == null || !collider.enabled || collider.isTrigger ||
+                    collider.GetComponentInParent<TutorialGate>() != null ||
+                    collider.GetComponentInParent<TutorialTargetDummy>() != null ||
+                    collider.name == "Tutorial Rework Floor" ||
+                    collider.name == "South Tutorial Wall" ||
+                    collider.name == "North Tutorial Wall")
+                {
+                    continue;
+                }
+
+                Bounds bounds = collider.bounds;
+                bool crossesClearLane =
+                    bounds.min.x < TutorialReworkClearLaneHalfWidth &&
+                    bounds.max.x > -TutorialReworkClearLaneHalfWidth;
+                Require(!crossesClearLane,
+                    $"Tutorial rework collider {collider.name} intrudes into the " +
+                    $"{TutorialReworkClearLaneHalfWidth * 2f:0.0}m central lane.");
+            }
         }
 
         private static void ValidateBuildSettings()
@@ -2356,6 +2938,27 @@ namespace Deltatime.EditorTools
             T asset = AssetDatabase.LoadAssetAtPath<T>(path);
             Require(asset != null, $"Required asset is missing: {path}");
             return asset;
+        }
+
+        private static void EnsureAssetFolder(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath) ||
+                AssetDatabase.IsValidFolder(folderPath))
+            {
+                return;
+            }
+
+            string parentPath = Path.GetDirectoryName(folderPath)
+                ?.Replace('\\', '/');
+            string folderName = Path.GetFileName(folderPath);
+            Require(!string.IsNullOrEmpty(parentPath) &&
+                    !string.IsNullOrEmpty(folderName),
+                $"Could not resolve asset folder path: {folderPath}");
+            EnsureAssetFolder(parentPath);
+            string guid = AssetDatabase.CreateFolder(parentPath, folderName);
+            Require(!string.IsNullOrEmpty(guid) ||
+                    AssetDatabase.IsValidFolder(folderPath),
+                $"Failed to create asset folder: {folderPath}");
         }
 
         private static GameObject FindSceneRoot(Scene scene, string name)

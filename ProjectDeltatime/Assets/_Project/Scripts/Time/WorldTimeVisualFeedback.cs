@@ -372,6 +372,14 @@ namespace Deltatime.TimeSystem
             }
 
             screenScrollConfigured = true;
+            GameObject tutorialEnvironment =
+                GameObject.Find("Tutorial Environment");
+            if (tutorialEnvironment != null &&
+                tutorialEnvironment.transform.Find("Architecture") != null)
+            {
+                return;
+            }
+
             Shader worldTimeShader = Shader.Find(
                 TutorialScreenWorldTimeShaderName);
             if (worldTimeShader == null)

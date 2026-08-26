@@ -168,6 +168,10 @@ namespace Deltatime.EditorTools
             GameObject environmentRoot = PrepareDiveBarEnvironment(stage5);
             CurateDiveBarEnvironment(environmentRoot);
             List<GameObject> gameplayRoots = MoveStage4GameplayRoots(stage5);
+            WorldTimeAmbientSceneBuilder.ApplyStage5Anchors(
+                stage5,
+                UnityEngine.Object.FindFirstObjectByType<WorldTimeController>(),
+                environmentRoot);
             AttachDiveBarCharacters(stage5);
             ConfigureDiveBarVisualFeedback(demoCameraSettings);
             ConfigureDiveBarColliders(environmentRoot);
@@ -1944,6 +1948,7 @@ namespace Deltatime.EditorTools
             ValidateCombatIdentityRings(scene);
             ValidateVisualChildren(scene);
             ValidateBuildOrder();
+            WorldTimeAmbientSceneBuilder.ValidateScene(scene, 2);
         }
 
         private static void ValidateEnvironmentCuration(

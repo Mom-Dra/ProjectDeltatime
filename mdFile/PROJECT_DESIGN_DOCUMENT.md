@@ -6,9 +6,34 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-24 (KST) |
-| 문서 버전 | 1.10.0 |
+| 마지막 분석일 | 2026-08-26 (KST) |
+| 문서 버전 | 1.10.4 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 캐릭터 회전·근접 공격·투척은 플레이어 현재 높이의 수평 조준을 유지하고, 플레이어·적 총기는 총구에서 실제 클릭 Collider 접점 또는 적 대상의 실제 높이까지 3D 직선 투사체를 발사한다. 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기도 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+
+### 1.0.9 2026-08-26 Tutorial Rework 외벽·전광판·환풍기 간격 보정
+
+- 후보 씬의 연속 벽 Collider/Renderer와 같은 위치에 겹치던 Synty 측면·끝 벽 모듈과 상부 트림을 모두 제거했다. 외곽은 `Gameplay Boundaries`의 단일 서·동·남·북 벽만 사용하고 `Architecture`에는 6개 게이트의 좌우 기둥과 상부 빔 18개만 남긴다. 벽 장착 조명 프리팹도 제거하고 구역 중앙의 균일한 Point Light만 유지한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialRework/Tutorial.unity`.
+- 후보의 게이트 상태 전광판 6개와 시간 구역 제어 전광판 2개를 제거했다. 정적 검증은 후보 환경에 이름 기준 `Display`·`Screen` 오브젝트가 하나라도 있거나 `Architecture` 직접 하위가 게이트 프레임 18개를 벗어나면 실패한다. `WorldTimeVisualFeedback`는 후보의 `Architecture` 계층을 식별해 전광판 스크롤 설정을 생략하고, 공식 Tutorial에서는 기존 6개 전광판 검증·스크롤을 유지한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`.
+- 후보 전용 환풍기 좌표를 `(-5.25, 0, -31.5)`, `(5.25, 0, 19)`, `(-5.25, 0, 39)`로 분리해 게이트·엄폐물·적과 거리를 확보했다. 후보 빌드·검증은 공식 좌표와 별개의 프로필을 사용하며, 각 환풍기 Renderer Bounds가 바닥 표시를 제외한 다른 환경 Renderer와 교차하면 실패한다. Unity 생성·정적 검증, 후보 전체 PlayMode 스모크와 남부·중부·북부 768px 재캡처가 통과했고 세 프리뷰에서 이중 외벽·전광판·프롭 교차가 없는 것을 직접 확인했다. **구현 완료** 검증이며, 사용자 최종 플레이 승인은 **확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/WorldTimeAmbientSceneBuilder.cs`, `ProjectDeltatime/TutorialReworkBuild.log`, `ProjectDeltatime/TutorialReworkSmoke.log`, `ProjectDeltatime/TutorialReworkPreview.log`.
+
+### 1.0.8 2026-08-26 Tutorial Rework 후보 씬
+
+- 공식 `Assets/_Project/Scenes/Tutorial.unity`, MainScene 진입 대상과 Build Settings는 유지하면서 `Assets/_Project/Scenes/TutorialRework/Tutorial.unity`에 별도 후보를 생성했다. 파일명은 `Tutorial.unity`로 유지해 씬 이름 기반 BGM·월드 시간 연출을 공유하며, `TutorialDirector`의 7단계 정의와 게이트·표적·지급기·적·트리거 gameplay anchor 좌표를 변경하지 않는다. 후보는 전용 `TutorialNavigation.asset`을 사용하고 라이브/후보 프로필을 공유하는 빌드·정적 검증·768px 3구간 캡처·씬 경로 지정 PlayMode 스모크 진입점을 제공한다. **부분 구현**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialRework/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialRework/TutorialNavigation.asset`.
+- 후보 환경은 `Architecture`, `Wayfinding`, `Lighting`, `Gameplay Boundaries`, `Bay 01`~`Bay 07`, `World Time Ambient Anchors`로 구획했다. 폭 14m·길이 97m의 청회색 산업형 공간에 청록 진행선, 균일한 상부 조명, 철창 게이트와 한글 바닥 표지, 세 환풍기를 유지한다. 기능을 설명하는 벽 정렬·좌우 대칭 프롭만 사용하고 중앙 `|x| < 3.4m`에는 필수 게이트·동적 적 외 정적 Collider를 두지 않으며, 장식 프리팹 Collider는 끄고 필요한 안전 경계만 Layer 8 `VisionObstacle`로 둔다. Synty 프리팹은 120개 이하 정책이다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/TutorialRework/Tutorial.unity`.
+- Unity 6000.1.13f1 후보 생성·컴파일·정적 검증과 전체 PlayMode 스모크가 통과했다. 남부·중부·북부 768px 프리뷰를 생성해 표지·표적·지급기·적의 가시성, 중앙 동선과 프롭 정렬을 직접 확인했다. 실제 사용자의 처음부터 끝까지 플레이와 최종 시각 승인은 **확인 불가**이며, 공식 씬 승격은 승인 후 **계획 필요**다. 근거: `ProjectDeltatime/TutorialReworkBuild.log`, `ProjectDeltatime/TutorialReworkSmoke.log`, `ProjectDeltatime/TutorialReworkPreview.log`, `ProjectDeltatime/Logs/Validation/TutorialReworkCaptures`.
+
+### 1.0.7 2026-08-26 환풍기 날개 리플레이 보정
+
+- `ReplayExcluded` 정적 환경 안에서도 특정 동적 하위 계층을 기록할 수 있는 공개 마커 `ReplayIncluded`를 추가했다. Renderer에서 부모 방향으로 가장 가까운 포함/제외 마커가 우선하고, 같은 Transform에 둘 다 있으면 포함이 우선한다. `StageReplayController`의 후보 판정과 `TrackedExcludedVisualCount` 진단이 이 정책을 함께 사용한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayIncluded.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/ReplayExcluded.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Replay/StageReplayController.cs`.
+- 환풍기 루트의 `ReplayExcluded`는 정적 외함을 라이브 상태로 유지하며, 분리된 날개 Transform에만 `ReplayIncluded`를 둔다. 날개 위치·회전은 캐릭터·투사체와 같은 기존 정규화 리플레이 시간축의 Renderer 프록시로 기록·재생하고 라이브 날개 Renderer는 리플레이 중 숨긴다. `DisableLiveSimulation`은 `WorldTimeAmbientAnchor`를 계속 비활성화하므로 3D 환경음은 `OnDisable`에서 즉시 정지한다. 원본 Synty 에셋, Collider 비활성, 배치 위치·수량과 오디오 수치는 변경하지 않았다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Prefabs/Time/WorldTimeAmbientFan.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeAmbientAnchor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WorldTimeAmbientSceneBuilder.cs`.
+- Unity 컴파일·멱등형 씬 적용/정적 검증, EditMode 25/25, `WorldTimeContractTests` PlayMode 3/3, 리플레이 시간축·SoundManager·DEADLINE 스모크가 통과했다. Stage2 전용 리플레이 스모크에서는 두 환풍기의 외함 제외·날개 포함, 라이브 날개 숨김, 프록시 활성, 환경음 정지를 확인했고 서로 다른 두 재생 시점 사이 프록시 날개가 71.960도 진행했다. 두 캡처에서 팬 가시성을 확인했다. **구현 완료** 검증이다. 기존 범용 Stage2 Replay 스모크는 이 기능 검사 전에 애니메이터 컨트롤러 변경 이벤트 기대값 2/실제값 1이라는 별도 기준선에서 실패했으며, 실제 사용자 조작 리플레이 확인은 **확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/WorldTimeAmbientReplayPlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/CoreBehaviorTests.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/WorldTimeContractTests.cs`, `ProjectDeltatime/WorldTimeAmbientReplayFocusedSmoke2.log`.
+
+### 1.0.6 2026-08-25 월드 시간 환경 기준점 연출
+
+- 현재 공식 진행 맵인 Tutorial·Stage1·Stage2·Stage5에 Synty `SM_Bld_Roof_Fan_01`을 감싼 프로젝트 전용 환풍기를 각각 3·2·2·2개 배치했다. 날개만 초당 240도를 기준으로 `WorldDeltaTime`만큼 회전하고 모든 Collider를 비활성화했으며, 정적 외함은 `ReplayExcluded`, 날개는 `ReplayIncluded` 정책을 사용한다. 전체 씬 재생성 없이 전용 `World Time Ambient Anchors` 루트만 바꾸는 멱등형 적용 메뉴와 각 전체 씬 빌더 연결도 포함한다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeAmbientAnchor.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/Time/WorldTimeAmbientFan.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WorldTimeAmbientSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`.
+- 환경 루프는 Pixabay 산업용 팬 MP3를 48kHz 모노 OGG로 가공한 약 26.966초 에셋이다. 0.25초 equal-power 끝점 크로스페이드와 -3dBFS 피크를 적용했고 Unity의 추가 모노 변환·정규화는 끈다. 3D `AudioSource`는 Doppler 0, 최소 2.5m, 최대 18m이며 환경음 하나에만 로우패스를 적용한다. 일반 상태의 반응값 `s`는 `CurrentTimeScale`, 하드 프리즈는 0이고 비스케일 0.15초 동안 전환한다. 피치는 `lerp(0.45, 1, sqrt(s))`, 로우패스는 `lerp(500, 16000, s)`, 출력은 `0.22 × sqrt(s) × Master × SFX`다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Audio/SFX/Ambience/SFX_WorldTime_IndustrialFan_Loop.ogg`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Ambience/README.md`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`.
+- `DEADLINE`에서는 기존 화면 효과·단발 진입/해제음·BGM 덕킹을 유지하면서 환풍기 루프만 0.15초 안에 먹먹해진 뒤 무음이 되고, 해제 후 현재 배율로 복원된다. 리플레이가 라이브 시뮬레이션을 비활성화하면 `OnDisable`에서 루프를 즉시 정지한다. **구현 완료**. `CoreBehaviorTests` EditMode 24/24와 `WorldTimeContractTests` PlayMode 2/2, SoundManager 및 현재 진행 맵 대상 DEADLINE 시각 스모크가 통과했다. 정적 적용·검증은 네 씬의 수량·위치·참조·모노 클립·3D 설정·Collider 비활성·ReplayExcluded를 통과했고, 네 근접 캡처에서 팬 식별성을 확인했다.
+- 전체 기존 회귀는 **부분 구현** 검증 상태다. Tutorial 스모크는 기존 Synty 수 216/262, Prototype 스모크는 기존 투척 수치·6m 착지·리플레이 본 포즈 3건, Stage5 스모크는 기존 픽업 수 1/2에서 실패했다. 새 앵커 관련 오류는 보고되지 않았다. 실제 스피커·헤드폰에서 `정지 → 이동 → DEADLINE → 해제` 순서의 먹먹함·음량·공간감과 플레이어가 직접 통과하는 동선은 **확인 불가**다. 근거: `ProjectDeltatime/WorldTimeAmbientBuild.log`, `ProjectDeltatime/WorldTimeAmbientEditMode.log`, `ProjectDeltatime/WorldTimeAmbientPlayMode.log`, `ProjectDeltatime/WorldTimeAmbientSoundSmoke.log`, `ProjectDeltatime/WorldTimeAmbientDeadlineSmoke.log`, `ProjectDeltatime/WorldTimeAmbientCapture.log`.
 
 ### 1.0.5 2026-08-24 MainScene 가로형 로고·메뉴·설정 리디자인
 
@@ -281,6 +306,8 @@ stateDiagram-v2
 
 `TutorialDirector`는 `TimeMovement → AimAndDash → Melee → Pistol → ThrowAndRecover → DeadlineApproach → Deadline → Complete` 순으로 7개 학습 단계를 관리한다. 이동/정지에 따른 시간 배율, 조준 회전·대시, E 근접 픽업·LMB 표적 적중, Pistol 사격, RMB 투척으로 적 기절·무장 해제·드롭·E 회수, 4인 포위전에서 Q와 2개 행동 준비·이동 해제를 실제 결과로 확인한다. 성공 시 약 2초 뒤 Stage1을 로드하고, DEADLINE 포위전 사망은 체크포인트 복구 경로를 사용한다. 근거: `TutorialDirector.cs`, `TutorialGate.cs`, `TutorialWeaponDispenser.cs`, `TutorialPlayModeSmokeTest.cs`, `Tutorial.unity`.
 
+별도 후보 `Assets/_Project/Scenes/TutorialRework/Tutorial.unity`는 같은 진행 계약과 좌표를 유지하되 Stage1의 플레이어·카메라·게임 시스템을 기반으로 환경만 다시 구성한다. 7개 Bay, 기능 중심의 대칭 배치, 중앙 6.8m 무장식 Collider 동선, 명시적 Layer 8 안전 경계를 적용했으며 전용 NavMesh·빌드·검증·캡처 경로가 있다. 자동 검증은 통과했지만 공식 `Tutorial.unity`, MainScene과 Build Settings에는 아직 연결하지 않았으므로 **부분 구현**이며, 사용자 플레이·시각 승인과 공식 승격은 **확인 불가/계획 필요**다. 근거: `TutorialSceneBuilder.cs`, `TutorialPlayModeSmokeTest.cs`, `Assets/_Project/Scenes/TutorialRework/Tutorial.unity`.
+
 #### 14) 스테이지 구조
 
 | 구분 | 저장된 현재 파일 | 현재 경로/빌드 | 확인 결과 |
@@ -512,6 +539,7 @@ flowchart TD
 | 마우스 조준 | 구현 완료 | `AimPoint`는 플레이어 현재 Y 수평 평면으로 캐릭터 yaw·근접·투척을 갱신한다. 총기용 `FireAimPoint`는 포인터 Ray의 가장 가까운 visible 비트리거 접점 중 적·벽의 실제 3D 접점을 사용한다. 수평 바닥·천장과 유효 Collider 없는 클릭은 X/Z만 유지하며, `GetFireDirectionFrom(총구)`가 실제 총구 Y로 목표를 보정해 수평 발사한다. 플레이어 자신과 `ShadowsOnly` 전경은 제외한다 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerAim.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage5PlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Tests/PlayMode/ElevationFireAimTests.cs` | Stage5 컷어웨이 Collider와 Layer 8 `VisionObstacle`은 물리·시야용으로 보존. 수동 마우스 조작 체감은 확인 불가 |
 | 대시 | 구현 완료 | 이동 방향으로 최대 3.5 거리, 0.03 스킨의 축소 캡슐 캐스트, 대시 중 무적, 0.8초 쿨다운 | `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerDash.cs` | 벽 0.01 겹침 시작 회귀 검사 포함 스모크 통과 |
 | 행동량 기반 월드 시간 | 구현 완료 | 이동·조준 회전·행동 펄스를 합산해 월드 배율을 0.02~1.0으로 보간하며, 데드라인 전용 하드 프리즈 토큰은 조준 회전 중에만 최저 배율을 허용 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs` | 전역 `Time.timeScale`은 변경하지 않음 |
+| 월드 시간 환경 기준점 | 구현 완료 | Tutorial 3개, Stage1·Stage2·Stage5 각 2개의 외곽 환풍기가 `WorldDeltaTime`으로 날개를 회전하고, 전용 3D 루프의 피치·500~16,000Hz 로우패스·볼륨으로 현재 시간 배율을 들려준다 | `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeAmbientAnchor.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/Time/WorldTimeAmbientFan.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/WorldTimeAmbientSceneBuilder.cs` | Collider 비활성. 정적 외함은 `ReplayExcluded`, 날개는 `ReplayIncluded` 프록시로 정규화 리플레이에 기록하며 환경음은 리플레이에서 정지. 하드 프리즈 0.15초 무음과 해제 복원 자동 검증 통과, 실제 청감은 확인 불가 |
 | `DEADLINE` | 구현 완료 | `Q` 키 Down 프레임에 탄환·이동 상태와 무관하게 하드 프리즈하고, 마우스 정지 시 0배·회전 시 최저 배율로 전환한다. 씬당 최대 2회 발동하며 사격·근접 공격·투척 중 최대 2개 행동을 준비해 이동 입력으로 해제한다 | `ProjectDeltatime/Assets/_Project/Input/PlayerControls.inputactions`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerCombat.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialPlayModeSmokeTest.cs` | 성공 발동에서만 충전 차감, 씬 재로드 시 회복, 리플레이 중 회복 없음. Tutorial 스모크가 Q 바인딩·발동·2개 제한·이동 해제를 검증. 실제 사람 조작 감각은 확인 불가 |
 | `DEADLINE` 시각 피드백 | 구현 완료 | 라이브 플레이 카메라에 런타임 연결되는 Built-in 풀스크린 효과가 0.14초 진입 링, 저채도·청록 틴트·비네트·노이즈 유지, 행동 노드 2개와 초과 거절 점멸, 0.24초 정상 해제 복원파를 비스케일 시간으로 표시한다 | `ProjectDeltatime/Assets/_Project/Scripts/Time/DeadlineVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Resources/Shaders/DeadlineScreenEffect.shader`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/DeadlineVisualFeedbackPlayModeSmokeTest.cs` | 비정상 중단은 즉시 초기화하고 리플레이에서는 비활성화. 배치 컴파일·전용 PlayMode 스모크 통과, 밝은/어두운 환경의 수동 가독성은 확인 불가 |
 | 핵심 규칙 Tutorial | 구현 완료 | 실제 결과 기반 7단계 게이트로 이동/시간, 조준/대시, 근접/Pistol, 투척 기절·무장 해제·드롭/회복, 4인 `DEADLINE` 포위 탈출을 진행하고 Stage1로 전환 | `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scripts/Tutorial`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs` | 정적 빌드/PlayMode 스모크 통과. 실제 신규 사용자 난이도·문구 가독성은 확인 불가 |
@@ -648,10 +676,11 @@ flowchart TD
 - **시스템 목적:** 플레이어 행동량에 따라 월드 진행 속도를 조절하고, 임박한 피격 순간에 원인들을 준비할 수 있는 하드 프리즈를 제공한다.
 - **현재 동작 방식:** **구현 완료**. 활동량을 0~1로 합산해 0.02~1.0 배율을 보간한다. `DEADLINE`은 플레이어가 살아 있고 전투가 활성화됐으며 충전·재사용 대기 조건을 만족할 때 `Q` 키 Down 프레임에 회전 허용 토큰 기반 하드 프리즈를 획득한다. 탄환 존재·충돌 예측·플레이어 이동·입력 해제는 발동 조건에 포함하지 않는다. 성공 발동 직후 씬당 최대 2회 충전 중 1회를 차감하며, 충전 0에서는 Q 안내를 만들지 않는다. 충전은 씬 `Awake`에서 초기화되고 리플레이의 비활성화/재활성화로는 회복하지 않는다. 데드라인 중 `WorldTimeActivity.AimTurn`이 0.0001보다 크면 `WorldTimeController.minimumTimeScale`로 월드 전체가 진행하고, 마우스 정지 시 `CurrentTimeScale`과 `WorldDeltaTime`은 0으로 돌아간다. 일반 하드 프리즈 또는 0.2초 공중 가로채기 프리즈가 겹치면 완전 정지가 우선한다. Tutorial은 실패 재시도 때만 비활성 상태에서 충전과 준비 상태를 복구한다.
 - **시각 피드백:** **구현 완료**. 라이브 플레이의 게임플레이 카메라에 `DeadlineVisualFeedback`을 런타임 연결하고 `DeadlineController.Activated`·`Released`에 반응한다. 진입·유지·정상 해제 전환과 행동 노드는 비스케일 시간으로 진행하며, 비정상 중단과 리플레이 진입은 즉시 초기화한다. 후처리 중에는 기존 월드 시간 암전 오버레이를 억제하고 HUD는 후처리 대상에서 제외한다.
-- **주요 클래스:** `WorldTimeActivity`, `WorldTimeController`, `WorldTimeVisualFeedback`, `DeadlineVisualFeedback`, `PlayerMovement`, `DeadlineController`
+- **환경 기준점:** **구현 완료**. Tutorial·Stage1·Stage2·Stage5의 회전 팬은 `WorldDeltaTime`을 직접 사용해 전역 `Time.timeScale`과 독립적으로 움직인다. 전용 환경 루프만 현재 월드 배율에 따라 낮은 피치·로우패스·낮은 음량으로 변하고 하드 프리즈에서 비스케일 0.15초 안에 무음이 된다. 리플레이 진입으로 컴포넌트가 비활성화되면 루프를 즉시 정지한다.
+- **주요 클래스:** `WorldTimeActivity`, `WorldTimeController`, `WorldTimeVisualFeedback`, `WorldTimeAmbientAnchor`, `DeadlineVisualFeedback`, `PlayerMovement`, `DeadlineController`
 - **데이터 흐름:** 이동/조준/행동 펄스 → 목표 월드 배율 → `WorldDeltaTime` → 적·투사체·투척/드롭 무기. Q 입력 → `PlayerInputReader.DeadlinePressed` → `DeadlineController` → 회전 허용 하드 프리즈 토큰 및 `Activated` 이벤트 → `DeadlineVisualFeedback` 진입/유지·행동 노드 → 이동 해제와 `Released` 이벤트 → 복원파 또는 비정상 중단 즉시 초기화
 - **다른 시스템과의 의존성:** 입력, 플레이어 Rigidbody 이동, 체력, 플레이어 전투, 투사체 정적 레지스트리, 게임플레이 카메라, Built-in 이미지 효과, HUD, 리플레이 라이브 시뮬레이션 비활성화
-- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/DeadlineVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Resources/Shaders/DeadlineScreenEffect.shader`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`
+- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeAmbientAnchor.cs`, `ProjectDeltatime/Assets/_Project/Prefabs/Time/WorldTimeAmbientFan.prefab`, `ProjectDeltatime/Assets/_Project/Scripts/Time/DeadlineVisualFeedback.cs`, `ProjectDeltatime/Assets/_Project/Resources/Shaders/DeadlineScreenEffect.shader`, `ProjectDeltatime/Assets/_Project/Scripts/Player/PlayerMovement.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/Projectile.cs`
 - **개선이 필요한 부분:** 전용 PlayMode 스모크가 정상 발동·행동 두 개 제한·초과 거절·정상 해제·비정상 중단·다중 씬 연결·리플레이 비활성화를 검증한다. 쿨다운·충전 소진과 Stage1·Stage5·Stage6의 실제 밝기·조준·적 식별·HUD 가독성은 사람 눈 기반 추가 확인이 필요하다.
 
 ### 5.4 전투
@@ -779,13 +808,13 @@ flowchart TD
 
 ### 5.16 사운드
 
-- **시스템 목적:** **구현 완료**. 씬 전환과 핵심 행동에 청각 피드백을 제공하고 `DEADLINE` 중 BGM을 덕킹한다.
-- **현재 동작 방식:** 영속 `SoundManager`가 씬 이름으로 Main/Tutorial/Stage/Ending BGM을 선택하고 크로스페이드한다. 기본 BGM 출력은 비스테이지 `0.55`, Stage BGM `0.35`이며, `DEADLINE` 중에는 `0.4` 배율을 적용한다. 무기 발사, 주먹·방망이 적중/스윙, 투척, UI 클릭, `DEADLINE` 진입·시간 왜곡·해제 이벤트가 `SoundLibrary` 클립을 재생한다.
-- **주요 클래스:** `SoundManager`, `SoundLibrary`, `WeaponController`, `MeleeAttackExecution`, `DeadlineController`
-- **데이터 흐름:** 씬/전투/시간 이벤트 → `SoundManager` 재생 API → `DeltatimeSoundLibrary.asset`의 BGM·SFX 클립 → 영속 AudioSource. 오디오 믹서·사용자 볼륨 설정·리플레이의 별도 음향 정책은 현재 확인하지 못했다.
+- **시스템 목적:** **구현 완료**. 씬 전환과 핵심 행동에 청각 피드백을 제공하고, 월드 시간의 흐름을 3D 환경음으로 전달하며 `DEADLINE` 중 BGM을 덕킹한다.
+- **현재 동작 방식:** 영속 `SoundManager`가 씬 이름으로 Main/Tutorial/Stage/Ending BGM을 선택하고 크로스페이드한다. 기본 BGM 출력은 비스테이지 `0.55`, Stage BGM `0.35`이며, `DEADLINE` 중에는 `0.4` 배율을 적용한다. 무기 발사, 주먹·방망이 적중/스윙, 투척, UI 클릭, `DEADLINE` 진입·시간 왜곡·해제 이벤트가 `SoundLibrary` 클립을 재생한다. 별도로 현재 진행 맵의 `WorldTimeAmbientAnchor`가 산업용 팬 루프를 3D 재생하고 `CurrentTimeScale`에 따라 피치·로우패스·볼륨을 바꾼다. Master·BGM·SFX 사용자 설정 중 환경음에는 Master·SFX만 곱하며, 다른 오디오에는 이 로우패스를 적용하지 않는다.
+- **주요 클래스:** `SoundManager`, `SoundLibrary`, `WorldTimeAmbientAnchor`, `WeaponController`, `MeleeAttackExecution`, `DeadlineController`
+- **데이터 흐름:** 씬/전투/시간 이벤트 → `SoundManager` 재생 API → `DeltatimeSoundLibrary.asset`의 BGM·SFX 클립 → 영속 AudioSource. 월드 배율/하드 프리즈 → `WorldTimeAmbientAnchor` → 프로젝트 전용 3D AudioSource·AudioLowPassFilter. 저장된 Master/BGM/SFX 값은 해당 채널의 최종 출력 배율에 곱한다.
 - **다른 시스템과의 의존성:** 씬 전환, 사격, 근접 공격, 투척, UI, `DEADLINE`, 영속 시간축
-- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/SoundManagerStageBgmSmoke.log`
-- **개선이 필요한 부분:** 실제 Game View의 청감·공간감·클립별 밸런스는 **확인 불가**다. AudioMixer/사용자 음량 설정이 필요하면 별도 기획이 필요하다.
+- **근거 파일:** `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundManager.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Audio/SoundLibrary.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeAmbientAnchor.cs`, `ProjectDeltatime/Assets/_Project/Audio/SFX/Ambience/README.md`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/WeaponController.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Combat/MeleeAttackExecution.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Player/DeadlineController.cs`, `ProjectDeltatime/Assets/_Project/Resources/DeltatimeSoundLibrary.asset`, `ProjectDeltatime/WorldTimeAmbientSoundSmoke.log`
+- **개선이 필요한 부분:** 실제 Game View의 청감·공간감·클립별 밸런스와 `정지 → 이동 → DEADLINE → 해제` 전환 체감은 **확인 불가**다. 현재 사용자 볼륨은 코드 기반 배율이며, AudioMixer 도입은 별도 기획 대상이다.
 
 ## 6. 씬 및 콘텐츠 구조
 
@@ -1058,11 +1087,12 @@ flowchart TD
 | `EnemyShooter` | 자동소총 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
 | `EnemyChaser` | 근접 무기 시작 적을 표시하는 `EnemyCombatant` 래퍼 |
 | `StageController` | 적 생존 집합과 스테이지 상태 |
-| `StageReplayController` | 세 시간축·프레젠테이션 매핑, 카메라/일반 렌더러/라인/조명 샘플, Animator actor 트랙, 기록 예산·통계와 프록시 재생을 조정. `ReplayExcluded` 부모 아래 정적 렌더러는 제외 |
+| `StageReplayController` | 세 시간축·프레젠테이션 매핑, 카메라/일반 렌더러/라인/조명 샘플, Animator actor 트랙, 기록 예산·통계와 프록시 재생을 조정. 부모 방향의 가장 가까운 `ReplayIncluded`/`ReplayExcluded` 정책으로 동적 하위 계층을 재포함 가능 |
 | `ReplayAnimationTrack` | 캐릭터 시각 루트 1회 복제, Animator 파라미터/Trigger/Controller/활성 이벤트, actor Transform·외형과 레이어 체크포인트 기록, 정상속도 수동 Animator 재생 |
 | `ReplayAnimatorProxyRegistry` | 프레젠테이션 전용 Animator를 식별해 StateMachineBehaviour의 게임플레이 콜백을 차단 |
 | `ReplayMemoryStatistics` / `ReplayRecordingBudget` | 본 포즈 0건을 포함한 allocation-free payload 통계와 300초/64MiB 명시적 중단 정책 |
 | `ReplayExcluded` | 리플레이 프록시로 복제하지 않을 정적 환경 루트를 표시 |
+| `ReplayIncluded` | 제외 계층 내부에서 특정 동적 하위 계층을 리플레이 프록시 기록 대상으로 다시 포함 |
 | `CharacterVisualController` | Synty 시각 자식의 렌더러 가시성·런타임 피격/기절 색을 게임플레이 루트와 동기화 |
 | `VisionCone` | 시야 메시, 가시성 판정, 런타임 시야 조명 |
 | `TopDownCameraController` | 플레이어·조준 선행 추적과 씬별 포커스 오프셋 적용. 선택형 경계 제한은 현재 카메라 종횡비·FOV·각도에서 지면 viewport 범위를 계산해 XZ 포커스를 제한 |
@@ -1154,7 +1184,7 @@ Unity 버전: `6000.1.13f1`
 - 적의 실제 이동량과 상태 타이머는 `WorldDeltaTime`을 사용해야 하며, NavMesh는 경로만 제공하고 Transform을 자동 이동시키지 않는다.
 - 신규 가시성 장애물은 Layer 8 `VisionObstacle`에 배치해야 시야 메시와 공중 드롭 충돌 예측에 반영된다.
 - 새 런타임 조명은 리플레이에 보여야 한다면 `StageReplayController.RegisterLight`로 등록해야 한다.
-- 새 렌더러 타입은 일반 `MeshRenderer`/`LineRenderer` 트랙인지 캐릭터 `ReplayAnimationTrack`의 시각 루트인지 구분해야 한다. `SkinnedMeshRenderer`는 독립 본 포즈 트랙을 만들지 않으므로 반드시 `CharacterAnimationController`의 script-free `VisualRoot` 아래 Animator 프록시로 등록하거나 명시적인 replay visual prefab 정책을 추가해야 한다. 한 캡처 간격보다 짧은 단일 VFX는 생성 완료 시 `StageReplayController.RegisterRenderer`, 여러 자식 렌더러를 가진 런타임 객체는 `RegisterRendererHierarchy`로 즉시 등록하고, 정적 환경은 `ReplayExcluded`로 표시할지 검토한다.
+- 새 렌더러 타입은 일반 `MeshRenderer`/`LineRenderer` 트랙인지 캐릭터 `ReplayAnimationTrack`의 시각 루트인지 구분해야 한다. `SkinnedMeshRenderer`는 독립 본 포즈 트랙을 만들지 않으므로 반드시 `CharacterAnimationController`의 script-free `VisualRoot` 아래 Animator 프록시로 등록하거나 명시적인 replay visual prefab 정책을 추가해야 한다. 한 캡처 간격보다 짧은 단일 VFX는 생성 완료 시 `StageReplayController.RegisterRenderer`, 여러 자식 렌더러를 가진 런타임 객체는 `RegisterRendererHierarchy`로 즉시 등록한다. 정적 환경은 `ReplayExcluded`로 표시할지 검토하고, 그 안의 회전부처럼 기록해야 하는 동적 하위 계층만 더 가까운 `ReplayIncluded`로 재포함한다.
 - 리플레이 시각 요소는 라이브 렌더러의 기록된 가시성만 사용한다. 제한 시야 밖 적·경고선·일반 이펙트는 강제 표시하지 않는다.
 - 새 무기는 `WeaponDefinition`만 추가하는 것으로 끝나지 않고 투사체/투척 프리팹과 HUD 표현 호환성을 검토해야 한다.
 
@@ -1377,7 +1407,7 @@ Unity 버전: `6000.1.13f1`
 11. 무기 종류, 재장전, 탄약 공급, 드롭 확률은 어떻게 확장할 예정인가?
 12. 점수, 등급, 성장, 보상, 저장, 퀘스트가 제품 범위에 포함되는가?
 13. 목표 플랫폼과 지원 입력 장치는 무엇인가?
-14. 현재 BGM·전투·DEADLINE 음향은 실제 시간으로 유지한다. 향후 환경음·적 이동음을 추가할 때 월드 시간에 맞춘 피치 변조를 적용할 것인가?
+14. 현재 BGM·전투·UI·DEADLINE 단발음은 실제 시간으로 유지하고 환풍기 환경음만 월드 시간에 맞춘 피치·로우패스를 적용한다. 향후 적 이동음이나 다른 환경 루프에도 같은 정책을 확장할 것인가?
 15. `PrototypeSceneBuilder` 재생성을 콘텐츠 제작의 공식 워크플로로 유지할 것인가?
 16. 현재 `feature/EnemyAI`의 공통 적 전투·근접 무기 미커밋/미추적 변경을 어떤 단위로 확정할 것인가?
 17. CI와 자동 테스트의 필수 통과 기준은 무엇인가?
@@ -1386,6 +1416,10 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-26 | 1.10.4 | Tutorial Rework의 중복 외벽 모듈·전광판·벽 장식을 제거하고 후보 전용 환풍기 좌표와 Renderer Bounds 비중첩 검증을 반영 | Tutorial 후보 환경, WorldTimeVisualFeedback, 환풍기 배치, 정적·PlayMode·캡처 검증 |
+| 2026-08-26 | 1.10.3 | 기존 진행 계약을 유지한 Tutorial Rework 후보 씬, 전용 NavMesh, 프로필 기반 빌드·정적/PlayMode·3구간 시각 검증과 공식 전환 보류 상태를 반영 | Tutorial 후보 환경, Wayfinding, VisionObstacle, NavMesh, 씬 빌더·스모크·캡처 |
+| 2026-08-26 | 1.10.2 | `ReplayExcluded` 정적 환풍기 외함 안의 날개만 `ReplayIncluded`로 다시 기록해 정규화 리플레이 프록시 회전을 재현하고 환경음 정지 정책과 자동·캡처 검증을 반영 | ReplayIncluded, 환풍기 날개, Renderer 프록시, 3D 환경음, 씬 빌더·테스트·캡처 |
+| 2026-08-25 | 1.10.1 | 진행 맵에 `WorldDeltaTime` 회전 환풍기와 시간 배율 반응형 3D 산업용 팬 루프를 배치하고, `DEADLINE` 0.15초 무음·리플레이 정지·전용 씬 적용/검증 경로와 테스트를 반영 | 월드 시간, 환경 기준점, 3D 오디오, DEADLINE, Replay, 씬 빌더·테스트·캡처 |
 | 2026-08-24 | 1.10.0 | MainScene을 별도 가로형 로고·오른쪽 전투 배경·4버튼 메뉴로 교체하고 그래픽/전체 키/3채널 오디오 설정, 영문 Credits, 동적 HUD·Ending 키 안내와 자동 검증을 추가 | MainScene, 설정 저장, Input System, SoundManager, HUD·Tutorial·EndingScene, 빌더·스모크·캡처 |
 | 2026-08-18 | 1.9.6 | 수평 바닥·천장 및 Collider 없음 조준의 목표 Y를 플레이어 루트가 아닌 실제 총구 Y로 보정해 총구 높이 차에서도 수평 발사를 보장 | PlayerAim, 총기 조준, PlayMode 회귀 테스트 |
 | 2026-08-18 | 1.9.5 | 적·벽의 고저차 3D 조준은 유지하되, 수평 바닥·천장 클릭은 X/Z를 보존해 플레이어 조준 높이로 보정하도록 변경 | PlayerAim, 총기 조준, PlayMode 회귀 테스트 |

@@ -207,6 +207,9 @@ namespace Deltatime.EditorTools
                 wallMaterial,
                 coverMaterial,
                 accentMaterial);
+            WorldTimeAmbientSceneBuilder.ApplyPrototypeAnchors(
+                scene,
+                worldTime);
             CreateNavigationSurface();
 
             PlayerBundle player = CreatePlayer(
@@ -648,11 +651,13 @@ namespace Deltatime.EditorTools
                 Stage1ScenePath,
                 OpenSceneMode.Single);
             ValidateScene(stage1, Stage1DeadlineCharges);
+            WorldTimeAmbientSceneBuilder.ValidateScene(stage1, 2);
 
             Scene stage2 = EditorSceneManager.OpenScene(
                 Stage2ScenePath,
                 OpenSceneMode.Single);
             ValidateScene(stage2, Stage2DeadlineCharges);
+            WorldTimeAmbientSceneBuilder.ValidateScene(stage2, 2);
             Debug.Log("Stage1 and Stage2 validation passed.");
         }
 

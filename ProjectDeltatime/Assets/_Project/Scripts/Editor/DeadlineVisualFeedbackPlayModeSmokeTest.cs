@@ -27,8 +27,7 @@ namespace Deltatime.EditorTools
         {
             "Tutorial",
             "Stage2",
-            "Stage5",
-            "Stage6"
+            "Stage5"
         };
 
         private static readonly MethodInfo ActivateDeadline =

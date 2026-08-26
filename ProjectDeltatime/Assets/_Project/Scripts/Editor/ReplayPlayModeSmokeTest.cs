@@ -37,6 +37,7 @@ namespace Deltatime.EditorTools
         private static bool replayValidated;
         private static bool observedSourceAdvance;
         private static bool observedAftermathRecoveryAdvance;
+        private static bool observedAmbientRotorAdvance;
         private static float previousPlaybackElapsed = -1f;
         private static float previousSourceTimestamp = -1f;
         private static float previousCameraRecoveryBlend = -1f;
@@ -47,6 +48,10 @@ namespace Deltatime.EditorTools
         private static MethodInfo releaseDeadline;
         private static Animator originalAnimator;
         private static CharacterAnimationController animationSource;
+        private static WorldTimeAmbientAnchor ambientAnchor;
+        private static Renderer ambientRotorSource;
+        private static Renderer ambientRotorProxy;
+        private static Quaternion previousAmbientRotorRotation;
         private static int legacyBoneTransformsPerFrame;
         private static int trackedVisualsBeforeEquipment;
 
@@ -120,6 +125,7 @@ namespace Deltatime.EditorTools
             replayValidated = false;
             observedSourceAdvance = false;
             observedAftermathRecoveryAdvance = false;
+            observedAmbientRotorAdvance = false;
             previousPlaybackElapsed = -1f;
             previousSourceTimestamp = -1f;
             previousCameraRecoveryBlend = -1f;
@@ -130,6 +136,10 @@ namespace Deltatime.EditorTools
             releaseDeadline = null;
             originalAnimator = null;
             animationSource = null;
+            ambientAnchor = null;
+            ambientRotorSource = null;
+            ambientRotorProxy = null;
+            previousAmbientRotorRotation = Quaternion.identity;
             legacyBoneTransformsPerFrame = 0;
             trackedVisualsBeforeEquipment = 0;
         }
@@ -228,6 +238,7 @@ namespace Deltatime.EditorTools
                 if (replayValidated)
                 {
                     ValidateSourceOrder();
+                    ValidateAmbientRotorAdvance();
                 }
 
                 if (elapsed >= 6.5d)
@@ -240,6 +251,8 @@ namespace Deltatime.EditorTools
                         "Replay proxy Animator never advanced on the unscaled replay clock.");
                     Require(replay.HasReplayProxyStateTransition,
                         "Replay proxy Animator never entered a recorded animation state.");
+                    Require(observedAmbientRotorAdvance,
+                        "World-time ambient rotor never advanced during replay.");
                     SessionState.SetString(PhaseKey, "stopping");
                     EditorApplication.isPlaying = false;
                 }
@@ -271,6 +284,28 @@ namespace Deltatime.EditorTools
                 activateDeadline != null &&
                 releaseDeadline != null,
                 "Replay smoke dependencies are missing.");
+
+            WorldTimeAmbientAnchor[] ambientAnchors =
+                UnityEngine.Object.FindObjectsByType<WorldTimeAmbientAnchor>(
+                    FindObjectsInactive.Exclude,
+                    FindObjectsSortMode.None);
+            Require(ambientAnchors.Length == 2,
+                $"Stage2 requires two world-time ambient anchors, found " +
+                $"{ambientAnchors.Length}.");
+            ambientAnchor = ambientAnchors[0];
+            SerializedObject serializedAmbient =
+                new SerializedObject(ambientAnchor);
+            Transform rotatingPart = serializedAmbient
+                .FindProperty("rotatingPart")
+                .objectReferenceValue as Transform;
+            ambientRotorSource = rotatingPart != null
+                ? rotatingPart.GetComponent<Renderer>()
+                : null;
+            Require(
+                rotatingPart != null &&
+                rotatingPart.GetComponent<ReplayIncluded>() != null &&
+                ambientRotorSource != null,
+                "Stage2 ambient rotor is not explicitly included in replay.");
 
             activity.Pulse(1f, 1.5f);
             replay.RecordTimelineEvent(
@@ -442,6 +477,33 @@ namespace Deltatime.EditorTools
                 "manual-unscaled proxy Animator.");
             Require(CountReplayHitFlashes() >= 2,
                 "Replay did not retain both normal and strong-slow hit VFX event tracks.");
+            Renderer[] replayRenderers =
+                UnityEngine.Object.FindObjectsByType<Renderer>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            for (int i = 0; i < replayRenderers.Length; i++)
+            {
+                Renderer candidate = replayRenderers[i];
+                if (candidate.name ==
+                    $"Replay - {ambientRotorSource.gameObject.name}" &&
+                    candidate.enabled &&
+                    candidate.gameObject.activeInHierarchy)
+                {
+                    ambientRotorProxy = candidate;
+                    break;
+                }
+            }
+
+            Require(
+                !ambientAnchor.enabled &&
+                !ambientAnchor.IsLoopPlaying &&
+                !ambientRotorSource.enabled &&
+                ambientRotorProxy != null &&
+                replay.TrackedExcludedVisualCount == 0,
+                "Ambient replay did not stop live audio, hide the live rotor, " +
+                "or activate its recorded proxy.");
+            previousAmbientRotorRotation =
+                ambientRotorProxy.transform.rotation;
             ValidateReplayTimelineEvents();
             Require(Mathf.Approximately(Time.timeScale, 1f),
                 "Replay changed global Time.timeScale.");
@@ -544,6 +606,20 @@ namespace Deltatime.EditorTools
 
             previousPlaybackElapsed = elapsed;
             previousSourceTimestamp = source;
+        }
+
+        private static void ValidateAmbientRotorAdvance()
+        {
+            Require(
+                ambientRotorProxy != null &&
+                ambientRotorProxy.enabled &&
+                ambientRotorProxy.gameObject.activeInHierarchy,
+                "Ambient rotor replay proxy became invisible during playback.");
+            Quaternion current = ambientRotorProxy.transform.rotation;
+            observedAmbientRotorAdvance |= Quaternion.Angle(
+                previousAmbientRotorRotation,
+                current) > 0.05f;
+            previousAmbientRotorRotation = current;
         }
 
         private static void Require(bool condition, string message)
