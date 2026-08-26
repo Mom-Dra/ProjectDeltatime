@@ -14,6 +14,7 @@ namespace Deltatime.Level
         {
             "Stage1",
             "Stage2",
+            "StageBattingCage",
             "Stage5"
         };
 
@@ -21,6 +22,7 @@ namespace Deltatime.Level
         {
             "Stage1",
             "Stage2",
+            "StageBattingCage",
             "Stage5",
             "Stage6"
         };

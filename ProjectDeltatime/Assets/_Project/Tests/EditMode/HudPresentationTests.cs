@@ -8,8 +8,9 @@ namespace Deltatime.Tests.EditMode
     {
         [TestCase("Stage1", "STAGE 1")]
         [TestCase("Stage2", "STAGE 2")]
-        [TestCase("Stage5", "STAGE 3")]
-        [TestCase("Stage6", "STAGE 4")]
+        [TestCase("StageBattingCage", "STAGE 3")]
+        [TestCase("Stage5", "STAGE 4")]
+        [TestCase("Stage6", "STAGE 5")]
         [TestCase("Tutorial", "TUTORIAL")]
         public void StageLabel_UsesProgressionOrder(
             string sceneName,

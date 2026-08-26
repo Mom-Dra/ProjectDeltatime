@@ -327,7 +327,8 @@ namespace Deltatime.Tests.EditMode
         }
 
         [TestCase("Stage1", "Stage2")]
-        [TestCase("Stage2", "Stage5")]
+        [TestCase("Stage2", "StageBattingCage")]
+        [TestCase("StageBattingCage", "Stage5")]
         [TestCase("Stage5", "EndingScene")]
         public void StageSceneFlow_PreservesActiveRoute(
             string current,
