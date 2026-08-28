@@ -168,6 +168,26 @@ namespace Deltatime.EditorTools
             SceneBuildCommand.Run(BuildStageBattingCage);
         }
 
+        [MenuItem("Tools/Prototype/Rebake Stage - Underground Batting Cage Navigation")]
+        public static void RebakeNavigationOnly()
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                ScenePath,
+                OpenSceneMode.Single);
+            BuildNavigation();
+            NavMeshSurface surface =
+                UnityEngine.Object.FindFirstObjectByType<NavMeshSurface>();
+            ValidateNavigation(surface, scene);
+            Debug.Log(
+                "StageBattingCage navigation rebaked and validated without " +
+                "rebuilding the scene.");
+        }
+
+        public static void RebakeNavigationOnlyFromCommandLine()
+        {
+            SceneBuildCommand.Run(RebakeNavigationOnly);
+        }
+
         [MenuItem("Tools/Prototype/Validate Stage - Underground Batting Cage")]
         public static void ValidateSavedScene()
         {
@@ -920,8 +940,9 @@ namespace Deltatime.EditorTools
             surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
             surface.RemoveData();
             surface.navMeshData = null;
-            Physics.SyncTransforms();
-            surface.BuildNavMesh();
+            NavigationSceneSetup.BuildNavMeshExcludingDynamicGameplayColliders(
+                surface,
+                surface.gameObject.scene);
             SceneValidation.Require(
                 surface.navMeshData != null,
                 "StageBattingCage NavMesh bake failed.");
@@ -1015,7 +1036,7 @@ namespace Deltatime.EditorTools
 
             ValidateStartingWeapons(player.gameObject, enemies, melee);
             ValidateDeadline(deadline);
-            ValidateNavigation(surface, player.transform, enemies);
+            ValidateNavigation(surface, scene);
             ValidateEnvironment(environment);
             ValidateInitialSightStagger(player.transform);
             GameBuildSceneCatalog.Validate();
@@ -1058,8 +1079,7 @@ namespace Deltatime.EditorTools
 
         private static void ValidateNavigation(
             NavMeshSurface surface,
-            Transform player,
-            EnemyHealth[] enemies)
+            Scene scene)
         {
             string navigationPath = surface == null ||
                                     surface.navMeshData == null
@@ -1074,26 +1094,9 @@ namespace Deltatime.EditorTools
             SceneValidation.Require(
                 triangulation.vertices.Length > 0,
                 "StageBattingCage NavMesh has no triangles.");
-            SceneValidation.Require(
-                NavigationSceneSetup.IsOnNavMesh(player.position),
-                "StageBattingCage player spawn is outside the NavMesh.");
-
-            for (int i = 0; i < enemies.Length; i++)
-            {
-                SceneValidation.Require(
-                    NavigationSceneSetup.IsOnNavMesh(
-                        enemies[i].transform.position),
-                    enemies[i].name + " is outside the NavMesh.");
-                bool complete = NavigationSceneSetup.HasCompletePath(
-                    enemies[i].transform.position,
-                    player.position,
-                    1.5f,
-                    out NavMeshPathStatus status);
-                SceneValidation.Require(
-                    complete,
-                    enemies[i].name +
-                    " cannot reach the player; path=" + status + ".");
-            }
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                scene,
+                "StageBattingCage");
         }
 
         private static void ValidateEnvironment(GameObject environment)

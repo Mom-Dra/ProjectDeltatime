@@ -427,12 +427,11 @@ namespace Deltatime.EditorTools
             string subject)
         {
             Require(
-                NavMesh.SamplePosition(
+                NavigationSceneSetup.IsDirectlyAboveNavMesh(
                     position,
-                    out _,
-                    1.5f,
-                    NavMesh.AllAreas),
-                subject + " is outside the batting-cage NavMesh.");
+                    out _),
+                subject +
+                " has no batting-cage NavMesh directly below it.");
         }
 
         private static void Require(bool condition, string message)

@@ -1041,6 +1041,9 @@ namespace Deltatime.EditorTools
                 navigationSurface != null &&
                 navigationSurface.navMeshData != null,
                 "The stage has no baked NavMesh data.");
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                navigationSurface.gameObject.scene,
+                "Stage2 runtime");
             Require(
                 gameplayCamera != null && !gameplayCamera.orthographic,
                 "The gameplay camera is not a perspective camera.");

@@ -398,6 +398,29 @@ namespace Deltatime.EditorTools
             SceneBuildCommand.Run(BuildPrototypeRoom);
         }
 
+        [MenuItem("Tools/Prototype/Rebake Stage 1 + Stage 2 Navigation")]
+        public static void RebakeStageNavigation()
+        {
+            Scene stage1 = EditorSceneManager.OpenScene(
+                Stage1ScenePath,
+                OpenSceneMode.Single);
+            BuildNavigationSurface();
+            ValidateStageNavigation(stage1, "Stage1");
+
+            Scene stage2 = EditorSceneManager.OpenScene(
+                Stage2ScenePath,
+                OpenSceneMode.Single);
+            ValidateStageNavigation(stage2, "Stage2");
+            Debug.Log(
+                "Stage1 and Stage2 shared navigation rebaked and " +
+                "validated without rebuilding either scene.");
+        }
+
+        public static void RebakeStageNavigationFromCommandLine()
+        {
+            SceneBuildCommand.Run(RebakeStageNavigation);
+        }
+
         [MenuItem("Tools/Prototype/Animation/Apply Characters To Stage 1")]
         public static void ApplyStage1Characters()
         {
@@ -1306,8 +1329,11 @@ namespace Deltatime.EditorTools
                     "Navigation surface is missing.");
             }
 
-            Physics.SyncTransforms();
-            surface.BuildNavMesh();
+            surface.RemoveData();
+            surface.navMeshData = null;
+            NavigationSceneSetup.BuildNavMeshExcludingDynamicGameplayColliders(
+                surface,
+                surface.gameObject.scene);
             if (surface.navMeshData == null)
             {
                 throw new InvalidOperationException(
@@ -1315,6 +1341,7 @@ namespace Deltatime.EditorTools
             }
 
             NavMeshData bakedData = surface.navMeshData;
+            bakedData.name = "StageNavigation";
             NavMeshData savedData =
                 AssetDatabase.LoadAssetAtPath<NavMeshData>(
                     NavigationDataPath);
@@ -1331,6 +1358,7 @@ namespace Deltatime.EditorTools
                 surface.navMeshData = savedData;
                 surface.AddData();
                 UnityEngine.Object.DestroyImmediate(bakedData);
+                savedData.name = "StageNavigation";
                 EditorUtility.SetDirty(savedData);
             }
 
@@ -2724,6 +2752,32 @@ namespace Deltatime.EditorTools
             }
 
             ValidatePlayerControls();
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                scene,
+                scene.name);
+        }
+
+        private static void ValidateStageNavigation(
+            Scene scene,
+            string context)
+        {
+            NavMeshSurface surface =
+                UnityEngine.Object.FindObjectOfType<NavMeshSurface>();
+            string navigationPath = surface == null ||
+                                    surface.navMeshData == null
+                ? string.Empty
+                : AssetDatabase.GetAssetPath(surface.navMeshData);
+            NavMeshTriangulation triangulation =
+                NavMesh.CalculateTriangulation();
+            SceneValidation.Require(
+                navigationPath == NavigationDataPath &&
+                triangulation.vertices.Length > 0,
+                $"{context} navigation is missing or incorrect: " +
+                $"path={navigationPath}, " +
+                $"vertices={triangulation.vertices.Length}.");
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                scene,
+                context);
         }
 
         private static bool HasCircularShotgunSpread(

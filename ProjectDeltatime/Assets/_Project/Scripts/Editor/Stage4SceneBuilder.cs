@@ -956,8 +956,9 @@ namespace Deltatime.EditorTools
 
             surface.RemoveData();
             surface.navMeshData = null;
-            Physics.SyncTransforms();
-            surface.BuildNavMesh();
+            NavigationSceneSetup.BuildNavMeshExcludingDynamicGameplayColliders(
+                surface,
+                surface.gameObject.scene);
             if (surface.navMeshData == null)
             {
                 throw new InvalidOperationException("Stage4 navigation bake failed.");
@@ -1073,6 +1074,10 @@ namespace Deltatime.EditorTools
                     $"syntyPrefabInstances={syntyPrefabInstances}, " +
                     $"rooftopLights={rooftopLights}, visionBlockers={visionBlockerCount}.");
             }
+
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                scene,
+                "Stage4");
         }
 
         private static int CountObjectsOnLayer(Transform root, int layer)

@@ -7,6 +7,17 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-28 - 전투 씬 NavMesh 스폰 구멍 제거
+
+- 변경 유형: NavMesh 베이크 입력 수정, 활성 내비게이션 에셋 전용 재베이크, 스폰·경로 검증 강화
+- 변경 내용: **구현 완료**. `PhysicsColliders`를 수집하는 Stage1/2·Stage3/4·StageBattingCage 빌더가 플레이어·적·초기 `WeaponPickup` Collider를 베이크 직전에만 비활성화하고 `try/finally`로 복구하도록 공용화했다. 이에 따라 캐릭터가 이동한 뒤 시작 위치에 남던 NavMesh 구멍을 제거하면서 벽·펜스·기둥·가구 Collider의 기존 장애물 판정은 유지한다. Tutorial과 Stage5/6의 기존 동적 루트 제외·가구 `Not Walkable` 정책은 변경하지 않았다.
+- 변경 내용: **구현 완료**. 전체 씬을 재생성하지 않는 `Rebake Stage 1 + Stage 2 Navigation`과 `Rebake Stage - Underground Batting Cage Navigation` 메뉴/CLI를 추가하고 `StageNavigation.asset`, `StageBattingCageNavigation.asset`만 갱신했다. 정적·PlayMode 검증은 플레이어·적·초기 픽업 위치에서 직접 하부 NavMesh의 수평 오차 `0.1m` 이하와 모든 적→플레이어 `PathComplete`를 검사한다. 런타임 `EnemyMotor`, `WorldDeltaTime`, 물리 충돌과 공개 API는 변경하지 않았다.
+- 영향을 받은 시스템: Stage1/2 공유 NavMesh, StageBattingCage NavMesh, 비활성 Stage3/4 재생성 경로, 플레이어·적·무기 픽업 스폰 검증, 전투 씬 PlayMode 스모크
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Editor/SceneBuilderInfrastructure.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/StageBattingCageSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/StageNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/StageBattingCageNavigation.asset`, `mdFile/PROJECT_DESIGN_DOCUMENT.md`, `mdFile/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `PROJECT_DESIGN_DOCUMENT.md`를 1.10.7로 갱신해 동적 Collider 제외 정책, 전용 재베이크, 0.1m 직접 하부·완전 경로 검증, 실제 회귀 결과와 비활성 Stage3/4 미실행 상태를 기록했다.
+- 테스트 결과: **부분 구현**. Unity 6000.1.13f1 컴파일, Stage1/2 공유 NavMesh 전용 재베이크와 양 씬의 플레이어 1·적 3·픽업 2 직접 하부/완전 경로 검증, StageBattingCage 전용 재베이크와 플레이어 1·적 6 직접 하부/완전 경로 검증이 종료 코드 0으로 통과했다. StageBattingCage PlayMode 스모크와 Stage6 PlayMode 스모크(완전 경로 5/5)도 통과했다. Stage2 전체 스모크는 새 NavMesh 검증을 통과한 뒤 기존 투척 무기 수치·6m 착지·리플레이 본 포즈 3건에서 실패했다. Tutorial은 기존 Synty 인스턴스 216/262, Stage5는 기존 픽업 1/2에서 NavMesh 검사 전에 중단됐다. `dotnet build Assembly-CSharp-Editor.csproj --no-restore`는 `Temp/obj/.../project.assets.json`이 없어 컴파일 전에 중단됐으며 Unity 자체 컴파일은 통과했다. 로그: `ProjectDeltatime/NavMeshStage12RebakeFinal.log`, `ProjectDeltatime/NavMeshBattingCageRebake.log`, `ProjectDeltatime/NavMeshBattingCageSmoke.log`, `ProjectDeltatime/NavMeshPrototypeSmoke.log`, `ProjectDeltatime/NavMeshTutorialRegression.log`, `ProjectDeltatime/NavMeshStage5Regression.log`, `ProjectDeltatime/NavMeshStage6Regression.log`.
+- 남은 작업: **부분 구현/확인 불가**. 비활성 `Stage3_NoUse`와 현재 씬이 없는 Stage4는 재생성하지 않아 실제 신규 NavMesh 에셋 검증을 **미실행**으로 유지한다. Stage2·Tutorial·Stage5의 기존 비-NavMesh 기준선 실패는 별도 작업이며, Unity Scene 뷰에서 파란 NavMesh가 각 스폰 바닥을 연속적으로 덮는지에 대한 최종 육안 확인은 **확인 불가**다.
+
 ## 2026-08-26 - StageBattingCage 바닥·펜스·소품 배치 정렬
 
 - 변경 유형: 스테이지 환경 배치 정리(바닥 무봉임 타일링, 펜스 피벗 보산 정렬, 소품 그리드 스냅)

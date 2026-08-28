@@ -910,8 +910,9 @@ namespace Deltatime.EditorTools
 
             surface.RemoveData();
             surface.navMeshData = null;
-            Physics.SyncTransforms();
-            surface.BuildNavMesh();
+            NavigationSceneSetup.BuildNavMeshExcludingDynamicGameplayColliders(
+                surface,
+                surface.gameObject.scene);
             if (surface.navMeshData == null)
             {
                 throw new InvalidOperationException(
@@ -1031,6 +1032,10 @@ namespace Deltatime.EditorTools
                     $"syntyPrefabInstances={syntyPrefabInstances}, " +
                     $"nightclubLights={nightclubLights}.");
             }
+
+            NavigationSceneSetup.ValidateDynamicGameplayCoverage(
+                scene,
+                "Stage3");
         }
 
         private static int CountActiveCharacterRenderers(Scene scene)

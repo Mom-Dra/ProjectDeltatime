@@ -6,9 +6,15 @@
 |---|---|
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
-| 마지막 분석일 | 2026-08-26 (KST) |
-| 문서 버전 | 1.10.6 |
+| 마지막 분석일 | 2026-08-28 (KST) |
+| 문서 버전 | 1.10.7 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 캐릭터 회전·근접 공격·투척은 플레이어 현재 높이의 수평 조준을 유지하고, 플레이어·적 총기는 총구에서 실제 클릭 Collider 접점 또는 적 대상의 실제 높이까지 3D 직선 투사체를 발사한다. 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기도 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 총기·근접 적중에는 절제된 카메라 임펄스·월드 하드 프리즈·절차형 총구/적중 VFX, 적 사망 방향 반응, 플레이어 피격 비네트가 적용된다. 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·`SFX_Deadline_Release2.mp3` 단일 해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+
+### 1.0.12 2026-08-28 전투 씬 NavMesh 스폰 구멍 제거
+
+- `PhysicsColliders` 기반 베이크에서 플레이어·적·초기 무기 픽업 Collider가 정적 장애물 소스로 수집되어 스폰 위치의 바닥 NavMesh를 깎던 문제를 수정했다. 공용 에디터 경로는 해당 동적 Collider만 베이크 직전에 비활성화하고 `try/finally`로 원래 상태를 복구하며, 벽·펜스·기둥·가구 Collider는 계속 보행 경계와 장애물로 수집한다. Stage1/2 공용 빌더, StageBattingCage 및 비활성 Stage3/4 빌더에 적용했다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Editor/SceneBuilderInfrastructure.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/StageBattingCageSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage3SceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/Stage4SceneBuilder.cs`.
+- 전체 씬·무기·환경 재생성 없이 Stage1/2 공유 `StageNavigation.asset`과 `StageBattingCageNavigation.asset`만 갱신하는 전용 메뉴/CLI 경로를 추가했다. 스폰 검증은 기존 반경 `1.5m`의 근처 샘플 허용에 더해 플레이어·적·픽업 바로 아래 NavMesh의 수평 오차가 `0.1m` 이하인지 검사하고, 모든 적→플레이어 경로가 `PathComplete`인지 확인한다. 적의 런타임 이동은 계속 `EnemyMotor`와 `WorldDeltaTime`을 사용하며 `NavMeshAgent` 자동 이동으로 바꾸지 않았다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scenes/StageNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scenes/StageBattingCageNavigation.asset`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypePlayModeSmokeTest.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/StageBattingCagePlayModeSmokeTest.cs`.
+- Unity 6000.1.13f1 컴파일과 Stage1/2·StageBattingCage 전용 재베이크/정적 검증, StageBattingCage PlayMode, Stage6 PlayMode의 NavMesh 완전 경로 5/5가 통과했다. Stage2 전체 스모크는 NavMesh 검증 뒤 기존 투척 수치·6m 착지·리플레이 본 포즈 기준선에서 실패했고, Tutorial은 기존 Synty 인스턴스 216/262, Stage5는 기존 픽업 1/2 기준선에서 NavMesh 검사 전에 중단됐다. 따라서 대상 NavMesh 수정은 **구현 완료**, 전체 회귀는 **부분 구현**이다. 비활성 Stage3/4는 빌더 컴파일만 확인했으며 실제 씬 재생성은 **미실행**이다. 근거: `ProjectDeltatime/NavMeshStage12RebakeFinal.log`, `ProjectDeltatime/NavMeshBattingCageRebake.log`, `ProjectDeltatime/NavMeshBattingCageSmoke.log`, `ProjectDeltatime/NavMeshPrototypeSmoke.log`, `ProjectDeltatime/NavMeshTutorialRegression.log`, `ProjectDeltatime/NavMeshStage5Regression.log`, `ProjectDeltatime/NavMeshStage6Regression.log`.
 
 ### 1.0.11 2026-08-26 전투 타격감 1차 개선 — 절제된 강함
 
@@ -1429,6 +1435,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-28 | 1.10.7 | 동적 캐릭터·픽업 Collider를 NavMesh 베이크에서 임시 제외하고 Stage1/2·StageBattingCage 내비게이션 에셋과 0.1m 직접 하부·완전 경로 검증을 갱신 | NavMesh, Stage1/2, StageBattingCage, Stage3/4 빌더, 정적·PlayMode 검증 |
 | 2026-08-26 | 1.10.5 | DEADLINE 해제음을 `SFX_Deadline_Release2.mp3` 하나로 고정하고 기존 해제음 에셋 보존, 빌더·직렬화·PlayMode 검증 결과를 반영 | DEADLINE SFX, SoundLibrary, SoundManager, 오디오 스모크 |
 | 2026-08-26 | 1.10.4 | Tutorial Rework의 중복 외벽 모듈·전광판·벽 장식을 제거하고 후보 전용 환풍기 좌표와 Renderer Bounds 비중첩 검증을 반영 | Tutorial 후보 환경, WorldTimeVisualFeedback, 환풍기 배치, 정적·PlayMode·캡처 검증 |
 | 2026-08-26 | 1.10.3 | 기존 진행 계약을 유지한 Tutorial Rework 후보 씬, 전용 NavMesh, 프로필 기반 빌드·정적/PlayMode·3구간 시각 검증과 공식 전환 보류 상태를 반영 | Tutorial 후보 환경, Wayfinding, VisionObstacle, NavMesh, 씬 빌더·스모크·캡처 |

@@ -198,13 +198,12 @@ namespace Deltatime.EditorTools
 
         private static void RequireOnNavMesh(Vector3 position, string subject)
         {
-            bool found = NavMesh.SamplePosition(
+            bool found = NavigationSceneSetup.IsDirectlyAboveNavMesh(
                 position,
-                out NavMeshHit hit,
-                1.5f,
-                NavMesh.AllAreas);
+                out _);
             Require(found,
-                $"Stage4 {subject} spawn is not on the baked NavMesh ({position}).");
+                $"Stage4 {subject} has no baked NavMesh directly below " +
+                $"({position}).");
         }
 
         private static void Require(bool condition, string message)
