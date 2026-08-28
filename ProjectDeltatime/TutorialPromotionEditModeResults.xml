@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.9587958">
+  <test-suite type="TestSuite" id="1000" name="Deltatime" fullname="Deltatime" runstate="Runnable" testcasecount="51" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.958796" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1064" name="Deltatime.Tests.EditMode.dll" fullname="C:/Users/HuiYong/UnityProjects/ProjectDeltatime/ProjectDeltatime/Library/ScriptAssemblies/Deltatime.Tests.EditMode.dll" runstate="Runnable" testcasecount="51" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.951376" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="7200" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1065" name="Deltatime" fullname="Deltatime" runstate="Runnable" testcasecount="51" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.950566" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1066" name="Tests" fullname="Deltatime.Tests" runstate="Runnable" testcasecount="51" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.950102" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1067" name="EditMode" fullname="Deltatime.Tests.EditMode" runstate="Runnable" testcasecount="51" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.949601" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1031" name="EnemyMovementBalanceTests" fullname="Deltatime.Tests.EditMode.EnemyMovementBalanceTests" classname="Deltatime.Tests.EditMode.EnemyMovementBalanceTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.947463" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1032" name="ActiveScenes_UseRaisedMovementBalanceForEveryEnemy" fullname="Deltatime.Tests.EditMode.EnemyMovementBalanceTests.ActiveScenes_UseRaisedMovementBalanceForEveryEnemy" methodname="ActiveScenes_UseRaisedMovementBalanceForEveryEnemy" classname="Deltatime.Tests.EditMode.EnemyMovementBalanceTests" runstate="Runnable" seed="239224326" result="Passed" start-time="2026-08-28 03:52:18Z" end-time="2026-08-28 03:52:19Z" duration="0.934461" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Saving results to: C:/Users/HuiYong/AppData/LocalLow/DefaultCompany/Deltatime\TestResults.xml
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -22,7 +22,7 @@ namespace Deltatime.EditorTools
 
         private static readonly string[] PlayableScenePaths =
         {
-            "Assets/_Project/Scenes/Tutorial.unity",
+            GameBuildSceneCatalog.TutorialScenePath,
             "Assets/_Project/Scenes/Stage1.unity",
             "Assets/_Project/Scenes/Stage2.unity",
             "Assets/_Project/Scenes/Stage3.unity",

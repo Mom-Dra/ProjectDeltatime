@@ -37,15 +37,15 @@ namespace Deltatime.EditorTools
 
         private const string Root = "Assets/_Project";
         private const string Scenes = Root + "/Scenes";
-        private const string TutorialScenePath = Scenes + "/Tutorial.unity";
+        private const string LegacyTutorialScenePath = Scenes + "/Tutorial.unity";
         private const string TutorialReworkFolder = Scenes + "/TutorialRework";
-        private const string TutorialReworkScenePath =
-            TutorialReworkFolder + "/Tutorial.unity";
+        private const string TutorialScenePath =
+            GameBuildSceneCatalog.TutorialScenePath;
         private const string MainScenePath = Scenes + "/MainScene.unity";
         private const string Stage1ScenePath = Scenes + "/Stage1.unity";
-        private const string NavigationDataPath =
+        private const string LegacyNavigationDataPath =
             Scenes + "/TutorialNavigation.asset";
-        private const string TutorialReworkNavigationDataPath =
+        private const string NavigationDataPath =
             TutorialReworkFolder + "/TutorialNavigation.asset";
         private const string PistolDefinitionPath = Root + "/Pistol.asset";
         private const string MeleeDefinitionPath = Root + "/MeleeWeapon.asset";
@@ -160,26 +160,26 @@ namespace Deltatime.EditorTools
             new TutorialBuildProfile(
                 TutorialScenePath,
                 NavigationDataPath,
-                false,
+                true,
                 true);
 
-        private static readonly TutorialBuildProfile ReworkBuildProfile =
+        private static readonly TutorialBuildProfile LegacyBuildProfile =
             new TutorialBuildProfile(
-                TutorialReworkScenePath,
-                TutorialReworkNavigationDataPath,
-                true,
+                LegacyTutorialScenePath,
+                LegacyNavigationDataPath,
+                false,
                 false);
 
-        [MenuItem("Tools/Prototype/Build Tutorial")]
+        [MenuItem("Tools/Tutorial/Build Official Tutorial")]
         public static void BuildTutorial()
         {
             BuildTutorial(LiveBuildProfile);
         }
 
-        [MenuItem("Tools/Tutorial Rework/Build Candidate")]
+        [MenuItem("Tools/Tutorial/Build Official Reworked Scene")]
         public static void BuildTutorialReworkCandidate()
         {
-            BuildTutorial(ReworkBuildProfile);
+            BuildTutorial();
         }
 
         private static void BuildTutorial(TutorialBuildProfile buildProfile)
@@ -476,11 +476,11 @@ namespace Deltatime.EditorTools
             SceneBuildCommand.Run(BuildTutorialReworkCandidate);
         }
 
-        [MenuItem("Tools/Tutorial/Apply Environment Redesign")]
+        [MenuItem("Tools/Tutorial Legacy/Apply Environment Redesign")]
         public static void ApplyEnvironmentRedesign()
         {
             Scene scene = EditorSceneManager.OpenScene(
-                TutorialScenePath,
+                LegacyTutorialScenePath,
                 OpenSceneMode.Single);
             GameObject environment = FindSceneRoot(scene, "Tutorial Environment");
             Require(environment != null,
@@ -528,18 +528,21 @@ namespace Deltatime.EditorTools
             NavMeshSurface navigation = FindSceneComponent<NavMeshSurface>(scene);
             Require(navigation != null,
                 "Tutorial NavMeshSurface is missing from the saved scene.");
-            BuildTutorialNavigation(navigation, scene, NavigationDataPath);
+            BuildTutorialNavigation(
+                navigation,
+                scene,
+                LegacyNavigationDataPath);
 
             EditorSceneManager.MarkSceneDirty(scene);
-            if (!EditorSceneManager.SaveScene(scene, TutorialScenePath))
+            if (!EditorSceneManager.SaveScene(scene, LegacyTutorialScenePath))
             {
                 throw new InvalidOperationException(
-                    $"Failed to save redesigned {TutorialScenePath}.");
+                    $"Failed to save redesigned {LegacyTutorialScenePath}.");
             }
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            ValidateTutorialScene(scene, LiveBuildProfile);
+            ValidateTutorialScene(scene, LegacyBuildProfile);
             Debug.Log(
                 "Tutorial environment redesign applied without rebuilding gameplay content.");
         }
@@ -582,7 +585,7 @@ namespace Deltatime.EditorTools
             ApplyBarGateVisuals();
         }
 
-        [MenuItem("Tools/Prototype/Validate Tutorial")]
+        [MenuItem("Tools/Tutorial/Validate Official Tutorial")]
         public static void ValidateSavedTutorial()
         {
             Scene scene = EditorSceneManager.OpenScene(
@@ -592,14 +595,10 @@ namespace Deltatime.EditorTools
             Debug.Log("Tutorial static validation passed.");
         }
 
-        [MenuItem("Tools/Tutorial Rework/Validate Candidate")]
+        [MenuItem("Tools/Tutorial/Validate Official Reworked Scene")]
         public static void ValidateSavedTutorialRework()
         {
-            Scene scene = EditorSceneManager.OpenScene(
-                TutorialReworkScenePath,
-                OpenSceneMode.Single);
-            ValidateTutorialScene(scene, ReworkBuildProfile);
-            Debug.Log("Tutorial rework candidate static validation passed.");
+            ValidateSavedTutorial();
         }
 
         public static void ValidateFromCommandLine()
@@ -633,13 +632,13 @@ namespace Deltatime.EditorTools
                 $"Tutorial preview captured: {firstPath} and {secondPath}");
         }
 
-        [MenuItem("Tools/Tutorial Rework/Capture Candidate Preview")]
+        [MenuItem("Tools/Tutorial/Capture Official Reworked Preview")]
         public static void CaptureReworkPreviewFromCommandLine()
         {
             Scene scene = EditorSceneManager.OpenScene(
-                TutorialReworkScenePath,
+                TutorialScenePath,
                 OpenSceneMode.Single);
-            ValidateTutorialScene(scene, ReworkBuildProfile);
+            ValidateTutorialScene(scene, LiveBuildProfile);
             Camera camera = FindSceneComponent<Camera>(scene);
             Require(camera != null,
                 "Tutorial rework preview requires its gameplay camera.");

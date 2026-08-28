@@ -18,9 +18,8 @@ namespace Deltatime.EditorTools
     [InitializeOnLoad]
     public static class TutorialPlayModeSmokeTest
     {
-        private const string ScenePath = "Assets/_Project/Scenes/Tutorial.unity";
-        private const string ReworkScenePath =
-            "Assets/_Project/Scenes/TutorialRework/Tutorial.unity";
+        private const string ScenePath = GameBuildSceneCatalog.TutorialScenePath;
+        private const string ReworkScenePath = ScenePath;
         private const string RunningKey = "Deltatime.TutorialSmoke.Running";
         private const string FailedKey = "Deltatime.TutorialSmoke.Failed";
         private const string FailureKey = "Deltatime.TutorialSmoke.Failure";

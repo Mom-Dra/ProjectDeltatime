@@ -73,7 +73,7 @@ namespace Deltatime.EditorTools
             "Assets/_Project/Scenes/Stage4.unity",
             "Assets/_Project/Scenes/Stage5.unity",
             "Assets/_Project/Scenes/Stage6.unity",
-            "Assets/_Project/Scenes/Tutorial.unity"
+            GameBuildSceneCatalog.TutorialScenePath
         };
 
         private readonly struct MotionSet

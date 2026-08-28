@@ -14,8 +14,8 @@ namespace Deltatime.Enemies
         [SerializeField] private WorldTimeController worldTime;
 
         [Header("Movement")]
-        [SerializeField, Min(0f)] private float moveSpeed = 3.4f;
-        [SerializeField, Min(1f)] private float rotationSpeed = 220f;
+        [SerializeField, Min(0f)] private float moveSpeed = 4.25f;
+        [SerializeField, Min(1f)] private float rotationSpeed = 275f;
         [SerializeField, Min(0.01f)] private float repathInterval = 0.15f;
         [SerializeField, Min(0.01f)] private float cornerReachDistance = 0.18f;
         [SerializeField, Min(0f)] private float collisionPadding = 0.03f;

@@ -19,7 +19,7 @@ namespace Deltatime.EditorTools
         private const string MainScenePath = "Assets/_Project/Scenes/MainScene.unity";
         private const string BackgroundPath = "Assets/_Project/Image/mainMenuBackground.png";
         private const string LogoPath = "Assets/_Project/Image/titleLogoWide.png";
-        private const string PlaySceneName = "Tutorial";
+        private const string PlayScenePath = GameBuildSceneCatalog.TutorialScenePath;
         private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private static readonly Vector2 TitleSize = new Vector2(720f, 300f);
         private static readonly Vector2 TitlePosition = new Vector2(64f, -34f);
@@ -136,6 +136,8 @@ namespace Deltatime.EditorTools
                 "Legacy titleLogo.png must not be referenced by MainScene.");
 
             MainMenuController controller = RequireComponent<MainMenuController>(canvas.gameObject, "Canvas");
+            Require(controller.PlaySceneName == PlayScenePath,
+                $"Main menu play target must be '{PlayScenePath}'.");
             string[] names = { "StartButton", "OptionButton", "CreditsButton", "ExitButton" };
             string[] labels = { "START", "OPTION", "CREDITS", "EXIT" };
             string[] methods =
@@ -179,8 +181,8 @@ namespace Deltatime.EditorTools
                     EditorBuildSettings.scenes[0].enabled &&
                     EditorBuildSettings.scenes[0].path == MainScenePath,
                 "MainScene must remain the first enabled Build Settings scene.");
-            Require(SceneUtility.GetBuildIndexByScenePath("Assets/_Project/Scenes/Tutorial.unity") >= 0,
-                "Tutorial must remain in Build Settings.");
+            Require(SceneUtility.GetBuildIndexByScenePath(PlayScenePath) >= 0,
+                "The official reworked Tutorial must remain in Build Settings.");
             ValidateResponsiveLayout();
         }
 
@@ -194,7 +196,7 @@ namespace Deltatime.EditorTools
 
             MainMenuController controller = GetOrAddComponent<MainMenuController>(canvas.gameObject);
             SerializedObject data = new SerializedObject(controller);
-            data.FindProperty("playSceneName").stringValue = PlaySceneName;
+            data.FindProperty("playSceneName").stringValue = PlayScenePath;
             data.ApplyModifiedPropertiesWithoutUndo();
         }
 

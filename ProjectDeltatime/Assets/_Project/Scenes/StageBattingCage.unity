@@ -2394,8 +2394,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03
@@ -2872,8 +2872,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03
@@ -7782,8 +7782,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03
@@ -10814,8 +10814,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03
@@ -13583,8 +13583,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03
@@ -14415,8 +14415,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   worldTime: {fileID: 593267852}
-  moveSpeed: 4.8
-  rotationSpeed: 260
+  moveSpeed: 6
+  rotationSpeed: 325
   repathInterval: 0.1
   cornerReachDistance: 0.18
   collisionPadding: 0.03

@@ -6396,7 +6396,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 364aed84b968b1f4694bfc4d07a3ff58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playSceneName: Tutorial
+  playSceneName: Assets/_Project/Scenes/TutorialRework/Tutorial.unity
   menuGroup: {fileID: 620979104}
   optionPanel: {fileID: 1456373271}
   creditsPanel: {fileID: 1146937377}

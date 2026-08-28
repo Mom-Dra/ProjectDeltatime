@@ -7,8 +7,14 @@
 | 프로젝트명 | Deltatime |
 | 문서 작성일 | 2026-07-30 (KST) |
 | 마지막 분석일 | 2026-08-28 (KST) |
-| 문서 버전 | 1.10.7 |
+| 문서 버전 | 1.10.8 |
 | 현재 구현 상태 | 핵심 전투 루프와 단일 진행형 튜토리얼이 구현된 3D 프로토타입. 튜토리얼은 Synty 모듈형 실내 훈련장과 애니메이션 캐릭터 6명을 사용해 이동/월드 시간, 조준/대시, 근접 공격, 권총 사격, 투척 기절·무장 해제·드롭, 4인 포위 `DEADLINE` 탈출을 순서대로 가르치고 Stage1로 자동 전환한다. 본편의 현재 임시 진행은 Stage1·Stage2·Stage5 완료 후 EndingScene을 거쳐 MainScene으로 복귀하며, Stage6는 씬·에셋을 보존한 채 진행과 Build Settings에서 제외한다. Stage3·Stage4 에셋도 보존하지만 진행과 Build Settings에서는 제외한다. 캐릭터 회전·근접 공격·투척은 플레이어 현재 높이의 수평 조준을 유지하고, 플레이어·적 총기는 총구에서 실제 클릭 Collider 접점 또는 적 대상의 실제 높이까지 3D 직선 투사체를 발사한다. 결정적 원형 콘 탄도 산포, 샷건 14m 최대 사거리, 권총·자동소총·샷건·근접 무기, 적 재무장, 공중 무기 가로채기도 포함한다. 현재 네 무기 정의는 전용 손·바닥·비행 모델과 씬에 직접 배치 가능한 전용 픽업 프리팹을 사용하며, 총기·근접 적중에는 절제된 카메라 임펄스·월드 하드 프리즈·절차형 총구/적중 VFX, 적 사망 방향 반응, 플레이어 피격 비네트가 적용된다. 모든 바닥 픽업에는 깊이와 제한 시야를 따르는 고정 황금색 2px 아웃라인이 표시된다. 적 없는 전용 `WeaponCalibration` 씬에서 손·총구·월드 모델 보정값을 시험할 수 있다. Tutorial 및 Stage1~Stage6의 Synty 플레이어·적에는 비무장/권총/소총·샷건/근접 프로필의 방향 이동, 공용 구르기, 지원되는 공격 Animator가 연결되어 있다. 영속 `SoundManager`가 씬별 BGM, MainScene `게임 시작` 버튼 클릭 또는 `N` 키 시작음, 권총·자동소총·샷건 발사음, 주먹·야구방망이 적중음, 무기 투척, `DEADLINE` 진입·시간 왜곡·`SFX_Deadline_Release2.mp3` 단일 해제음과 BGM 덕킹을 자동 재생한다. 본편과 Tutorial HUD는 공용 반응형 어두운 산업형 전술 IMGUI 스타일로 진행 순번, 체력, `DEADLINE`, 무기/탄약, 라이브·리플레이 시간 배율을 표시한다. |
+
+### 1.0.13 2026-08-28 적 이동·회전 속도 25% 상향
+
+- 활성 진행 경로 `Tutorial`, `Stage1`, `Stage2`, `StageBattingCage`, `Stage5`의 적 기동성을 역할별로 25% 높였다. 원거리형은 이동 `4.25m/월드초`, 회전 `275°/월드초`, 근접형은 이동 `6m/월드초`, 회전 `325°/월드초`를 사용한다. 저장 씬, `EnemyMotor` 신규 컴포넌트 기본값, `PrototypeSceneBuilder` 재생성 값과 StageBattingCage 검증 기준을 함께 맞췄다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/StageBattingCage.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`.
+- 총기 장비 적의 후퇴 배율 `70%`와 근접 공격 선딜 이동 배율 `35%`는 유지되어 실제 속도는 각각 `2.975m/월드초`, `2.1m/월드초`다. 탐지·교전·공격 거리, 조준·공격 시간, NavMesh·충돌·분리·재탐색과 `WorldDeltaTime` 정책은 변경하지 않았으며 전역 `Time.timeScale`도 계속 사용하지 않는다. 비활성 Stage6·미사용 Stage3/4·Tutorial Rework 후보는 기존 밸런스를 보존했다. **구현 완료**. 근거: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyCombatant.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Time/WorldTimeController.cs`.
+- Unity 6000.1.13f1 컴파일, 활성 5개 씬의 역할 수와 적 22기 속도를 검사하는 EditMode 테스트, StageBattingCage PlayMode 스모크가 통과했다. Prototype 스모크는 기존 투척 수치·6m 착지·리플레이 본 포즈 3건만 실패했고 Tutorial은 기존 Synty 프리팹 `216/262` 기준선에서 PlayMode 진입 전에 중단됐다. 자동 검증은 **부분 구현**, 실제 조작의 추격·조준 압박과 튜토리얼 체감 난도는 **확인 불가**다. 근거: `ProjectDeltatime/Assets/_Project/Tests/EditMode/EnemyMovementBalanceTests.cs`, `ProjectDeltatime/EnemyMovementBalanceEditMode.log`, `ProjectDeltatime/EnemyMovementBalanceBattingCageSmoke.log`, `ProjectDeltatime/EnemyMovementBalancePrototypeSmoke.log`, `ProjectDeltatime/EnemyMovementBalanceTutorialSmoke.log`.
 
 ### 1.0.12 2026-08-28 전투 씬 NavMesh 스폰 구멍 제거
 
@@ -274,7 +280,7 @@ flowchart TD
 - `EnemyPerception`은 시야선과 유형별 탐지 거리로 플레이어를 감지하고, 시야가 끊기면 마지막 확인 위치를 저장해 추적한다.
 - `EnemyMotor`는 NavMesh 경로, `WorldDeltaTime`, 충돌 여유 거리 `0.03m`, 적 간 분리 반경 `0.9m`·강도 `0.7`을 사용한다.
 - `EnemyCombatant` 상태는 감지·추적·무기 탐색·조준·점사·공격 준비·공격·쿨다운·기절·무장 해제·사망을 포함한다.
-- 원거리형은 탐지 `18m`, 이동 `3.4m/s`, 회전 `220°/초`, 선호 거리 `6~9m`다. 추적형은 탐지 `20m`, 이동 `4.8m/s`, 회전 `260°/초`, 근접 거리 `1.45m`다.
+- 원거리형은 탐지 `18m`, 이동 `4.25m/s`, 회전 `275°/초`, 선호 거리 `6~9m`다. 추적형은 탐지 `20m`, 이동 `6m/s`, 회전 `325°/초`, 근접 거리 `1.45m`다.
 - 무장한 적의 원거리 조준은 `0.65 world s`, 정면 허용 오차 `6°`, 점사 후 쿨다운 `1.15 world s`다. 근접 준비는 `0.42 world s`, 준비 중 이동 속도는 `35%`다.
 - 빈손 적은 플레이어가 `3m` 이내에 있으면 주먹을 우선한다. 주먹은 사거리 `1.2m`, 피해 `1`, 좌우 각 `35°`, 준비 `0.35 world s`, 취소 거리 `1.65m`, 쿨다운 `0.6 world s`다.
 - 기절 시 이동·공격·목표 탐색을 중단하고 무기를 드롭한다. 기절 시간 `2 world s` 후 빈손 `Disarmed` 상태로 재개하며, 픽업 시 실제 무기 종류에 맞춰 재무장한다.
@@ -282,8 +288,8 @@ flowchart TD
 
 | 역할 | 시작 장비 | 탐지 거리 | 이동 속도 | 선호 교전 거리 | 상태 |
 |---|---|---:|---:|---|---|
-| 원거리형 (`EnemyShooter`) | 총기 | 18m | 3.4m/s | 6~9m | 구현 완료 |
-| 추적형 (`EnemyChaser`) | 근접 무기 | 20m | 4.8m/s | 1.45m 이내 | 구현 완료 |
+| 원거리형 (`EnemyShooter`) | 총기 | 18m | 4.25m/s | 6~9m | 구현 완료 |
+| 추적형 (`EnemyChaser`) | 근접 무기 | 20m | 6m/s | 1.45m 이내 | 구현 완료 |
 | 빈손 | 없음 | 현재 장비를 잃은 적의 상태 | 기존 모터 값 유지 | 3m 이내 주먹 우선 | 구현 완료 |
 
 실제 전투 밸런스·적 시각 가독성·수동 조작 체감은 자동 로그만으로 확정하지 않는다(**확인 불가**). 근거: `EnemyBehavior.cs`, `EnemyCombatant.cs`, `EnemyPerception.cs`, `EnemyMotor.cs`, `EnemyHealth.cs`, `EnemyWeaponDrop.cs`, 각 Stage 씬.
@@ -1278,16 +1284,16 @@ Unity 버전: `6000.1.13f1`
 | 준비 행동 최대 수 | 2개 | 같은 씬의 `DeadlineController` | 사격/근접 공격/투척 합계 |
 | 플레이어 최대 체력 | 3 | 같은 씬의 `PlayerHealth` | `CurrentHealth`가 피해량만큼 감소 |
 | 사격 적 탐지 거리 | 18 | 같은 씬의 `EnemyPerception` | 시야선 필요 |
-| 사격 적 이동 속도 | 3.4 | 같은 씬의 `EnemyMotor` | `WorldDeltaTime` 기준 |
+| 사격 적 이동 속도 | 4.25 | 같은 씬의 `EnemyMotor` | `WorldDeltaTime` 기준 |
 | 총기 장비 적 선호 거리 | 6~9 | 같은 씬의 `EnemyCombatant` | 시작 유형과 무관하게 미만 후퇴, 초과 추적 |
 | 총기 장비 적 후퇴 속도 배율 | 70% | 같은 씬의 `EnemyCombatant` | 플레이어를 바라보며 조준·점사·쿨다운과 병행 |
 | 총기 장비 적 조준 시간 | 0.65 월드초 | 같은 씬의 `EnemyCombatant` | 정면 오차 허용 후 감소 |
 | 자동소총 적 점사 | 4발 | `ProjectDeltatime/Assets/_Project/AutomaticRifle.asset` | 권총은 적 사용 시 1발 |
 | 총기 장비 적 쿨다운 | 1.15 월드초 | 같은 씬의 `EnemyCombatant` | 점사 후 |
-| 사격 적 회전 속도 | 220도/월드초 | 같은 씬의 `EnemyMotor` | 이동과 목표 회전 |
+| 사격 적 회전 속도 | 275도/월드초 | 같은 씬의 `EnemyMotor` | 이동과 목표 회전 |
 | 총기 장비 적 정면 허용 오차 | 6도 | 같은 씬의 `EnemyCombatant` | 경고선/조준 진행 조건 |
 | 근접 적 탐지 거리 | 20 | 같은 씬의 `EnemyPerception` | 시야선 또는 최근 확인 위치 추격 |
-| 근접 적 이동 속도 | 4.8 | 같은 씬의 `EnemyMotor` | 플레이어 현재 위치를 계속 갱신 |
+| 근접 적 이동 속도 | 6 | 같은 씬의 `EnemyMotor` | 플레이어 현재 위치를 계속 갱신 |
 | 근접 무기 공격 거리/취소 거리 | 1.45 / 1.9 | `MeleeWeapon.asset`와 같은 씬의 `EnemyCombatant` | 범위 이탈 시 다시 추적 |
 | 근접 무기 선딜/후딜 | 0.42 / 0.72 월드초 | 같은 씬의 `EnemyCombatant`, `MeleeWeapon.asset` | 선딜 중 목표 회전과 저속 추적 |
 | 근접 선딜 이동 속도 배율 | 35% | 같은 씬의 `EnemyCombatant` | 충돌 안전 이동으로 플레이어를 계속 추적 |
@@ -1297,7 +1303,7 @@ Unity 버전: `6000.1.13f1`
 | 주먹 피해 | 1 | 같은 씬의 `EnemyCombatant` | 세 번 피격 시 플레이어 사망 |
 | 적 무기 탐색 반경/주기 | 8 / 0.25 월드초 | 같은 씬의 `EnemyCombatant` | 완전한 NavMesh 경로 후보만 선택 |
 | 총기 경로 허용 차이 | 2 | 같은 씬의 `EnemyCombatant` | 총기 경로가 근접 무기보다 2 이상 길면 근접 무기 선택 |
-| 근접 적 회전 속도 | 260도/월드초 | 같은 씬의 `EnemyMotor` | 추격과 목표 회전 |
+| 근접 적 회전 속도 | 325도/월드초 | 같은 씬의 `EnemyMotor` | 추격과 목표 회전 |
 | 시야각 | 60도 | 같은 씬의 `VisionCone` | 전체 각도 |
 | 시야 거리 | 12.5 | 같은 씬의 `VisionCone` | 장애물 전 최대 |
 | 시야 메시 세그먼트 | 96 | 같은 씬의 `VisionCone` | 매 LateUpdate 재구성 |
@@ -1435,6 +1441,7 @@ Unity 버전: `6000.1.13f1`
 
 | 날짜 | 문서 버전 | 변경 내용 | 관련 기능 |
 |---|---:|---|---|
+| 2026-08-28 | 1.10.8 | 활성 진행 경로의 원거리·근접 적 이동·회전 속도를 25% 높이고 저장 씬·재생성 기준·전용 EditMode 검증과 실제 회귀 결과를 반영 | 적 AI 밸런스, EnemyMotor, Tutorial·Stage1·Stage2·StageBattingCage·Stage5, 자동 검증 |
 | 2026-08-28 | 1.10.7 | 동적 캐릭터·픽업 Collider를 NavMesh 베이크에서 임시 제외하고 Stage1/2·StageBattingCage 내비게이션 에셋과 0.1m 직접 하부·완전 경로 검증을 갱신 | NavMesh, Stage1/2, StageBattingCage, Stage3/4 빌더, 정적·PlayMode 검증 |
 | 2026-08-26 | 1.10.5 | DEADLINE 해제음을 `SFX_Deadline_Release2.mp3` 하나로 고정하고 기존 해제음 에셋 보존, 빌더·직렬화·PlayMode 검증 결과를 반영 | DEADLINE SFX, SoundLibrary, SoundManager, 오디오 스모크 |
 | 2026-08-26 | 1.10.4 | Tutorial Rework의 중복 외벽 모듈·전광판·벽 장식을 제거하고 후보 전용 환풍기 좌표와 Renderer Bounds 비중첩 검증을 반영 | Tutorial 후보 환경, WorldTimeVisualFeedback, 환풍기 배치, 정적·PlayMode·캡처 검증 |

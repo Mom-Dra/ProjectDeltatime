@@ -24,7 +24,8 @@ namespace Deltatime.EditorTools
         private const string FontSettingsPath =
             "Assets/_Project/Resources/KoreanUiFontSettings.asset";
         private const string MainScenePath = "Assets/_Project/Scenes/MainScene.unity";
-        private const string TutorialScenePath = "Assets/_Project/Scenes/Tutorial.unity";
+        private const string TutorialScenePath =
+            GameBuildSceneCatalog.TutorialScenePath;
         private const string GameStartText = "게임 시작";
 
         private static readonly string[] TutorialFloorLabelTexts =

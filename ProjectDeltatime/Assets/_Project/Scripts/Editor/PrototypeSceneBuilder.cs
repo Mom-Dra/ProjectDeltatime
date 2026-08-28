@@ -1024,7 +1024,7 @@ namespace Deltatime.EditorTools
                 worldTime);
 
             EnemyMotor motor = root.AddComponent<EnemyMotor>();
-            motor.Configure(worldTime, 3.4f, 220f);
+            motor.Configure(worldTime, 4.25f, 275f);
 
             EnemyPerception perception =
                 root.AddComponent<EnemyPerception>();
@@ -1128,7 +1128,7 @@ namespace Deltatime.EditorTools
             warningLine.enabled = false;
 
             EnemyMotor motor = root.AddComponent<EnemyMotor>();
-            motor.Configure(worldTime, 4.8f, 260f, 0.1f);
+            motor.Configure(worldTime, 6f, 325f, 0.1f);
 
             EnemyPerception perception =
                 root.AddComponent<EnemyPerception>();

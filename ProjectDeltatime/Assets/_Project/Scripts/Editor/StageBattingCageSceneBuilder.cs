@@ -1058,12 +1058,22 @@ namespace Deltatime.EditorTools
                 WeaponController weapon =
                     enemies[i].GetComponent<WeaponController>();
                 EnemyMotor motor = enemies[i].GetComponent<EnemyMotor>();
+                SerializedObject motorSettings = motor == null
+                    ? null
+                    : new SerializedObject(motor);
+                motorSettings?.Update();
+                SerializedProperty rotationSpeed = motorSettings
+                    ?.FindProperty("rotationSpeed");
                 SceneValidation.Require(
                     weapon != null && weapon.StartingDefinition == melee,
                     enemies[i].name + " does not start with the bat.");
                 SceneValidation.Require(
-                    motor != null && Mathf.Approximately(motor.MoveSpeed, 4.8f),
-                    enemies[i].name + " does not use melee move speed 4.8.");
+                    motor != null &&
+                    Mathf.Approximately(motor.MoveSpeed, 6f) &&
+                    rotationSpeed != null &&
+                    Mathf.Approximately(rotationSpeed.floatValue, 325f),
+                    enemies[i].name +
+                    " does not use melee movement balance 6/325.");
             }
         }
 

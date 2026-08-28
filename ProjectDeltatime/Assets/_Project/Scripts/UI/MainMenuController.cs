@@ -11,7 +11,8 @@ namespace Deltatime.UI
     /// <summary>Coordinates title actions, modals and the saved start shortcut.</summary>
     public sealed class MainMenuController : MonoBehaviour
     {
-        [SerializeField] private string playSceneName = "Tutorial";
+        [SerializeField] private string playSceneName =
+            "Assets/_Project/Scenes/TutorialRework/Tutorial.unity";
         [SerializeField] private CanvasGroup menuGroup;
         [SerializeField] private GameObject optionPanel;
         [SerializeField] private GameObject creditsPanel;

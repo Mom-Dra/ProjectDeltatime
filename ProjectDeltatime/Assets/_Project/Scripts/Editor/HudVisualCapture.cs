@@ -29,12 +29,12 @@ namespace Deltatime.EditorTools
                 1280,
                 720),
             new CaptureRequest(
-                "Assets/_Project/Scenes/Tutorial.unity",
+                GameBuildSceneCatalog.TutorialScenePath,
                 "Tutorial",
                 1920,
                 1080),
             new CaptureRequest(
-                "Assets/_Project/Scenes/Tutorial.unity",
+                GameBuildSceneCatalog.TutorialScenePath,
                 "Tutorial",
                 1280,
                 720)

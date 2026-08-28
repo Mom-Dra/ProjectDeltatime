@@ -9,10 +9,13 @@ namespace Deltatime.EditorTools
     /// </summary>
     public static class GameBuildSceneCatalog
     {
+        public const string TutorialScenePath =
+            "Assets/_Project/Scenes/TutorialRework/Tutorial.unity";
+
         private static readonly string[] OrderedScenePaths =
         {
             "Assets/_Project/Scenes/MainScene.unity",
-            "Assets/_Project/Scenes/Tutorial.unity",
+            TutorialScenePath,
             "Assets/_Project/Scenes/Stage1.unity",
             "Assets/_Project/Scenes/Stage2.unity",
             "Assets/_Project/Scenes/StageBattingCage.unity",

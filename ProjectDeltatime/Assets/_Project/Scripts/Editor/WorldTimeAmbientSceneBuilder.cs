@@ -13,9 +13,7 @@ namespace Deltatime.EditorTools
     public static class WorldTimeAmbientSceneBuilder
     {
         private const string TutorialScenePath =
-            "Assets/_Project/Scenes/Tutorial.unity";
-        private const string TutorialReworkScenePath =
-            "Assets/_Project/Scenes/TutorialRework/Tutorial.unity";
+            GameBuildSceneCatalog.TutorialScenePath;
         private const string Stage1ScenePath =
             "Assets/_Project/Scenes/Stage1.unity";
         private const string Stage2ScenePath =
@@ -145,8 +143,8 @@ namespace Deltatime.EditorTools
             WorldTimeController worldTime,
             Transform environment)
         {
-            Require(scene.path == TutorialReworkScenePath,
-                "Tutorial rework anchors may only be applied to the candidate scene.");
+            Require(scene.path == TutorialScenePath,
+                "Reworked Tutorial anchors may only be applied to the official scene.");
             ApplyAnchors(
                 scene,
                 worldTime,
@@ -460,6 +458,20 @@ namespace Deltatime.EditorTools
                 $"{scene.path} is missing WorldTimeController.");
             string fileName = System.IO.Path.GetFileNameWithoutExtension(
                 scene.path);
+            if (scene.path == TutorialScenePath)
+            {
+                GameObject environment = FindSceneRoot(
+                    scene,
+                    TutorialEnvironmentName);
+                Require(environment != null,
+                    "Tutorial Environment root is missing.");
+                ApplyTutorialReworkAnchors(
+                    scene,
+                    worldTime,
+                    environment.transform);
+                return;
+            }
+
             if (fileName == "Tutorial")
             {
                 GameObject environment = FindSceneRoot(
@@ -544,10 +556,10 @@ namespace Deltatime.EditorTools
             Scene scene,
             bool useTutorialReworkLayout = false)
         {
-            if (useTutorialReworkLayout)
+            if (useTutorialReworkLayout || scene.path == TutorialScenePath)
             {
-                Require(scene.path == TutorialReworkScenePath,
-                    "Tutorial rework validation requires the candidate scene path.");
+                Require(scene.path == TutorialScenePath,
+                    "Reworked Tutorial validation requires the official scene path.");
                 return TutorialReworkPositions;
             }
 

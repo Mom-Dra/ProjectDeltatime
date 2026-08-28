@@ -7,6 +7,16 @@
 - 기능 추가, 수정, 삭제가 끝나기 전에 해당 변경을 기록한다.
 - 실제 파일과 테스트 결과에서 확인된 내용만 적는다.
 
+## 2026-08-28 - 적 이동·회전 속도 25% 상향
+
+- 변경 유형: 적 AI 밸런스 조정, 활성 씬 직렬화·재생성 기준·자동 검증 갱신
+- 변경 내용: **구현 완료**. 활성 진행 경로 `Tutorial`, `Stage1`, `Stage2`, `StageBattingCage`, `Stage5`의 원거리 적 이동/회전을 `3.4/220 → 4.25/275`, 근접 적을 `4.8/260 → 6/325`로 각각 25% 높였다. `EnemyMotor` 신규 컴포넌트 기본값과 `PrototypeSceneBuilder` 재생성 값, StageBattingCage 정적 검증도 같은 기준으로 맞췄다. 총기 후퇴 `70%`와 근접 선딜 이동 `35%`는 유지되어 실제 속도는 `2.975`, `2.1m/월드초`이며 탐지·교전·공격 거리, 조준·공격 시간, NavMesh·충돌·분리·재탐색, `WorldDeltaTime`과 전역 `Time.timeScale` 정책은 변경하지 않았다. 비활성 Stage6·미사용 Stage3/4·Tutorial Rework 후보는 기존 값을 보존했다.
+- 영향을 받은 시스템: `EnemyMotor`, 원거리 거리 유지·후퇴, 근접 추격·선딜 이동, Tutorial 및 활성 본편 전투 씬, Prototype/StageBattingCage 씬 빌더, EditMode·PlayMode 검증
+- 관련 파일: `ProjectDeltatime/Assets/_Project/Scripts/Enemies/EnemyMotor.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/PrototypeSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Scripts/Editor/StageBattingCageSceneBuilder.cs`, `ProjectDeltatime/Assets/_Project/Tests/EditMode/EnemyMovementBalanceTests.cs`, `ProjectDeltatime/Assets/_Project/Scenes/Tutorial.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage1.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage2.unity`, `ProjectDeltatime/Assets/_Project/Scenes/StageBattingCage.unity`, `ProjectDeltatime/Assets/_Project/Scenes/Stage5.unity`, `mdFile/PROJECT_DESIGN_DOCUMENT.md`, `mdFile/FEATURE_CHANGELOG.md`
+- 기획서 반영 내용: **구현 완료**. `PROJECT_DESIGN_DOCUMENT.md`를 1.10.8로 갱신해 역할별 이동·회전 속도, 파생 후퇴·선딜 속도, 활성/비활성 적용 범위와 실제 검증 결과를 반영했다.
+- 테스트 결과: **부분 구현**. Unity 6000.1.13f1 배치 컴파일이 종료 코드 0으로 통과했고 신규 `EnemyMovementBalanceTests` EditMode 테스트는 활성 5개 씬의 원거리 10기·근접 12기, 총 22기 역할 분류와 정확한 이동·회전 값을 모두 통과했다. StageBattingCage PlayMode 스모크도 6인 근접 전투의 초기화·NavMesh 경로·전투·리플레이·Stage5 전환을 통과했다. Prototype 스모크는 적 이동 검사를 포함한 신규 변경 경로를 지나 기존 투척 무기 수치·6m 착지·리플레이 본 포즈 3건만 실패했다. Tutorial 스모크는 기존 Synty 프리팹 `216/262` 정적 기준선에서 PlayMode 진입 전에 중단됐다. 로그: `ProjectDeltatime/EnemyMovementBalanceCompile.log`, `ProjectDeltatime/EnemyMovementBalanceEditMode.log`, `ProjectDeltatime/EnemyMovementBalanceBattingCageSmoke.log`, `ProjectDeltatime/EnemyMovementBalancePrototypeSmoke.log`, `ProjectDeltatime/EnemyMovementBalanceTutorialSmoke.log`.
+- 남은 작업: **확인 불가**. 실제 키보드·마우스 플레이에서 원거리 적의 거리 유지·후퇴·조준 압박, 근접 적이 플레이어 속도 `6m/s`와 같아진 추격 체감, 6인 포위전과 Tutorial 난도 상승이 의도한 수준인지 수동 확인해야 한다. 기존 Prototype·Tutorial 기준선 실패의 수정은 별도 작업이다.
+
 ## 2026-08-28 - 전투 씬 NavMesh 스폰 구멍 제거
 
 - 변경 유형: NavMesh 베이크 입력 수정, 활성 내비게이션 에셋 전용 재베이크, 스폰·경로 검증 강화
