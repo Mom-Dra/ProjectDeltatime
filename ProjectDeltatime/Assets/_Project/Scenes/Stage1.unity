@@ -443,8 +443,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b7d7e58146b65ac4ba8a12820d38e354, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &280670805
 GameObject:
   m_ObjectHideFlags: 0
@@ -543,6 +543,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &343663601
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1396,31 +1399,31 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 8.2
+      value: 10.200001
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.0000007
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2
+      value: -7.4999948
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.0000004768371
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0.70710677
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: -0.00000045265912
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -1428,11 +1431,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 180
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: 8549510263255523058, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_Name
@@ -1440,7 +1443,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9155124461551225587, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: worldTime
-      value:
+      value: 
       objectReference: {fileID: 593267852}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1599,9 +1602,11 @@ MonoBehaviour:
   deadline: {fileID: 604727840}
   weapon: {fileID: 604727838}
   replay: {fileID: 593267850}
-  panelColor: {r: 0.02, g: 0.025, b: 0.04, a: 0.86}
-  textColor: {r: 0.85, g: 0.95, b: 1, a: 1}
-  accentColor: {r: 0.2, g: 0.95, b: 1, a: 1}
+  replayBlue: {r: 0.08, g: 0.82, b: 0.9, a: 1}
+  replayFrameColor: {r: 0.32, g: 0.68, b: 0.72, a: 0.78}
+  replayClearColor: {r: 1, g: 0.72, b: 0.16, a: 1}
+  replayDeadColor: {r: 1, g: 0.18, b: 0.22, a: 1}
+  replayPanelColor: {r: 0.015, g: 0.035, b: 0.065, a: 0.9}
 --- !u!4 &599234102
 Transform:
   m_ObjectHideFlags: 0
@@ -3444,6 +3449,9 @@ MonoBehaviour:
   followSharpness: 8
   rotationSharpness: 12
   lookHeight: 0.55
+  impulseMultiplier: 1
+  maximumPositionImpulse: 0.16
+  maximumRotationImpulse: 0.5
   constrainToBounds: 0
   cameraBounds:
     m_Center: {x: 0, y: 0, z: 0}
@@ -3801,6 +3809,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &1359110430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4869,6 +4880,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &1635739187
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5720,31 +5734,31 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -8.2
+      value: 8.800003
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.99998295
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 5.8
+      value: 9.299986
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.5000005
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: -0.5
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: -0.4999995
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -5752,11 +5766,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: 8549510263255523058, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: m_Name
@@ -5764,7 +5778,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9155124461551225587, guid: f6be064116313984995c6f4ba21517b2, type: 3}
       propertyPath: worldTime
-      value:
+      value: 
       objectReference: {fileID: 593267852}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

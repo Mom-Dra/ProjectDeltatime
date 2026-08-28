@@ -2963,72 +2963,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5020578823692375332, guid: 1a5fe29a4f064dc4eac3425428dde822, type: 3}
   m_PrefabInstance: {fileID: 76901419}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &80983216
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1652050939}
-    m_Modifications:
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 9.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.49999997
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 6.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8549510263255523058, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_Name
-      value: World Time Ambient Anchor 02
-      objectReference: {fileID: 0}
-    - target: {fileID: 9155124461551225587, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: worldTime
-      value:
-      objectReference: {fileID: 593267852}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: f6be064116313984995c6f4ba21517b2, type: 3}
---- !u!4 &80983217 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-  m_PrefabInstance: {fileID: 80983216}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &81073906
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -16753,6 +16687,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &343663601
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29978,72 +29915,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1222497564247774624, guid: a2cab84ea44048845af21f94a325ce95, type: 3}
   m_PrefabInstance: {fileID: 586856673}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &589957402
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 1652050939}
-    m_Modifications:
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -9.199992
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.49999997
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -6.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8549510263255523058, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: m_Name
-      value: World Time Ambient Anchor 01
-      objectReference: {fileID: 0}
-    - target: {fileID: 9155124461551225587, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-      propertyPath: worldTime
-      value:
-      objectReference: {fileID: 593267852}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: f6be064116313984995c6f4ba21517b2, type: 3}
---- !u!4 &589957403 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1892900508575016501, guid: f6be064116313984995c6f4ba21517b2, type: 3}
-  m_PrefabInstance: {fileID: 589957402}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &593267849
 GameObject:
   m_ObjectHideFlags: 0
@@ -30492,9 +30363,11 @@ MonoBehaviour:
   deadline: {fileID: 604727840}
   weapon: {fileID: 604727838}
   replay: {fileID: 593267850}
-  panelColor: {r: 0.02, g: 0.025, b: 0.04, a: 0.86}
-  textColor: {r: 0.85, g: 0.95, b: 1, a: 1}
-  accentColor: {r: 0.2, g: 0.95, b: 1, a: 1}
+  replayBlue: {r: 0.08, g: 0.82, b: 0.9, a: 1}
+  replayFrameColor: {r: 0.32, g: 0.68, b: 0.72, a: 0.78}
+  replayClearColor: {r: 1, g: 0.72, b: 0.16, a: 1}
+  replayDeadColor: {r: 1, g: 0.18, b: 0.22, a: 1}
+  replayPanelColor: {r: 0.015, g: 0.035, b: 0.065, a: 0.9}
 --- !u!4 &599234102
 Transform:
   m_ObjectHideFlags: 0
@@ -44284,6 +44157,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &872568111
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49920,6 +49796,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &960721829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64074,6 +63953,9 @@ MonoBehaviour:
   followSharpness: 8
   rotationSharpness: 12
   lookHeight: 0.55
+  impulseMultiplier: 1
+  maximumPositionImpulse: 0.16
+  maximumRotationImpulse: 0.5
   constrainToBounds: 1
   cameraBounds:
     m_Center: {x: -2.4166665, y: 0.33333337, z: 0.0000009536743}
@@ -70075,6 +69957,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &1359110430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84267,6 +84152,9 @@ MonoBehaviour:
   damageEnabled: 1
   hitColor: {r: 1, g: 0.25, b: 0.2, a: 1}
   stunColor: {r: 1, g: 0.78, b: 0.15, a: 1}
+  deathPresentationDuration: 0.32
+  deathDisplacement: 0.22
+  deathLeanAngle: 12
 --- !u!114 &1635739187
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85618,9 +85506,7 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 589957403}
-  - {fileID: 80983217}
+  m_Children: []
   m_Father: {fileID: 281327558}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1652050940
@@ -85633,8 +85519,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b7d7e58146b65ac4ba8a12820d38e354, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &1652365603
 PrefabInstance:
   m_ObjectHideFlags: 0
